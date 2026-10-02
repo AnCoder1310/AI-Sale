@@ -40,6 +40,9 @@ conclusion. A missed opportunity is still assessed, usually with a low score.
 - Recommend at most one next scenario or document based on the main weakness.
 
 # Output
+Write all human-readable feedback fields in Vietnamese, including reasons,
+strengths, weaknesses, improvement suggestions, and next-practice rationale.
+Keep exact transcript and source quotes in their original language.
 Return one JSON object matching the requested evaluation draft schema. Do not return
 overall_score, assessed_criteria_count, passed, review_status, markdown, or analysis;
 the application calculates and assigns those fields deterministically.
