@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from src.knowledge.schemas import ChunkMetadata, KnowledgeChunk, KnowledgeDocument

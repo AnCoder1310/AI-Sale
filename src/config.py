@@ -51,8 +51,14 @@ class Settings(BaseSettings):
     )
 
     # Model Configuration
-    model_name: str = "gpt-4o-mini"
+    model_name: str = Field(
+        default="google/gemini-3.5-flash",
+        validation_alias=AliasChoices("model_name", "MODEL_NAME"),
+    )
     embedding_model_name: str = "text-embedding-3-small"
+    embedding_provider: Literal["openai", "openrouter", "hash"] = "openai"
+    llm_timeout_seconds: float = Field(default=30.0, gt=0)
+    retrieval_timeout_seconds: float = Field(default=20.0, gt=0)
     llm_temperature: float = Field(default=0.2, ge=0.0, le=2.0)
 
     # Database
