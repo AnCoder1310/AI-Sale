@@ -1,10 +1,13 @@
+import os
 from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from src.main import app
+os.environ["EMBEDDING_PROVIDER"] = "hash"
+
+from src.main import app  # noqa: E402
 
 
 @pytest_asyncio.fixture

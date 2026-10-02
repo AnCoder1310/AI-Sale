@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class KnowledgeEmbeddingService:
-    """Service tạo vector embedding chuẩn 1536 chiều (mặc định OpenAI text-embedding-3-small)."""
+    """Service tạo vector embedding cho corpus và truy vấn."""
 
     def __init__(self, embeddings: Embeddings | None = None):
         self.embeddings = embeddings or get_embeddings()
@@ -18,9 +18,9 @@ class KnowledgeEmbeddingService:
     def model_name(self) -> str:
         """Tên và thông số mô hình embedding đang sử dụng."""
         if hasattr(self.embeddings, "model"):
-            return f"OpenAI ({getattr(self.embeddings, 'model')})"
+            return f"OpenRouter ({getattr(self.embeddings, 'model')})"
         if hasattr(self.embeddings, "model_name"):
-            return f"OpenAI ({getattr(self.embeddings, 'model_name')})"
+            return f"OpenRouter ({getattr(self.embeddings, 'model_name')})"
         if hasattr(self.embeddings, "dimension"):
             from src.config import get_settings
 

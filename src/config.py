@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
 
     # LLM Providers
-    llm_provider: Literal["openai", "openrouter", "gemini", "grok", "deepseek"] = "openai"
+    llm_provider: Literal["openai", "openrouter", "gemini", "grok", "deepseek"] = "openrouter"
     openai_api_key: str = Field(
         default="",
         validation_alias=AliasChoices("openai_api_key", "OPENAI_API_KEY"),
@@ -56,7 +56,8 @@ class Settings(BaseSettings):
 
     # Model Configuration
     model_name: str = "gpt-4o-mini"
-    embedding_model_name: str = "text-embedding-3-small"
+    embedding_provider: Literal["openrouter", "hash"] = "openrouter"
+    embedding_model_name: str = "openai/text-embedding-3-small"
     llm_temperature: float = Field(default=0.2, ge=0.0, le=2.0)
 
     # Database
@@ -65,7 +66,7 @@ class Settings(BaseSettings):
     # Vector Store
     vector_store_type: Literal["chroma", "memory"] = "chroma"
     chroma_persist_dir: str = "./data/chroma"
-    chroma_collection_name: str = "vinfast_knowledge"
+    chroma_collection_name: str = "vinfast_knowledge_openrouter_3_small"
     similarity_top_k: int = 4
 
 

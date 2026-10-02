@@ -125,11 +125,17 @@ def get_llm(
 
 
 def get_embeddings() -> Embeddings:
-    """Get embedding generator with fallback to deterministic local embeddings."""
+    """Use OpenRouter for knowledge embeddings; hash is an explicit test mode."""
     settings = get_settings()
-    if settings.openai_api_key and settings.openai_api_key.startswith("sk-") and len(settings.openai_api_key) > 20:
-        return OpenAIEmbeddings(
-            model=settings.embedding_model_name,
-            api_key=settings.openai_api_key,
-        )
-    return DeterministicHashEmbeddings(dimension=1536)
+    if settings.embedding_provider == "hash":
+        return DeterministicHashEmbeddings(dimension=1536)
+    if not settings.openrouter_api_key:
+        raise RuntimeError("OPENROUTER_API_KEY is required for knowledge embeddings")
+    return OpenAIEmbeddings(
+        model=settings.embedding_model_name,
+        api_key=settings.openrouter_api_key,
+        base_url="https://openrouter.ai/api/v1",
+        # Corpus chunks are already bounded; avoid fetching a tokenizer for the
+        # OpenRouter-prefixed model name before the first embedding request.
+        check_embedding_ctx_length=False,
+    )
