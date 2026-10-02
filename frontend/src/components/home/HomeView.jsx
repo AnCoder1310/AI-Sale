@@ -5,15 +5,12 @@ import {
   BookIcon,
   ArrowRight,
   ChevronRight,
-  BullseyeIcon,
-  ClockIcon,
 } from '../common/Icons';
 import { Badge } from '../common/Badge';
 
 export function HomeView({
   advisorProfile,
   scenarios,
-  rubricCriteria,
   onNavigate,
   onStartScenario,
 }) {
@@ -184,10 +181,7 @@ export function HomeView({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <Badge variant="highlight">{scenario.model_badge || scenario.model || 'VinFast'}</Badge>
                   <Badge variant="default">Độ khó: {scenario.difficulty}</Badge>
-                  <span style={{ fontSize: '0.78rem', color: '#737373', display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
-                    <ClockIcon style={{ width: 12, height: 12 }} />
-                    {scenario.duration}
-                  </span>
+                  <span style={{ fontSize: '0.78rem', color: '#737373' }}>Tối đa {scenario.max_turns} lượt</span>
                 </div>
 
                 {/* Title */}
@@ -198,14 +192,9 @@ export function HomeView({
                 {/* Customer Persona & Action */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <img
-                      src={scenario.persona?.avatar}
-                      alt={scenario.persona?.name}
-                      style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }}
-                    />
                     <div style={{ fontSize: '0.82rem', color: '#555555' }}>
-                      <span style={{ fontWeight: 600, color: '#111111' }}>Khách hàng: </span>
-                      {scenario.persona?.name} ({scenario.persona?.role})
+                      <span style={{ fontWeight: 600, color: '#111111' }}>Kênh: </span>
+                      {scenario.sales_channel || 'Tư vấn trực tuyến'}
                     </div>
                   </div>
 
@@ -223,59 +212,13 @@ export function HomeView({
           </div>
         </div>
 
-        {/* RIGHT COLUMN: ADVISOR COMPETENCY */}
-        <div className="card-white" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F0F0EE', paddingBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: '#F4F4F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <BullseyeIcon style={{ width: 16, height: 16, color: '#111111' }} />
-              </div>
-              <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#111111' }}>
-                Năng lực Tư vấn của Bạn
-              </h3>
-            </div>
-            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#111111' }}>
-              {advisorProfile.overall_score} <span style={{ fontSize: '0.82rem', fontWeight: 500, color: '#737373' }}>/ 100</span>
-            </div>
-          </div>
-
-          {/* Progress Bars */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {rubricCriteria.map((item) => (
-              <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
-                  <span style={{ fontWeight: 500, color: '#262626' }}>{item.name}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontWeight: 700, color: '#111111' }}>{item.score}%</span>
-                    {item.status === 'attention' && (
-                      <span style={{ fontSize: '0.72rem', color: '#854D0E', backgroundColor: '#FEFCE8', padding: '1px 6px', borderRadius: 4, border: '1px solid #FEF08A' }}>
-                        Cần rèn luyện
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="progress-track">
-                  <div
-                    className="progress-fill"
-                    style={{
-                      width: `${item.score}%`,
-                      backgroundColor: item.status === 'attention' ? '#555555' : '#111111',
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ borderTop: '1px solid #F0F0EE', paddingTop: 14, textAlign: 'center' }}>
-            <button
-              onClick={() => onNavigate('progress')}
-              style={{ fontSize: '0.82rem', fontWeight: 600, color: '#111111', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-            >
-              <span>Xem chi tiết hồ sơ năng lực</span>
-              <ChevronRight style={{ width: 14, height: 14 }} />
-            </button>
-          </div>
+        <div className="card-white" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h3 style={{ fontSize: '0.98rem', fontWeight: 700 }}>Theo dõi năng lực</h3>
+          <p style={{ fontSize: '0.85rem', color: '#666666', lineHeight: 1.5 }}>
+            Sau khi luyện tập, bạn có thể xem điểm và bằng chứng cho từng tiêu chí ngay trên màn hình kết quả.
+            Dashboard tổng hợp tiến bộ chưa có dữ liệu thật trong MVP này.
+          </p>
+          <button className="btn-outline" onClick={() => onNavigate('roleplay')}>Bắt đầu luyện tập</button>
         </div>
       </div>
     </div>

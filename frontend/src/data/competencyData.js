@@ -1,15 +1,7 @@
 export const ADVISOR_PROFILE = {
-  name: 'Võ Trường An',
-  role: 'Advisor',
-  branch: 'VinFast Vinh, Nghệ An',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
-  overall_score: 88.5,
-  max_score: 100,
-  level: 'Chuyên viên Tư vấn Cấp cao',
-  completed_sessions: 14,
-  practice_hours: 4.8,
-  copilot_queries: 42,
-  notifications_unread: 2,
+  name: 'Tư vấn viên',
+  role: 'MVP local',
+  branch: 'AI Sales Coach • Demo',
 };
 
 export const RUBRIC_CRITERIA = [
