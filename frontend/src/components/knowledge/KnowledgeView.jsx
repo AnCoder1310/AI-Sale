@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   SearchIcon,
   BookIcon,
@@ -12,11 +12,21 @@ import { POLICIES } from '../../data/policyData';
 import { FAQ_QUESTIONS } from '../../data/faqData';
 import { copilotApi } from '../../api/copilotApi';
 
-export function KnowledgeView({ onOpenCopilotQuery }) {
+export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
   const [subTab, setSubTab] = useState('vehicles'); // 'vehicles' | 'policies' | 'faq'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [selectedDocument, setSelectedDocument] = useState(null);
+  const [sourceError, setSourceError] = useState('');
+
+  useEffect(() => {
+    if (!sourceDocumentId) return;
+    let active = true;
+    copilotApi.getSource(sourceDocumentId)
+      .then((document) => { if (active) setSelectedDocument(document); })
+      .catch(() => { if (active) setSourceError('Không mở được tài liệu gốc. Vui lòng thử lại.'); });
+    return () => { active = false; };
+  }, [sourceDocumentId]);
 
   const filteredVehicles = VEHICLES.filter(
     (v) =>
@@ -39,24 +49,18 @@ export function KnowledgeView({ onOpenCopilotQuery }) {
   );
 
   const handleOpenDocument = async (docId, fallbackTitle = '') => {
+    setSourceError('');
     try {
       const doc = await copilotApi.getSource(docId);
       setSelectedDocument(doc);
     } catch {
-      // Fallback display if backend is offline
-      const foundPolicy = POLICIES.find((p) => p.document_id === docId);
-      setSelectedDocument({
-        document_id: docId,
-        title: foundPolicy?.title || fallbackTitle || docId,
-        document_type: 'policy',
-        effective_date: foundPolicy?.effective_date || '2026-09-01',
-        content: foundPolicy?.summary + '\n\n' + (foundPolicy?.key_points || []).map((k) => `• ${k}`).join('\n'),
-      });
+      setSourceError(`Không mở được tài liệu ${fallbackTitle || docId}.`);
     }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {sourceError && <p role="alert" style={{ color: '#991B1B' }}>{sourceError}</p>}
       {/* HEADER & TABS */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
         <div>
@@ -395,7 +399,7 @@ export function KnowledgeView({ onOpenCopilotQuery }) {
               <span>•</span>
               <span>Ngày hiệu lực: <strong>{selectedDocument.effective_date}</strong></span>
               <span>•</span>
-              <span>Trạng thái: <strong>Đang có hiệu lực</strong></span>
+              <span>Trạng thái: <strong>{selectedDocument.status || 'Chưa xác định'}</strong></span>
             </div>
 
             <div

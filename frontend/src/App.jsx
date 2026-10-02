@@ -6,16 +6,18 @@ import { CopilotView } from './components/copilot/CopilotView';
 import { RoleplayView } from './components/roleplay/RoleplayView';
 import { KnowledgeView } from './components/knowledge/KnowledgeView';
 import { ChargingView } from './components/charging/ChargingView';
-import { ProgressView } from './components/progress/ProgressView';
+import { ErrorState } from './components/common/ErrorState';
 
-import { SCENARIO_PRESETS } from './data/scenarioData';
-import { ADVISOR_PROFILE, RUBRIC_CRITERIA, INITIAL_NOTIFICATIONS } from './data/competencyData';
+import { ADVISOR_PROFILE } from './data/competencyData';
 import { practiceApi } from './api/practiceApi';
 
 export function App() {
   const [currentTab, setCurrentTab] = useState('home');
-  const [scenarios, setScenarios] = useState(SCENARIO_PRESETS);
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [scenarios, setScenarios] = useState([]);
+  const [scenarioStatus, setScenarioStatus] = useState('loading');
+  const [scenarioReloadToken, setScenarioReloadToken] = useState(0);
+  const [sourceDocumentId, setSourceDocumentId] = useState(null);
+  const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [copilotQuery, setCopilotQuery] = useState('');
 
@@ -24,33 +26,24 @@ export function App() {
     async function loadBackendScenarios() {
       try {
         const backendList = await practiceApi.getScenarios();
-        if (Array.isArray(backendList) && backendList.length > 0) {
-          // Merge backend scenarios with our rich presentation metadata
-          const merged = SCENARIO_PRESETS.map((preset) => {
-            const match = backendList.find((b) => b.scenario_id === preset.scenario_id);
-            if (match) {
-              return {
-                ...preset,
-                title: match.title || preset.title,
-                difficulty: match.difficulty || preset.difficulty,
-                sales_channel: match.sales_channel || preset.sales_channel,
-                training_objective: match.training_objective || preset.training_objective,
-                target_skills: match.target_skills || preset.target_skills,
-                visible_context: match.visible_context || preset.visible_context,
-                max_turns: match.max_turns || 8,
-                is_backend: true,
-              };
-            }
-            return preset;
-          });
-          setScenarios(merged);
-        }
+        if (!Array.isArray(backendList)) throw new Error('Danh sách tình huống không hợp lệ.');
+        setScenarios(backendList.map((scenario) => {
+          const model = scenario.title.match(/VF\s*[3-9]/i)?.[0].replace(/\s+/, ' ') || 'VinFast';
+          return {
+            ...scenario,
+            model,
+            model_badge: model,
+            difficulty: { Easy: 'Cơ bản', Medium: 'Tiêu chuẩn', Hard: 'Nâng cao' }[scenario.difficulty] || scenario.difficulty,
+          };
+        }));
+        setScenarioStatus('ready');
       } catch {
-        // Retain preset catalog if backend is not immediately responding
+        setScenarios([]);
+        setScenarioStatus('error');
       }
     }
     loadBackendScenarios();
-  }, []);
+  }, [scenarioReloadToken]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -96,7 +89,6 @@ export function App() {
           <HomeView
             advisorProfile={ADVISOR_PROFILE}
             scenarios={scenarios}
-            rubricCriteria={RUBRIC_CRITERIA}
             onNavigate={(tab) => setCurrentTab(tab)}
             onStartScenario={handleStartScenarioFromHome}
           />
@@ -105,19 +97,28 @@ export function App() {
         {currentTab === 'copilot' && (
           <CopilotView
             initialQuery={copilotQuery}
-            onOpenDocument={() => {
+            onOpenDocument={(documentId) => {
+              setSourceDocumentId(documentId);
               setCurrentTab('knowledge');
             }}
           />
         )}
 
         {currentTab === 'roleplay' && (
-          <RoleplayView scenarios={scenarios} />
+          <RoleplayView
+            scenarios={scenarios}
+            scenarioStatus={scenarioStatus}
+            onRetryScenarios={() => {
+              setScenarioStatus('loading');
+              setScenarioReloadToken((value) => value + 1);
+            }}
+          />
         )}
 
         {currentTab === 'knowledge' && (
           <KnowledgeView
             onOpenCopilotQuery={handleConsultCopilot}
+            sourceDocumentId={sourceDocumentId}
           />
         )}
 
@@ -128,10 +129,10 @@ export function App() {
         )}
 
         {currentTab === 'progress' && (
-          <ProgressView
-            advisorProfile={ADVISOR_PROFILE}
-            rubricCriteria={RUBRIC_CRITERIA}
-            onNavigateToRoleplay={() => setCurrentTab('roleplay')}
+          <ErrorState
+            title="Theo dõi tiến bộ sẽ được bổ sung"
+            message="MVP hiện lưu và đánh giá từng phiên luyện tập; dashboard tổng hợp năng lực chưa kết nối dữ liệu thật."
+            onRetry={() => setCurrentTab('roleplay')}
           />
         )}
       </main>

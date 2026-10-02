@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  ClockIcon,
   ArrowRight,
   SparkleIcon,
 } from '../common/Icons';
@@ -10,7 +9,7 @@ import { SKILL_LABELS } from '../../data/scenarioData';
 export function ScenarioCatalog({
   scenarios,
   onStartScenario,
-  onOpenHistory,
+  starting = false,
 }) {
   const [filterModel, setFilterModel] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
@@ -59,14 +58,6 @@ export function ScenarioCatalog({
           </p>
         </div>
 
-        <button
-          onClick={onOpenHistory}
-          className="btn-outline"
-          style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-        >
-          <ClockIcon style={{ width: 14, height: 14 }} />
-          <span>Xem Lịch sử Luyện tập</span>
-        </button>
       </div>
 
       {/* FILTER BAR */}
@@ -132,8 +123,7 @@ export function ScenarioCatalog({
                 <Badge variant="highlight">{s.model_badge || s.model}</Badge>
                 <Badge variant="default">Độ khó: {s.difficulty}</Badge>
                 <span style={{ fontSize: '0.78rem', color: '#737373', display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 2 }}>
-                  <ClockIcon style={{ width: 12, height: 12 }} />
-                  ~{s.duration}
+                  Tối đa {s.max_turns} lượt
                 </span>
               </div>
 
@@ -155,17 +145,12 @@ export function ScenarioCatalog({
                   marginBottom: 14,
                 }}
               >
-                <img
-                  src={s.persona?.avatar}
-                  alt={s.persona?.name}
-                  style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111111' }}>
-                    {s.persona?.name} ({s.persona?.age} tuổi) <span style={{ fontWeight: 400, color: '#737373' }}>| {s.persona?.role}</span>
+                    Khách hàng qua {s.sales_channel || 'kênh tư vấn'}
                   </div>
                   <div style={{ fontSize: '0.78rem', color: '#444444', lineHeight: 1.4 }}>
-                    <strong>Tính cách:</strong> {s.persona?.communication_style}
+                    {s.visible_context}
                   </div>
                 </div>
               </div>
@@ -208,12 +193,13 @@ export function ScenarioCatalog({
               }}
             >
               <span style={{ fontSize: '0.82rem', color: '#737373' }}>
-                {s.budget || 'Ngân sách: Đang tư vấn'}
+                Khai thác nhu cầu trong hội thoại
               </span>
 
               <button
                 className="btn-primary"
                 onClick={() => onStartScenario(s.scenario_id)}
+                disabled={starting}
                 style={{ padding: '8px 18px', fontSize: '0.85rem' }}
               >
                 <span>Vào phòng luyện tập</span>
