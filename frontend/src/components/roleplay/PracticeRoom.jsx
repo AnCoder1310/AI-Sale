@@ -12,27 +12,16 @@ export function PracticeRoom({
   onFinish,
   onExit,
 }) {
-  const [messages, setMessages] = useState(
-    session?.messages && session.messages.length > 0
-      ? session.messages
-      : [
-          {
-            message_id: 'init-1',
-            role: 'customer',
-            content:
-              scenario?.visible_context ||
-              'Xin chào em, anh đang phân vân dòng xe này mà không biết chính sách và chi phí thực tế thế nào.',
-            timestamp: new Date().toISOString(),
-          },
-        ]
-  );
+  const [messages, setMessages] = useState(session?.messages || []);
 
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [turnCount, setTurnCount] = useState(session?.turn_count || 1);
+  const [turnCount, setTurnCount] = useState(session?.turn_count || 0);
   const [stage, setStage] = useState(session?.conversation_stage || 'opening');
+  const [terminationStatus, setTerminationStatus] = useState(session?.termination_status || 'active');
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const [error, setError] = useState('');
 
   const chatEndRef = useRef(null);
 
@@ -51,7 +40,7 @@ export function PracticeRoom({
 
   const handleSendMessage = async () => {
     const text = inputMessage.trim();
-    if (!text || loading) return;
+    if (!text || loading || finishing || terminationStatus !== 'active') return;
 
     const advisorMsg = {
       message_id: createId('adv'),
@@ -63,143 +52,39 @@ export function PracticeRoom({
     setMessages((prev) => [...prev, advisorMsg]);
     setInputMessage('');
     setLoading(true);
-    setTurnCount((prev) => prev + 1);
+    setError('');
 
     try {
-      if (session?.session_id && scenario?.is_backend) {
-        const updated = await practiceApi.sendMessage(session.session_id, text);
-        if (updated.messages && updated.messages.length > 0) {
-          setMessages(updated.messages);
-        }
-        if (updated.conversation_stage) {
-          setStage(updated.conversation_stage);
-        }
-        if (updated.turn_count !== undefined) {
-          setTurnCount(updated.turn_count);
-        }
-      } else {
-        // Simulated responsive AI customer if offline/preset
-        await new Promise((r) => setTimeout(r, 1000));
-        let reply = '';
-        if (turnCount === 1) {
-          reply =
-            'Anh cũng đang cân nhắc chi phí vận hành hàng tháng. Xe điện chạy nhiều có thực sự tiết kiệm hơn xe xăng không em? Pin sau 3-5 năm thì độ bền ra sao?';
-          setStage('objection_handling');
-        } else if (turnCount === 2) {
-          reply =
-            'Ừ, nếu thuê pin mà được đổi mới khi chai dưới 70% thì anh cũng yên tâm phần nào. Thế còn trạm sạc quanh khu vực anh ở và các cung đường dài thì thế nào?';
-          setStage('presentation');
-        } else {
-          reply =
-            'Nghe thuyết phục đấy. Em gửi anh bảng kê chi tiết lăn bánh và xếp lịch cho anh lái thử xe vào cuối tuần này nhé.';
-          setStage('closing');
-        }
-
-        const customerMsg = {
-          message_id: createId('cust'),
-          role: 'customer',
-          content: reply,
-          timestamp: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, customerMsg]);
+      const updated = await practiceApi.sendMessage(session.session_id, text);
+      setMessages(updated.messages);
+      setStage(updated.conversation_stage);
+      setTurnCount(updated.turn_count);
+      setTerminationStatus(updated.termination_status);
+    } catch (requestError) {
+      setError(requestError.message || 'AI Customer chưa phản hồi. Phiên đã được lưu; vui lòng thử tải lại.');
+      try {
+        const saved = await practiceApi.getSession(session.session_id);
+        setMessages(saved.messages);
+        setStage(saved.conversation_stage);
+        setTurnCount(saved.turn_count);
+        setTerminationStatus(saved.termination_status);
+      } catch {
+        // Keep the advisor's visible draft; do not fabricate a customer reply.
       }
-    } catch {
-      const fallbackCustomerMsg = {
-        message_id: createId('cust-err'),
-        role: 'customer',
-        content:
-          'Anh hiểu rồi. Em có thể nói rõ hơn về sự khác nhau giữa việc thuê pin và mua đứt pin không? Phương án nào tối ưu kinh tế hơn cho anh?',
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, fallbackCustomerMsg]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleFinishSession = async () => {
+    if (loading || finishing) return;
     setFinishing(true);
+    setError('');
     try {
-      if (session?.session_id && scenario?.is_backend) {
-        const resultView = await practiceApi.finishSession(session.session_id);
-        onFinish(resultView);
-      } else {
-        await new Promise((r) => setTimeout(r, 1200));
-        // Synthetic high quality evaluation result
-        const fallbackResult = {
-          session_id: session?.session_id || createId('sess'),
-          evaluation_status: 'completed',
-          result: {
-            session_id: session?.session_id || createId('sess'),
-            scenario_id: scenario?.scenario_id || 'SCENARIO_01_VF5_TAXI',
-            rubric_version: '2.0',
-            assessed_criteria_count: 5,
-            overall_score: 4.4,
-            passed: true,
-            evaluations: [
-              {
-                criterion: 'need_discovery',
-                status: 'assessed',
-                score: 4,
-                reason: 'Tư vấn viên đã chủ động khai thác thói quen di chuyển và nỗi băn khoăn về chi phí nhiên liệu của khách hàng.',
-                evidence: [{ message_id: 'adv-1', quote: messages[1]?.content || 'khai thác nhu cầu di chuyển' }],
-                improvement_suggestion: 'Nên đặt thêm câu hỏi về người cùng đưa ra quyết định mua xe trong gia đình.',
-              },
-              {
-                criterion: 'product_knowledge',
-                status: 'assessed',
-                score: 5,
-                reason: 'Trình bày chính xác thông số động cơ, phạm vi hoạt động NEDC và thời gian sạc nhanh DC.',
-                evidence: [{ message_id: 'adv-2', quote: 'thông số kỹ thuật và trạm sạc V-GREEN' }],
-              },
-              {
-                criterion: 'objection_handling',
-                status: 'assessed',
-                score: 5,
-                reason: 'Làm rõ băn khoăn rủi ro chai pin bằng chính sách cam kết đổi mới khi SOH < 70%.',
-                evidence: [{ message_id: 'adv-3', quote: 'chính sách đổi pin khi SOH < 70%' }],
-              },
-              {
-                criterion: 'policy_accuracy',
-                status: 'assessed',
-                score: 5,
-                reason: 'Trích dẫn chính xác miễn lệ phí trước bạ 0% và ưu đãi sạc điện công cộng.',
-                evidence: [{ message_id: 'adv-4', quote: 'ưu đãi trước bạ 0%' }],
-              },
-              {
-                criterion: 'closing_next_step',
-                status: 'assessed',
-                score: 4,
-                reason: 'Chủ động đề xuất lái thử trải nghiệm thực tế và cung cấp thông tin liên hệ showroom.',
-                evidence: [{ message_id: 'adv-5', quote: 'hẹn lịch lái thử cuối tuần' }],
-                improvement_suggestion: 'Có thể chủ động xin thêm số Zalo để gửi bảng tính trả góp ngay.',
-              },
-            ],
-            summary_strengths: [
-              'Kỹ năng lắng nghe và đồng cảm với nỗi lo tài chính của khách hàng rất tốt.',
-              'Vận dụng thành thạo chính sách bảo hiểm pin thuê để biến điểm yếu thành lợi thế cạnh tranh.',
-            ],
-            summary_weaknesses: [
-              'Cần đẩy nhanh tốc độ chốt lịch hẹn lái thử ngay khi khách hàng có tín hiệu đồng thuận.',
-            ],
-            factual_findings: [
-              {
-                claim: 'Chính sách pin: Đổi mới miễn phí khi dung lượng SOH dưới 70%',
-                status: 'supported',
-                reason: 'Đã đối chiếu chuẩn xác với HỢP ĐỒNG CHO THUÊ PIN XE ĐIỆN 2026',
-              },
-              {
-                claim: 'Mạng lưới sạc: Hơn 150.000 cổng sạc trên 63 tỉnh thành',
-                status: 'supported',
-                reason: 'Đã đối chiếu với dữ liệu hạ tầng trạm sạc V-GREEN 2026',
-              },
-            ],
-          },
-        };
-        onFinish(fallbackResult);
-      }
-    } catch {
-      alert('Không thể hoàn tất chấm điểm phiên lúc này. Vui lòng thử lại.');
+      const resultView = await practiceApi.finishSession(session.session_id);
+      onFinish(resultView);
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể chấm điểm lúc này. Phiên đã được lưu; hãy thử lại.');
     } finally {
       setFinishing(false);
       setShowFinishConfirm(false);
@@ -242,7 +127,7 @@ export function PracticeRoom({
           className="btn-primary"
           style={{ backgroundColor: '#111111', fontSize: '0.82rem', padding: '8px 16px' }}
           onClick={() => setShowFinishConfirm(true)}
-          disabled={finishing}
+          disabled={loading || finishing}
         >
           🏁 Kết thúc & Chấm điểm
         </button>
@@ -251,17 +136,12 @@ export function PracticeRoom({
       {/* CUSTOMER CONTEXT BANNER */}
       <div style={{ padding: '12px 20px', backgroundColor: '#F8F8F6', borderBottom: '1px solid #EDEDEA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img
-            src={scenario?.persona?.avatar}
-            alt={scenario?.persona?.name}
-            style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }}
-          />
           <div>
             <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111111' }}>
-              {scenario?.persona?.name} ({scenario?.persona?.role})
+              Khách hàng • {scenario?.sales_channel || 'Kênh tư vấn'}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#737373' }}>
-              Phong cách: {scenario?.persona?.communication_style}
+              {session?.visible_context}
             </div>
           </div>
         </div>
@@ -283,13 +163,6 @@ export function PracticeRoom({
               maxWidth: '85%',
             }}
           >
-            {m.role === 'customer' && (
-              <img
-                src={scenario?.persona?.avatar}
-                alt="Khách hàng"
-                style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-              />
-            )}
 
             <div
               style={{
@@ -303,7 +176,7 @@ export function PracticeRoom({
               }}
             >
               <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: 4, opacity: 0.7 }}>
-                {m.role === 'advisor' ? 'Bạn (Tư vấn viên)' : scenario?.persona?.name || 'Khách hàng'}
+                {m.role === 'advisor' ? 'Bạn (Tư vấn viên)' : 'Khách hàng'}
               </div>
               <div style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
             </div>
@@ -332,11 +205,6 @@ export function PracticeRoom({
 
         {loading && (
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <img
-              src={scenario?.persona?.avatar}
-              alt="Khách hàng"
-              style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }}
-            />
             <div style={{ padding: '12px 18px', borderRadius: 14, backgroundColor: '#F4F4F2', fontSize: '0.85rem', color: '#666666' }}>
               Khách hàng đang soạn câu trả lời...
             </div>
@@ -348,6 +216,8 @@ export function PracticeRoom({
 
       {/* INPUT BAR */}
       <div style={{ padding: '16px 20px', borderTop: '1px solid #E5E5E5', backgroundColor: '#FAFAFA' }}>
+        {error && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{error}</p>}
+        {terminationStatus !== 'active' && <p style={{ fontSize: '0.82rem', marginBottom: 8 }}>Đã đạt giới hạn lượt. Hãy kết thúc để xem đánh giá.</p>}
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
           <textarea
             value={inputMessage}
@@ -371,11 +241,11 @@ export function PracticeRoom({
               lineHeight: 1.4,
               backgroundColor: '#FFFFFF',
             }}
-            disabled={loading}
+            disabled={loading || finishing || terminationStatus !== 'active'}
           />
           <button
             onClick={handleSendMessage}
-            disabled={!inputMessage.trim() || loading}
+            disabled={!inputMessage.trim() || loading || finishing || terminationStatus !== 'active'}
             className="btn-primary"
             style={{ height: 46, padding: '0 20px' }}
           >

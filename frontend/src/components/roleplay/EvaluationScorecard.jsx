@@ -32,9 +32,7 @@ export function EvaluationScorecard({
   }
 
   const evalData = result.result;
-  const overallScore5 = evalData.overall_score || 4.2;
-  const overallScore100 = Math.round((overallScore5 / 5) * 100);
-  const isPassed = evalData.passed ?? overallScore5 >= 3.5;
+  const overallScore5 = evalData.overall_score;
 
   const criteriaLabels = {
     need_discovery: 'Need Discovery (Khai thác Nhu cầu)',
@@ -66,11 +64,11 @@ export function EvaluationScorecard({
 
           <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-              <span style={{ fontSize: '2.4rem', fontWeight: 800, color: '#FFFFFF' }}>{overallScore100}</span>
-              <span style={{ fontSize: '1rem', color: '#888888' }}>/ 100</span>
+              <span style={{ fontSize: '2.4rem', fontWeight: 800, color: '#FFFFFF' }}>{overallScore5 ?? '—'}</span>
+              <span style={{ fontSize: '1rem', color: '#888888' }}>/ 5</span>
             </div>
-            <Badge variant={isPassed ? 'highlight' : 'default'} style={{ backgroundColor: isPassed ? '#166534' : '#854D0E', color: '#FFFFFF', border: 'none', padding: '6px 12px', fontSize: '0.82rem' }}>
-              {isPassed ? '✓ ĐẠT CHUẨN ĐÀO TẠO' : '⚠ CẦN RÈN LUYỆN THÊM'}
+            <Badge variant="default" style={{ backgroundColor: '#555555', color: '#FFFFFF', border: 'none', padding: '6px 12px', fontSize: '0.82rem' }}>
+              BẢN NHÁP AI • CHƯA DUYỆT
             </Badge>
           </div>
         </div>
@@ -82,10 +80,7 @@ export function EvaluationScorecard({
               + ĐIỂM MẠNH NỔI BẬT:
             </span>
             <ul style={{ listStyle: 'none', paddingLeft: 0, fontSize: '0.82rem', color: '#E0E0E0', display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {(evalData.summary_strengths && evalData.summary_strengths.length > 0
-                ? evalData.summary_strengths
-                : ['Nắm vững thông số xe và dẫn dắt cuộc đối thoại mạch lạc', 'Thái độ tư vấn lịch thiệp, tôn trọng khách hàng']
-              ).map((s, idx) => (
+              {(evalData.summary_strengths || []).map((s, idx) => (
                 <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                   <span>•</span>
                   <span>{s}</span>
@@ -99,10 +94,7 @@ export function EvaluationScorecard({
               ! ĐIỂM CẦN RÈN LUYỆN:
             </span>
             <ul style={{ listStyle: 'none', paddingLeft: 0, fontSize: '0.82rem', color: '#E0E0E0', display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {(evalData.summary_weaknesses && evalData.summary_weaknesses.length > 0
-                ? evalData.summary_weaknesses
-                : ['Cần đào sâu hơn thói quen sạc điện thực tế', 'Chủ động đưa ra lời mời lái thử xe trước khi kết thúc']
-              ).map((w, idx) => (
+              {(evalData.summary_weaknesses || []).map((w, idx) => (
                 <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                   <span>•</span>
                   <span>{w}</span>
@@ -121,8 +113,7 @@ export function EvaluationScorecard({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {(evalData.evaluations || []).map((crit, idx) => {
-            const score = crit.score || 4;
-            const scorePercent = Math.round((score / 5) * 100);
+            const score = crit.score;
             return (
               <div
                 key={idx}
@@ -146,11 +137,8 @@ export function EvaluationScorecard({
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#111111' }}>
-                      {score} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#737373' }}>/ 5</span>
+                      {score ?? '—'} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#737373' }}>/ 5</span>
                     </span>
-                    <Badge variant={score >= 4 ? 'highlight' : 'default'}>
-                      {scorePercent}%
-                    </Badge>
                   </div>
                 </div>
 

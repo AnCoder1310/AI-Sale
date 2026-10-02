@@ -3,9 +3,6 @@ import {
   SparkleIcon,
   RefreshIcon,
   CopyIcon,
-  ThumbsUpIcon,
-  ThumbsDownIcon,
-  MicIcon,
   SendIcon,
   ChevronRight,
   BookIcon,
@@ -20,6 +17,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
   const [filterDomain, setFilterDomain] = useState('all');
   const [inputMessage, setInputMessage] = useState(initialQuery || '');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const [messages, setMessages] = useState([
     {
@@ -28,11 +26,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
       time: '10:00',
       content:
         'Chào bạn! Tôi là **AI Sales Copilot**. Tôi có thể hỗ trợ bạn tra cứu nhanh thông số kỹ thuật, giá bán, chính sách pin và kịch bản tư vấn xe VinFast 2026.\n\nBạn cần tra cứu thông tin gì hôm nay?',
-      talking_points: [
-        'Kiểm tra ưu đãi trước bạ 0% và sạc V-GREEN',
-        'So sánh chi phí xe điện vs xe xăng cùng phân khúc',
-        'Chính sách đổi pin khi SOH < 70%',
-      ],
+      talking_points: [],
       citations: [],
     },
   ]);
@@ -66,39 +60,24 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
     setMessages((prev) => [...prev, userMsg]);
     setInputMessage('');
     setLoading(true);
+    setError('');
 
     try {
       const response = await copilotApi.query({ query: queryText });
+      if (!response.answer) throw new Error('Copilot chưa trả lời được câu hỏi này.');
       const aiMsg = {
         id: createId('ai'),
         role: 'assistant',
         time: getCurrentTimeString(),
-        content: response.answer || response.response || 'Đã tìm thấy thông tin từ kho tài liệu.',
+        content: response.answer,
         citations: response.citations || [],
         talking_points: response.talking_points || [],
         suggested_message: response.suggested_message || '',
         suggested_next_question: response.suggested_next_question || '',
       };
       setMessages((prev) => [...prev, aiMsg]);
-    } catch {
-      const fallbackAiMsg = {
-        id: createId('ai-err'),
-        role: 'assistant',
-        time: getCurrentTimeString(),
-        content:
-          'Xin lỗi bạn, kết nối đến dịch vụ Copilot đang bận hoặc gián đoạn. Dưới đây là thông tin tham khảo dựa trên quy chuẩn bán hàng 2026:\n\n• Chính sách pin: Khách thuê pin được bảo hành đổi mới khi dung lượng SOH < 70%.\n• Ưu đãi trước bạ: 0% theo quy định Nhà nước.\n• Mạng lưới V-GREEN: 150.000+ cổng sạc toàn quốc, hỗ trợ sạc nhanh DC 10-70% trong ~24-30 phút.',
-        talking_points: [
-          'Kiểm tra tình trạng SOH pin thực tế qua VinFast App',
-          'Tư vấn gói thuê pin linh hoạt theo quãng đường',
-        ],
-        citations: [
-          {
-            document_id: 'POLICY_BATTERY_RENTAL_CONTRACT_20260801',
-            title: 'HỢP ĐỒNG CHO THUÊ PIN XE ĐIỆN VINFAST 2026',
-          },
-        ],
-      };
-      setMessages((prev) => [...prev, fallbackAiMsg]);
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể kết nối Copilot. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -111,6 +90,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
   };
 
   const handleResetChat = () => {
+    setError('');
     setMessages([
       {
         id: createId('msg-reset'),
@@ -118,11 +98,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
         time: getCurrentTimeString(),
         content:
           'Phiên làm việc mới đã được khởi tạo. Bạn cần tra cứu thông số kỹ thuật, giá bán hay chính sách xe VinFast nào?',
-        talking_points: [
-          'So sánh chi phí thuê pin vs mua đứt VF 8',
-          'Thời gian sạc nhanh DC và trạm V-GREEN Nghệ An',
-          'Các tính năng ADAS trên VF 7 và VF 8',
-        ],
+        talking_points: [],
         citations: [],
       },
     ]);
@@ -312,12 +288,6 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                           </>
                         )}
                       </button>
-                      <button style={{ color: '#888888' }} title="Hữu ích">
-                        <ThumbsUpIcon style={{ width: 13, height: 13 }} />
-                      </button>
-                      <button style={{ color: '#888888' }} title="Chưa chính xác">
-                        <ThumbsDownIcon style={{ width: 13, height: 13 }} />
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -348,6 +318,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
 
         {/* BOTTOM INPUT BAR */}
         <div style={{ padding: '16px 24px', borderTop: '1px solid #E5E5E5', backgroundColor: '#FFFFFF' }}>
+          {error && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{error}</p>}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -367,7 +338,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="Hỏi về thông số xe, pin thuê vs mua, ưu đãi trước bạ (hoặc bấm Micro nói)..."
+              placeholder="Hỏi về thông số xe, chính sách pin hoặc ưu đãi..."
               style={{
                 flex: 1,
                 border: 'none',
@@ -378,24 +349,6 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
               }}
               disabled={loading}
             />
-
-            <button
-              type="button"
-              onClick={() => alert('Đang kích hoạt Micro ghi âm giọng nói')}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                backgroundColor: '#EAEAE7',
-                color: '#555555',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              title="Nhập bằng giọng nói"
-            >
-              <MicIcon style={{ width: 16, height: 16 }} />
-            </button>
 
             <button
               type="submit"
