@@ -23,5 +23,5 @@ def test_openrouter_fails_before_network_call_when_key_is_missing(monkeypatch):
     settings = Settings(llm_provider="openrouter", openrouter_api_key="")
     monkeypatch.setattr(llm_service, "get_settings", lambda: settings)
 
-    with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY is required"):
+    with pytest.raises(ValueError, match="openrouter is not configured"):
         llm_service.get_llm()

@@ -14,6 +14,7 @@ def test_openrouter_embeddings_use_openrouter_key_and_endpoint(monkeypatch):
             embedding_provider="openrouter",
             embedding_model_name="openai/text-embedding-3-small",
             openrouter_api_key="test-openrouter-key",
+            retrieval_timeout_seconds=20.0,
         ),
     )
 
@@ -33,7 +34,7 @@ def test_openrouter_embeddings_require_key_instead_of_silent_hash_fallback(monke
         lambda: SimpleNamespace(embedding_provider="openrouter", openrouter_api_key=""),
     )
 
-    with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
+    with pytest.raises(ValueError, match="OPENROUTER_API_KEY"):
         llm.get_embeddings()
 
 

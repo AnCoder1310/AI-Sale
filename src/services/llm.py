@@ -12,7 +12,8 @@ class DeterministicHashEmbeddings(Embeddings):
     """Deterministic local embeddings generator for testing and offline development.
 
     Generates normalized 1536-dimensional vectors using SHA-256 tokens,
-    ensuring semantic consistency across test runs without external API calls.
+    providing repeatable lexical vectors without external API calls.
+    This is not a semantic embedding model and must be selected explicitly.
     """
 
     def __init__(self, dimension: int = 1536):
@@ -72,70 +73,105 @@ def get_llm(
     if provider is None and prov == "openai" and not settings.openai_api_key and settings.openrouter_api_key:
         prov = "openrouter"
 
+    provider_keys = {
+        "openai": settings.openai_api_key,
+        "openrouter": settings.openrouter_api_key,
+        "gemini": settings.gemini_api_key,
+        "grok": settings.grok_api_key,
+        "deepseek": settings.deepseek_api_key,
+    }
+    if prov not in provider_keys or not provider_keys[prov]:
+        raise ValueError(f"API key for LLM provider {prov} is not configured")
+
     if prov == "openrouter":
         api_key = settings.openrouter_api_key
-        if not api_key:
-            raise RuntimeError("OPENROUTER_API_KEY is required when LLM_PROVIDER=openrouter")
-        model_name = model or settings.openrouter_model_name
+        target_model = model or settings.model_name
+        if "/" not in target_model:
+            if "gemini" in target_model.lower():
+                model_name = f"google/{target_model}"
+            else:
+                model_name = f"openai/{target_model}"
+        else:
+            model_name = target_model
         return ChatOpenAI(
             model=model_name,
             api_key=api_key,
             base_url="https://openrouter.ai/api/v1",
             temperature=temp,
+            timeout=settings.llm_timeout_seconds,
+            max_retries=2,
         )
 
     if prov == "gemini":
-        api_key = settings.gemini_api_key or "dummy-gemini-key"
+        api_key = settings.gemini_api_key
         model_name = model or "gemini-1.5-flash"
         return ChatOpenAI(
             model=model_name,
             api_key=api_key,
             base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
             temperature=temp,
+            timeout=settings.llm_timeout_seconds,
+            max_retries=2,
         )
 
     if prov == "grok":
-        api_key = settings.grok_api_key or "dummy-grok-key"
+        api_key = settings.grok_api_key
         model_name = model or "grok-beta"
         return ChatOpenAI(
             model=model_name,
             api_key=api_key,
             base_url="https://api.x.ai/v1",
             temperature=temp,
+            timeout=settings.llm_timeout_seconds,
+            max_retries=2,
         )
 
     if prov == "deepseek":
-        api_key = settings.deepseek_api_key or "dummy-deepseek-key"
+        api_key = settings.deepseek_api_key
         model_name = model or "deepseek-chat"
         return ChatOpenAI(
             model=model_name,
             api_key=api_key,
             base_url="https://api.deepseek.com/v1",
             temperature=temp,
+            timeout=settings.llm_timeout_seconds,
+            max_retries=2,
         )
 
     # Default: openai
-    api_key = settings.openai_api_key or "sk-dummy-key"
+    api_key = settings.openai_api_key
     model_name = model or settings.model_name
     return ChatOpenAI(
         model=model_name,
         api_key=api_key,
         temperature=temp,
+        timeout=settings.llm_timeout_seconds,
+        max_retries=2,
     )
 
 
 def get_embeddings() -> Embeddings:
-    """Use OpenRouter for knowledge embeddings; hash is an explicit test mode."""
+    """Use the configured embedder; never substitute hash vectors for semantic vectors."""
     settings = get_settings()
     if settings.embedding_provider == "hash":
         return DeterministicHashEmbeddings(dimension=1536)
-    if not settings.openrouter_api_key:
-        raise RuntimeError("OPENROUTER_API_KEY is required for knowledge embeddings")
+    if settings.embedding_provider == "openrouter":
+        if not settings.openrouter_api_key:
+            raise ValueError("OPENROUTER_API_KEY is required for the configured OpenRouter embedder")
+        model = settings.embedding_model_name
+        return OpenAIEmbeddings(
+            model=model if "/" in model else f"openai/{model}",
+            api_key=settings.openrouter_api_key,
+            base_url="https://openrouter.ai/api/v1",
+            check_embedding_ctx_length=False,
+            request_timeout=settings.retrieval_timeout_seconds,
+            max_retries=2,
+        )
+    if not settings.openai_api_key:
+        raise ValueError("OPENAI_API_KEY is required for the configured OpenAI embedder")
     return OpenAIEmbeddings(
         model=settings.embedding_model_name,
-        api_key=settings.openrouter_api_key,
-        base_url="https://openrouter.ai/api/v1",
-        # Corpus chunks are already bounded; avoid fetching a tokenizer for the
-        # OpenRouter-prefixed model name before the first embedding request.
-        check_embedding_ctx_length=False,
+        api_key=settings.openai_api_key,
+        request_timeout=settings.retrieval_timeout_seconds,
+        max_retries=0,
     )

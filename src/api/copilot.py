@@ -1,90 +1,74 @@
+"""HTTP contracts for the baseline Copilot."""
+
+import asyncio
 import json
+import logging
+from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, StringConstraints, computed_field, field_validator
 
-from src.agents.copilot.answer_generator import CopilotGenerationError
 from src.agents.copilot.graph import copilot_agent
-from src.knowledge.retrieval_service import get_retrieval_service
+from src.agents.copilot.nodes import CopilotDependencyError
+from src.agents.copilot.state import CopilotResponse
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/copilot", tags=["Copilot"])
+QueryText = Annotated[str, StringConstraints(strict=True, strip_whitespace=True, min_length=2, max_length=4000)]
 
 
 class CopilotQueryRequest(BaseModel):
-    query: str = Field(..., min_length=2, description="Câu hỏi hoặc băn khoăn của khách hàng/sales")
-    target_date: str | None = Field(None, description="Ngày tra cứu hiệu lực (YYYY-MM-DD), mặc định hôm nay")
+    query: QueryText
+    target_date: date | None = None
+
+    @field_validator("target_date", mode="before")
+    @classmethod
+    def validate_date(cls, value: Any) -> date | None:
+        if value is None or type(value) is date:
+            return value
+        if not isinstance(value, str):
+            raise ValueError("target_date must be YYYY-MM-DD")
+        parsed = date.fromisoformat(value)
+        if parsed.isoformat() != value:
+            raise ValueError("target_date must be YYYY-MM-DD")
+        return parsed
 
 
-class CopilotQueryResponse(BaseModel):
-    answer: str
-    citations: list[dict[str, Any]]
-    talking_points: list[str]
-    suggested_message: str
-    suggested_next_question: str
-    is_abstain: bool
-    intent: str | None = None
-    product_model: str | None = None
-
-
-class IngestResponse(BaseModel):
-    status: str
-    chunks_ingested: int
-    message: str
+class CopilotQueryResponse(CopilotResponse):
+    @computed_field
+    @property
+    def is_abstain(self) -> bool:
+        return self.status == "abstained"
 
 
 @router.post("/query", response_model=CopilotQueryResponse)
 async def query_copilot(request: CopilotQueryRequest) -> CopilotQueryResponse:
-    """Xử lý câu hỏi của tư vấn viên qua AI Sales Copilot Agent."""
     try:
-        result = await copilot_agent.ainvoke(
-            {
-                "query": request.query,
-                "target_date": request.target_date,
-            }
-        )
-        return CopilotQueryResponse(
-            answer=result.get("answer", ""),
-            citations=result.get("citations", []),
-            talking_points=result.get("talking_points", []),
-            suggested_message=result.get("suggested_message", ""),
-            suggested_next_question=result.get("suggested_next_question", ""),
-            is_abstain=result.get("is_abstain", False),
-            intent=result.get("intent"),
-            product_model=result.get("product_model"),
-        )
-    except CopilotGenerationError as exc:
-        raise HTTPException(status_code=503, detail="Copilot is temporarily unavailable. Please retry.") from exc
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi xử lý Copilot: {str(e)}")
+        result = await copilot_agent.ainvoke({"query": request.query, "target_date": request.target_date})
+        final = CopilotResponse.model_validate(result["final_response"])
+        return CopilotQueryResponse(**final.model_dump())
+    except CopilotDependencyError as exc:
+        raise HTTPException(
+            status_code=503, detail="Dịch vụ tra cứu tạm thời không khả dụng. Vui lòng thử lại."
+        ) from exc
+    except Exception as exc:
+        logger.warning("Copilot request failed (%s)", type(exc).__name__)
+        raise HTTPException(status_code=500, detail="Không thể xử lý câu hỏi lúc này.") from None
 
 
 @router.get("/sources/{document_id}")
 async def get_source_document(document_id: str) -> dict[str, Any]:
-    """Tra cứu chi tiết toàn văn tài liệu gốc theo mã document_id."""
-    corpus_path = Path("data/knowledge/corpus.json")
-    if not corpus_path.exists():
-        raise HTTPException(status_code=404, detail="Corpus data file not found")
-
-    items = json.loads(corpus_path.read_text(encoding="utf-8"))
-    for item in items:
-        if item.get("document_id") == document_id:
-            return item
-
-    raise HTTPException(status_code=404, detail=f"Không tìm thấy tài liệu với ID: {document_id}")
-
-
-@router.post("/ingest", response_model=IngestResponse)
-async def trigger_ingestion() -> IngestResponse:
-    """Nạp hoặc đồng bộ toàn bộ dữ liệu từ corpus.json vào Vector Database."""
+    path = Path("data/knowledge/corpus.json")
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Không tìm thấy kho tài liệu.")
     try:
-        retriever = get_retrieval_service()
-        count = retriever.ingest_corpus()
-        return IngestResponse(
-            status="success",
-            chunks_ingested=count,
-            message=f"Đã nạp thành công {count} chunks vào Vector Database.",
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+        items = json.loads(await asyncio.to_thread(path.read_text, encoding="utf-8"))
+        for item in items:
+            if item.get("document_id") == document_id:
+                return item
+    except Exception as exc:
+        logger.warning("Source lookup failed (%s)", type(exc).__name__)
+        raise HTTPException(status_code=500, detail="Không thể đọc tài liệu lúc này.") from None
+    raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu.")

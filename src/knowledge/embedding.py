@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class KnowledgeEmbeddingService:
-    """Service tạo vector embedding cho corpus và truy vấn."""
+    """Service tạo vector embedding chuẩn 1536 chiều (mặc định OpenAI text-embedding-3-small)."""
 
     def __init__(self, embeddings: Embeddings | None = None):
         self.embeddings = embeddings or get_embeddings()
@@ -17,22 +17,25 @@ class KnowledgeEmbeddingService:
     @property
     def model_name(self) -> str:
         """Tên và thông số mô hình embedding đang sử dụng."""
-        if hasattr(self.embeddings, "model"):
-            return f"OpenRouter ({getattr(self.embeddings, 'model')})"
-        if hasattr(self.embeddings, "model_name"):
-            return f"OpenRouter ({getattr(self.embeddings, 'model_name')})"
-        if hasattr(self.embeddings, "dimension"):
-            from src.config import get_settings
+        from src.config import get_settings
 
-            target = get_settings().embedding_model_name
-            return f"DeterministicHashEmbeddings (target: {target}, dim: {getattr(self.embeddings, 'dimension')})"
-        return self.embeddings.__class__.__name__
+        settings = get_settings()
+        if settings.embedding_provider == "hash" or hasattr(self.embeddings, "dimension"):
+            target = settings.embedding_model_name
+            dim = getattr(self.embeddings, "dimension", 1536)
+            return f"DeterministicHashEmbeddings (target: {target}, dim: {dim})"
+        if settings.embedding_provider == "openrouter":
+            model = getattr(self.embeddings, "model", settings.embedding_model_name)
+            return f"OpenRouter ({model})"
+        model = getattr(self.embeddings, "model", getattr(self.embeddings, "model_name", settings.embedding_model_name))
+        return f"OpenAI ({model})"
 
     def embed_chunks(self, chunks: list[KnowledgeChunk]) -> list[list[float]]:
         """Mã hóa toàn bộ danh sách chunks thành vector embedding."""
         if not chunks:
             return []
-        texts = [c.content for c in chunks]
+        # Crawled tables may omit the model name inside a chunk; retain its identity in the vector.
+        texts = [f"{c.metadata.title}\n{c.metadata.product_model}\n{c.content}" for c in chunks]
         return self.embeddings.embed_documents(texts)
 
     def embed_query(self, query: str) -> list[float]:
