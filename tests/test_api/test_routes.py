@@ -22,8 +22,8 @@ async def test_agent_status(client):
 
 
 @pytest.mark.asyncio
-async def test_practice_scenarios_are_mounted_on_application(client):
+async def test_practice_scenarios_require_authentication_on_application(client):
     response = await client.get("/api/v1/practice/scenarios")
 
-    assert response.status_code == 200
-    assert len(response.json()) == 3
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Authentication required."}

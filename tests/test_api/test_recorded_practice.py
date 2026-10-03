@@ -5,9 +5,14 @@ import pytest
 from fastapi import FastAPI, Header, HTTPException
 
 from src.agents.roleplay.scenario_loader import ScenarioRepository
-from src.api.recorded_practice import PracticeIdentity, create_recorded_practice_routers
+from src.api.auth import CurrentUserDependency, create_auth_router
+from src.api.recorded_practice import create_recorded_practice_routers
+from src.config import Settings
+from src.integrations.auth_repository import SQLAuthRepository
 from src.integrations.practice_records import SQLPracticeRecordsRepository
+from src.models.auth import AuthenticatedUser, UserRole
 from src.models.evaluation import CriterionType, SessionEvaluationResult
+from src.services.auth import AuthService
 from src.services.practice import PracticeEvaluationUnavailableError, PracticeResultView, PracticeSessionView
 from src.services.recorded_practice import RecordedPracticeService
 
@@ -46,11 +51,16 @@ class StubPractice:
         raise PracticeEvaluationUnavailableError("Evaluator is unavailable")
 
 
-async def fake_identity(x_test_identity: str | None = Header(None)) -> PracticeIdentity:
+async def fake_identity(x_test_identity: str | None = Header(None)) -> AuthenticatedUser:
     if not x_test_identity:
         raise HTTPException(status_code=401, detail="Authentication required.")
     user_id, role = x_test_identity.split(":", 1)
-    return PracticeIdentity(user_id=user_id, role=role)
+    return AuthenticatedUser(
+        user_id=user_id,
+        username=f"{user_id}.test",
+        display_name=user_id,
+        role=role,
+    )
 
 
 @pytest.mark.asyncio
@@ -178,3 +188,68 @@ def draft_for(session_id: str) -> SessionEvaluationResult:
         overall_score=3,
         evaluations=evaluations,
     )
+
+
+@pytest.mark.asyncio
+async def test_real_auth_cookie_is_used_for_practice_ownership_and_manager_access(tmp_path):
+    database_url = f"sqlite:///{tmp_path / 'vertical.db'}"
+    settings = Settings(
+        _env_file=None,
+        database_url=database_url,
+        embedding_provider="hash",
+        app_env="test",
+    )
+    auth = AuthService(SQLAuthRepository(database_url))
+    for user_id, username, role in (
+        ("advisor-a", "advisor.a", UserRole.ADVISOR),
+        ("advisor-b", "advisor.b", UserRole.ADVISOR),
+        ("manager-a", "manager.a", UserRole.MANAGER),
+    ):
+        await auth.seed_user(
+            user_id=user_id,
+            username=username,
+            display_name=user_id,
+            role=role,
+            password="correct horse battery staple",
+        )
+    records = SQLPracticeRecordsRepository(database_url)
+    service = RecordedPracticeService(StubPractice(), records)
+    current_user = CurrentUserDependency(auth, settings.auth_cookie_name)
+    practice_router, manager_router = create_recorded_practice_routers(service, current_user)
+    app = FastAPI()
+    app.include_router(create_auth_router(auth, settings), prefix="/api/v1")
+    app.include_router(practice_router, prefix="/api/v1")
+    app.include_router(manager_router, prefix="/api/v1")
+
+    transport = httpx.ASGITransport(app=app)
+    async with (
+        httpx.AsyncClient(transport=transport, base_url="http://test") as advisor_a,
+        httpx.AsyncClient(transport=transport, base_url="http://test") as advisor_b,
+        httpx.AsyncClient(transport=transport, base_url="http://test") as manager,
+    ):
+        for client, username in (
+            (advisor_a, "advisor.a"),
+            (advisor_b, "advisor.b"),
+            (manager, "manager.a"),
+        ):
+            response = await client.post(
+                "/api/v1/auth/login",
+                json={"username": username, "password": "correct horse battery staple"},
+            )
+            assert response.status_code == 200
+
+        created = await advisor_a.post(
+            "/api/v1/practice/sessions",
+            json={"scenario_id": "SCENARIO_01_VF5_TAXI"},
+        )
+        assert created.status_code == 201
+        session_id = created.json()["session_id"]
+        await records.complete(session_id, draft_for(session_id))
+
+        assert [item["session_id"] for item in (await advisor_a.get("/api/v1/practice/history")).json()] == [session_id]
+        assert (await advisor_b.get("/api/v1/practice/history")).json() == []
+        assert (await advisor_b.get(f"/api/v1/practice/{session_id}/attempt")).status_code == 404
+        assert (await advisor_a.get("/api/v1/manager/reviews")).status_code == 403
+        assert (await manager.get("/api/v1/practice/history")).status_code == 403
+        assert [item["session_id"] for item in (await manager.get("/api/v1/manager/reviews")).json()] == [session_id]
+        assert (await manager.get(f"/api/v1/manager/reviews/{session_id}")).status_code == 200
