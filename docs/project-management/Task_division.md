@@ -375,6 +375,7 @@ Duy phụ trách:
 - coaching logic
 - practice start/message backend
 - practice finish/result/history business lifecycle
+- lịch sử attempt và nghiệp vụ/API/lưu trữ Manager Review sau khi có auth dùng chung
 
 Cần phối hợp với Chương trước khi thay đổi:
 - shared FastAPI setup
@@ -649,9 +650,6 @@ GET  /copilot/sources/{id}
 
 GET  /practice/{id}/evaluation
 
-GET   /manager/reviews
-PATCH /manager/reviews/{id}
-
 GET /progress
 ```
 
@@ -662,6 +660,9 @@ POST /practice/sessions
 POST /practice/{id}/message
 POST /practice/{id}/finish
 GET  /practice/history?scenario_id={scenario_id}
+GET  /manager/reviews
+GET  /manager/reviews/{id}
+PATCH /manager/reviews/{id}
 ```
 
 `GET /manager/reviews` mặc định trả các group `advisor + scenario` với latest
@@ -672,9 +673,13 @@ Phụ trách:
 - evaluation persistence
 - criterion-score persistence
 - evaluation retrieval API
-- manager-review persistence
-- manager-review API
-- authorization, idempotency and audit persistence for review submission/approval
+- shared authentication/current-user dependency and role verification contract
+
+Duy phụ trách attempt index của Practice, API/lưu trữ Manager Review, quy tắc
+duyệt một lần và audit. Chương cung cấp `current_user` đã xác thực gồm `user_id`
+ổn định và role `advisor`/`manager`; không dùng user ID do client tự gửi làm
+danh tính. Khi auth sẵn sàng, router Practice có phân quyền thay thế router cũ;
+không mount cả hai cùng lúc.
 
 Flow:
 
@@ -1411,6 +1416,8 @@ Không tự ý thay đổi:
 | Practice start API | Duy | Chương |
 | Practice message API | Duy | Chương |
 | Practice finish/result/history business flow | Duy | Chương |
+| Practice manager-review API and persistence | Duy | Chương (auth contract) |
+| Shared authentication/current-user role dependency | Chương | Duy (Practice integration) |
 | Evaluation persistence/result API | Chương | Duy |
 | Practice Room UI | An | Duy |
 | Result UI | An | Duy + Đạt |

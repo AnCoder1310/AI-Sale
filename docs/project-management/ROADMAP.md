@@ -55,6 +55,15 @@ Finish attempt
 Không có private practice hoặc bước Advisor chọn attempt để submit. Việc lưu mọi
 attempt không đồng nghĩa Manager phải review từng attempt.
 
+### Bàn giao ownership cho phần tích hợp còn lại
+
+Giữ nguyên ngày của các checkpoint đã qua. Với phần triển khai còn lại, Duy
+phụ trách lịch sử attempt và nghiệp vụ/API/lưu trữ Manager Review của Practice;
+Chương phụ trách auth/current-user và role dùng chung. Khi auth sẵn sàng, router
+Practice có phân quyền thay thế router cũ, không chạy song song. Checkpoint cũ
+chưa gắn owner đã xác thực không được tự gán cho advisor; nếu cần khôi phục
+lịch sử cũ thì phải có ánh xạ danh tính rõ ràng.
+
 ---
 
 # 2. Duy — AI Customer Role-play, Coaching Logic & Practice Chat Backend
