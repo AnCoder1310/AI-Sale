@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 ABSTAIN_ANSWER = "Tôi không thể xác minh thông tin này từ nguồn tài liệu hiện có."
 CitationId = Annotated[str, StringConstraints(strict=True, pattern=r"^C[1-9]\d*$")]
 AnswerText = Annotated[str, StringConstraints(strict=True, strip_whitespace=True, min_length=1, max_length=12000)]
+SuggestionText = Annotated[str, StringConstraints(strict=True, strip_whitespace=True, min_length=1, max_length=500)]
 
 
 class RetrievalHit(TypedDict):
@@ -54,13 +55,22 @@ class CopilotResponse(BaseModel):
     status: Literal["answered", "abstained"]
     answer: AnswerText
     citations: list[Citation] = Field(default_factory=list)
+    talking_points: list[SuggestionText] = Field(default_factory=list, max_length=3)
+    suggested_message: SuggestionText | None = None
+    suggested_next_question: SuggestionText | None = None
 
     @model_validator(mode="after")
     def check_status(self) -> "CopilotResponse":
         if self.status == "answered" and not self.citations:
             raise ValueError("answered requires citations")
-        if self.status == "abstained" and (self.citations or self.answer != ABSTAIN_ANSWER):
-            raise ValueError("abstained requires the canonical message and no citations")
+        if self.status == "abstained" and (
+            self.citations
+            or self.answer != ABSTAIN_ANSWER
+            or self.talking_points
+            or self.suggested_message
+            or self.suggested_next_question
+        ):
+            raise ValueError("abstained requires the canonical message and no sales suggestions")
         return self
 
 
@@ -72,6 +82,9 @@ class GeneratedAnswer(BaseModel):
     status: Literal["answered", "abstained"]
     answer: AnswerText
     citation_ids: list[CitationId]
+    talking_points: list[SuggestionText] = Field(default_factory=list, max_length=3)
+    suggested_message: SuggestionText | None = None
+    suggested_next_question: SuggestionText | None = None
 
     @model_validator(mode="after")
     def check_citations(self) -> "GeneratedAnswer":
@@ -79,8 +92,10 @@ class GeneratedAnswer(BaseModel):
             raise ValueError("citation_ids must be unique")
         if self.status == "answered" and not self.citation_ids:
             raise ValueError("answered requires citation_ids")
-        if self.status == "abstained" and self.citation_ids:
-            raise ValueError("abstained cannot have citation_ids")
+        if self.status == "abstained" and (
+            self.citation_ids or self.talking_points or self.suggested_message or self.suggested_next_question
+        ):
+            raise ValueError("abstained cannot have citations or sales suggestions")
         return self
 
 
