@@ -103,6 +103,27 @@ def _citation_error(answer: str, declared_ids: list[str], allowed_ids: set[str])
     return None
 
 
+def _safe_suggestions(parsed: GeneratedAnswer, allowed_ids: set[str]) -> tuple[list[str], str | None, str | None]:
+    """Do not surface new factual talking points outside the cited answer."""
+    answer_lines = {line.strip() for line in parsed.answer.splitlines() if line.strip()}
+    talking_points = []
+    for point in parsed.talking_points:
+        cited_ids = list(dict.fromkeys(CITATION_PATTERN.findall(point)))
+        if point in answer_lines and _citation_error(point, cited_ids, allowed_ids) is None:
+            talking_points.append(point)
+
+    # The other two fields are conversational aids, not a place for new prices,
+    # specifications, or policy numbers. Prompt rules constrain their wording;
+    # the code also drops obvious quantified claims instead of showing them.
+    message = parsed.suggested_message
+    if message and re.search(r"\d|%|₫|vnđ|triệu|tỷ|cam kết|miễn phí|giảm giá|bảo hành|ưu đãi|kèm pin", message, re.I):
+        message = None
+    next_question = parsed.suggested_next_question
+    if next_question and (not next_question.endswith("?") or re.search(r"\d|%|₫|vnđ", next_question, re.I)):
+        next_question = None
+    return talking_points, message, next_question
+
+
 async def generate_node(state: CopilotState) -> dict[str, Any]:
     evidence = state.get("selected_evidence", [])
     if not evidence:
@@ -184,7 +205,11 @@ async def generate_node(state: CopilotState) -> dict[str, Any]:
                 fixed_lines = []
                 for line in parsed.answer.splitlines():
                     st_line = line.strip()
-                    if not st_line or _is_lead_in_or_header(st_line) or re.search(r"\[C[1-9]\d*\](?:\s*\[C[1-9]\d*\])*[.!?);*\"'~`]*\s*$", st_line):
+                    if (
+                        not st_line
+                        or _is_lead_in_or_header(st_line)
+                        or re.search(r"\[C[1-9]\d*\](?:\s*\[C[1-9]\d*\])*[.!?);*\"'~`]*\s*$", st_line)
+                    ):
                         fixed_lines.append(line)
                     else:
                         fixed_lines.append(f"{line} [{parsed.citation_ids[0]}]")
@@ -198,10 +223,14 @@ async def generate_node(state: CopilotState) -> dict[str, Any]:
 
         if error:
             raise ValueError(error)
+        talking_points, suggested_message, suggested_next_question = _safe_suggestions(parsed, set(citation_map))
         draft = CopilotResponse(
             status="answered",
             answer=parsed.answer,
             citations=[citation_map[cid] for cid in parsed.citation_ids],
+            talking_points=talking_points,
+            suggested_message=suggested_message,
+            suggested_next_question=suggested_next_question,
         )
         return {"draft_response": draft, "validation_error": None}
     except ValidationError as exc:
