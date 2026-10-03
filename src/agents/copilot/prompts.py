@@ -24,8 +24,18 @@ Chỉ trả status=abstained khi EVIDENCE hoàn toàn không chứa thông tin v
 hoàn toàn ngoài phạm vi sản phẩm và chính sách VinFast.
 6. Mỗi câu khẳng định thông số/chính sách cần kết thúc bằng mã trích dẫn [C1], [C2]... lấy từ EVIDENCE.
 Danh sách citation_ids phải khớp với các mã trích dẫn được dùng trong answer.
-7. Chỉ trả JSON gồm status, answer, citation_ids. Khi abstain, answer phải là
-"{ABSTAIN_ANSWER}" và citation_ids phải rỗng.
+7. Nếu có đủ nguồn, có thể thêm tối đa 3 talking_points cho tư vấn viên.
+Mỗi talking_point phải sao chép nguyên một dòng khẳng định đã có citation trong
+answer, không viết lại thành claim mới.
+một suggested_message để nói với khách và một suggested_next_question để hỏi tiếp.
+Chỉ dùng thông tin đã nêu trong answer; không bổ sung số liệu, giá hay cam kết mới.
+suggested_message chỉ nên là lời mời xem nguồn hoặc trao đổi thêm, không phải
+một tuyên bố mới về giá, khuyến mãi, pin, bảo hành hay thời hạn.
+Nếu không chắc, để talking_points=[], suggested_message=null và
+suggested_next_question=null. Không lặp lại answer chỉ để điền đủ field.
+8. Chỉ trả JSON gồm status, answer, citation_ids, talking_points,
+suggested_message, suggested_next_question. Khi abstain, answer phải là
+"{ABSTAIN_ANSWER}", citation_ids và talking_points rỗng, hai gợi ý còn lại null.
 """
 
 
@@ -44,10 +54,10 @@ HƯỚNG DẪN:
 Hãy sử dụng thông tin trong EVIDENCE để trả lời câu hỏi trên một cách đầy đủ và chính xác nhất. Đính kèm mã trích dẫn [C1], [C2]... tương ứng ở cuối mỗi thông tin được khẳng định.
 
 ĐỊNH DẠNG JSON BẮT BUỘC:
-- Trả lời được: {{"status":"answered","answer":"Thông tin khẳng định lấy từ nguồn [C1].","citation_ids":["C1"]}}
-- Nhiều nguồn: {{"status":"answered","answer":"Thông số thứ nhất [C1] và thông số thứ hai [C2].","citation_ids":["C1","C2"]}}
+- Trả lời được: {{"status":"answered","answer":"Thông tin khẳng định lấy từ nguồn [C1].","citation_ids":["C1"],"talking_points":["Thông tin khẳng định lấy từ nguồn [C1]."],"suggested_message":"Em có thể gửi anh/chị thông tin chính thức để đối chiếu.","suggested_next_question":"Anh/chị muốn xem thêm điều kiện áp dụng không?"}}
+- Không có gợi ý phù hợp: dùng talking_points=[], suggested_message=null, suggested_next_question=null.
 - Khi EVIDENCE hoàn toàn không có thông tin:
-{{"status":"abstained","answer":"{ABSTAIN_ANSWER}","citation_ids":[]}}
+{{"status":"abstained","answer":"{ABSTAIN_ANSWER}","citation_ids":[],"talking_points":[],"suggested_message":null,"suggested_next_question":null}}
 """
 
 
@@ -63,4 +73,3 @@ def format_retry_prompt(
         f"LƯU Ý QUAN TRỌNG: Tất cả mã trích dẫn trong 'citation_ids' PHẢI xuất hiện trong 'answer' (ví dụ [C1], [C2]). "
         f"Hãy trả lời câu hỏi dựa trên EVIDENCE đã cấp, sửa lại định dạng/trích dẫn để khớp nhau. Không tự ý abstain nếu EVIDENCE có dữ liệu."
     )
-
