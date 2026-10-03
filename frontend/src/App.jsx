@@ -8,6 +8,7 @@ import { KnowledgeView } from './components/knowledge/KnowledgeView';
 import { ChargingView } from './components/charging/ChargingView';
 import { ErrorState } from './components/common/ErrorState';
 import { LoginView } from './components/auth/LoginView';
+import { ManagerReviewView } from './components/manager/ManagerReviewView';
 
 import { ADVISOR_PROFILE } from './data/competencyData';
 import { authApi } from './api/authApi';
@@ -115,16 +116,7 @@ export function App() {
   }
 
   if (currentUser?.role === 'manager') {
-    return (
-      <div className="manager-placeholder">
-        <div>
-          <span className="login-kicker">Manager workspace</span>
-          <h1>Xin chào, {currentUser.display_name}</h1>
-          <p>Phiên đăng nhập manager đã hoạt động. Review queue UI sẽ được nối ở bước tiếp theo.</p>
-          <button type="button" className="primary-button" onClick={handleLogout}>Đăng xuất</button>
-        </div>
-      </div>
-    );
+    return <ManagerReviewView currentUser={currentUser} onLogout={handleLogout} />;
   }
 
   const advisorProfile = {
