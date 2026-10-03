@@ -1,14 +1,9 @@
-"""Auth-gated Practice/Review routes; not mounted until auth is integrated.
-
-The supplied identity dependency must verify the request (cookie/token) and
-return a trusted user ID and role. Never construct it from request JSON.
-"""
+"""Auth-gated Practice history and manager-review routes."""
 
 from collections.abc import Awaitable, Callable
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
-from pydantic import BaseModel, ConfigDict, Field
 
 from src.agents.roleplay.customer_agent import CustomerResponseError
 from src.agents.roleplay.graph import (
@@ -20,6 +15,7 @@ from src.agents.roleplay.scenario_loader import ScenarioSummary
 from src.agents.roleplay.state_reducer import StateTransitionError
 from src.agents.roleplay.turn_analyzer import TurnAnalysisError
 from src.api.practice import AdvisorMessageRequest, CreatePracticeSessionRequest
+from src.models.auth import AuthenticatedUser
 from src.services.practice import PracticeEvaluationUnavailableError, PracticeResultView, PracticeSessionView
 from src.services.practice_records import (
     AttemptNotFoundError,
@@ -30,17 +26,7 @@ from src.services.practice_records import (
 )
 from src.services.recorded_practice import RecordedAttemptDetail, RecordedPracticeService
 
-
-class PracticeIdentity(BaseModel):
-    """Trusted output contract for Chương's future auth dependency."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    user_id: str = Field(min_length=1)
-    role: Literal["advisor", "manager"]
-
-
-IdentityDependency = Callable[..., Awaitable[PracticeIdentity]]
+IdentityDependency = Callable[..., Awaitable[AuthenticatedUser]]
 SessionId = Annotated[str, Path(min_length=1, max_length=120)]
 
 
@@ -54,9 +40,9 @@ def create_recorded_practice_routers(
     """
     practice = APIRouter(prefix="/practice", tags=["practice"])
     manager = APIRouter(prefix="/manager", tags=["manager-review"])
-    actor = Annotated[PracticeIdentity, Depends(get_identity)]
+    actor = Annotated[AuthenticatedUser, Depends(get_identity)]
 
-    def require_role(identity: PracticeIdentity, role: str) -> None:
+    def require_role(identity: AuthenticatedUser, role: str) -> None:
         if identity.role != role:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This role cannot access this operation.")
 
