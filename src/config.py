@@ -68,6 +68,11 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite:///./data/app.db"
 
+    # Local authentication
+    auth_cookie_name: str = Field(default="p043_session", min_length=1, max_length=100)
+    auth_session_ttl_hours: int = Field(default=8, ge=1, le=168)
+    auth_cookie_secure: bool = False
+
     # Vector Store
     vector_store_type: Literal["chroma", "memory"] = "chroma"
     chroma_persist_dir: str = "./data/chroma"

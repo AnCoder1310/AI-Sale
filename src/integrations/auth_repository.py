@@ -1,0 +1,115 @@
+"""SQL persistence for local users and opaque authentication sessions."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from threading import Lock
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+    delete,
+    insert,
+    select,
+)
+from sqlalchemy.engine import Engine
+
+from src.integrations.practice_persistence import normalize_database_url
+from src.models.auth import AuthenticatedUser, StoredSession, StoredUser, UserRole
+
+
+class SQLAuthRepository:
+    def __init__(self, database_url: str, *, engine: Engine | None = None) -> None:
+        self._engine = engine or create_engine(normalize_database_url(database_url), pool_pre_ping=True)
+        metadata = MetaData()
+        self._users = Table(
+            "users",
+            metadata,
+            Column("user_id", String(120), primary_key=True),
+            Column("username", String(120), nullable=False, unique=True, index=True),
+            Column("display_name", String(200), nullable=False),
+            Column("role", String(20), nullable=False),
+            Column("password_hash", String(256), nullable=False),
+            Column("password_salt", String(256), nullable=False),
+            Column("password_iterations", Integer, nullable=False),
+            Column("active", Boolean, nullable=False, default=True),
+        )
+        self._sessions = Table(
+            "auth_sessions",
+            metadata,
+            Column("token_hash", String(64), primary_key=True),
+            Column("user_id", String(120), nullable=False, index=True),
+            Column("created_at", DateTime(timezone=True), nullable=False),
+            Column("expires_at", DateTime(timezone=True), nullable=False, index=True),
+        )
+        self._metadata = metadata
+        self._schema_ready = False
+        self._schema_lock = Lock()
+
+    def _ensure_schema(self) -> None:
+        if self._schema_ready:
+            return
+        with self._schema_lock:
+            if not self._schema_ready:
+                self._metadata.create_all(self._engine)
+                self._schema_ready = True
+
+    async def upsert_user(self, user: StoredUser) -> None:
+        """Create or replace one explicitly seeded local user."""
+        self._ensure_schema()
+        values = user.model_dump(mode="json")
+        with self._engine.begin() as connection:
+            connection.execute(delete(self._sessions).where(self._sessions.c.user_id == user.user_id))
+            connection.execute(delete(self._users).where(self._users.c.user_id == user.user_id))
+            # A renamed seeded user must not collide with another account.
+            connection.execute(delete(self._users).where(self._users.c.username == user.username))
+            connection.execute(insert(self._users).values(**values))
+
+    async def user_by_username(self, username: str) -> StoredUser | None:
+        self._ensure_schema()
+        query = select(self._users).where(self._users.c.username == username)
+        with self._engine.connect() as connection:
+            row = connection.execute(query).mappings().first()
+        return StoredUser.model_validate(dict(row)) if row else None
+
+    async def create_session(self, session: StoredSession) -> None:
+        self._ensure_schema()
+        with self._engine.begin() as connection:
+            connection.execute(insert(self._sessions).values(**session.model_dump()))
+
+    async def user_for_session(self, token_hash: str, now: datetime) -> AuthenticatedUser | None:
+        self._ensure_schema()
+        query = (
+            select(
+                self._users.c.user_id,
+                self._users.c.username,
+                self._users.c.display_name,
+                self._users.c.role,
+            )
+            .select_from(self._sessions.join(self._users, self._sessions.c.user_id == self._users.c.user_id))
+            .where(self._sessions.c.token_hash == token_hash)
+            .where(self._sessions.c.expires_at > now)
+            .where(self._users.c.active.is_(True))
+        )
+        with self._engine.begin() as connection:
+            connection.execute(delete(self._sessions).where(self._sessions.c.expires_at <= now))
+            row = connection.execute(query).mappings().first()
+        if row is None:
+            return None
+        return AuthenticatedUser(
+            user_id=row.user_id,
+            username=row.username,
+            display_name=row.display_name,
+            role=UserRole(row.role),
+        )
+
+    async def delete_session(self, token_hash: str) -> None:
+        self._ensure_schema()
+        with self._engine.begin() as connection:
+            connection.execute(delete(self._sessions).where(self._sessions.c.token_hash == token_hash))
