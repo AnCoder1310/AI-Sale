@@ -12,10 +12,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.knowledge.chunking import chunk_document
-from src.knowledge.embedding import KnowledgeEmbeddingService
-from src.knowledge.schemas import KnowledgeDocument
-from src.knowledge.vector_store import BaseVectorStore, get_vector_store
+from src.knowledge.chunking import chunk_document  # noqa: E402
+from src.knowledge.embedding import KnowledgeEmbeddingService  # noqa: E402
+from src.knowledge.schemas import KnowledgeDocument  # noqa: E402
+from src.knowledge.vector_store import BaseVectorStore, get_vector_store  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
