@@ -1,0 +1,205 @@
+"""SQL storage for advisor attempt history and manager decisions.
+
+Separate tables avoid changing Chương's existing checkpoint schema. Old,
+unowned checkpoints are intentionally excluded from per-advisor history.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from threading import Lock
+
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    MetaData,
+    String,
+    Table,
+    Text,
+    create_engine,
+    insert,
+    select,
+    update,
+)
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
+
+from src.integrations.practice_persistence import normalize_database_url
+from src.models.evaluation import ReviewStatus, SessionEvaluationResult
+from src.services.practice_records import (
+    AttemptNotFoundError,
+    AttemptSummary,
+    ManagerReviewDecision,
+    ManagerReviewRecord,
+    ReviewConflictError,
+    approved_evaluation,
+)
+
+
+class SQLPracticeRecordsRepository:
+    def __init__(self, database_url: str, *, engine: Engine | None = None) -> None:
+        self._engine = engine or create_engine(normalize_database_url(database_url), pool_pre_ping=True)
+        metadata = MetaData()
+        self._attempts = Table(
+            "practice_attempts",
+            metadata,
+            Column("session_id", String(120), primary_key=True),
+            Column("scenario_id", String(120), nullable=False),
+            Column("advisor_id", String(120), nullable=False, index=True),
+            Column("started_at", DateTime(timezone=True), nullable=False),
+            Column("completed_at", DateTime(timezone=True)),
+            Column("ai_draft_json", Text),
+        )
+        self._reviews = Table(
+            "practice_manager_reviews",
+            metadata,
+            Column("session_id", String(120), ForeignKey("practice_attempts.session_id"), primary_key=True),
+            Column("manager_id", String(120), nullable=False),
+            Column("reviewed_at", DateTime(timezone=True), nullable=False),
+            Column("change_reason", Text, nullable=False),
+            Column("approved_result_json", Text, nullable=False),
+        )
+        self._metadata = metadata
+        self._schema_ready = False
+        self._schema_lock = Lock()
+
+    def _ensure_schema(self) -> None:
+        if self._schema_ready:
+            return
+        with self._schema_lock:
+            if not self._schema_ready:
+                self._metadata.create_all(self._engine)
+                self._schema_ready = True
+
+    async def register(self, session_id: str, scenario_id: str, advisor_id: str) -> None:
+        if not all(value.strip() for value in (session_id, scenario_id, advisor_id)):
+            raise ValueError("attempt identity fields must not be blank")
+        self._ensure_schema()
+        with self._engine.begin() as connection:
+            connection.execute(
+                insert(self._attempts).values(
+                    session_id=session_id,
+                    scenario_id=scenario_id,
+                    advisor_id=advisor_id,
+                    started_at=datetime.now(UTC),
+                )
+            )
+
+    async def complete(self, session_id: str, ai_draft: SessionEvaluationResult) -> None:
+        if ai_draft.session_id != session_id or ai_draft.review_status is not ReviewStatus.AI_DRAFT:
+            raise ValueError("draft must match the attempt and remain provisional")
+        self._ensure_schema()
+        with self._engine.begin() as connection:
+            attempt = connection.execute(
+                select(self._attempts.c.scenario_id).where(self._attempts.c.session_id == session_id)
+            ).scalar_one_or_none()
+            if attempt is None:
+                raise AttemptNotFoundError(session_id)
+            if attempt != ai_draft.scenario_id:
+                raise ValueError("draft scenario does not match the attempt")
+            connection.execute(
+                update(self._attempts)
+                .where(self._attempts.c.session_id == session_id)
+                .where(self._attempts.c.ai_draft_json.is_(None))
+                .values(completed_at=datetime.now(UTC), ai_draft_json=ai_draft.model_dump_json())
+            )
+
+    async def history(self, advisor_id: str, scenario_id: str | None = None) -> list[AttemptSummary]:
+        if not advisor_id.strip():
+            raise ValueError("advisor_id must not be blank")
+        self._ensure_schema()
+        query = self._summary_query().where(self._attempts.c.advisor_id == advisor_id)
+        if scenario_id is not None:
+            query = query.where(self._attempts.c.scenario_id == scenario_id)
+        query = query.order_by(self._attempts.c.started_at.desc(), self._attempts.c.session_id.desc())
+        with self._engine.connect() as connection:
+            return [self._to_summary(row) for row in connection.execute(query).mappings()]
+
+    async def review_queue(self) -> list[AttemptSummary]:
+        """Latest unreviewed completed attempt per advisor and scenario."""
+        self._ensure_schema()
+        query = (
+            self._summary_query()
+            .where(self._attempts.c.ai_draft_json.is_not(None))
+            .where(self._reviews.c.session_id.is_(None))
+            .order_by(self._attempts.c.completed_at.desc(), self._attempts.c.session_id.desc())
+        )
+        with self._engine.connect() as connection:
+            rows = [self._to_summary(row) for row in connection.execute(query).mappings()]
+        latest: dict[tuple[str, str], AttemptSummary] = {}
+        for row in rows:
+            latest.setdefault((row.advisor_id, row.scenario_id), row)
+        return list(latest.values())
+
+    async def approve(self, session_id: str, manager_id: str, decision: ManagerReviewDecision) -> ManagerReviewRecord:
+        if not manager_id.strip():
+            raise ValueError("manager_id must not be blank")
+        self._ensure_schema()
+        with self._engine.begin() as connection:
+            row = connection.execute(
+                select(self._attempts.c.ai_draft_json, self._reviews.c.session_id)
+                .select_from(self._attempts.outerjoin(self._reviews))
+                .where(self._attempts.c.session_id == session_id)
+            ).first()
+            if row is None:
+                raise AttemptNotFoundError(session_id)
+            if row.ai_draft_json is None or row.session_id is not None:
+                raise ReviewConflictError("attempt is unfinished or already reviewed")
+            draft = SessionEvaluationResult.model_validate_json(row.ai_draft_json)
+            approved = approved_evaluation(draft, decision)
+            reviewed_at = datetime.now(UTC)
+            try:
+                connection.execute(
+                    insert(self._reviews).values(
+                        session_id=session_id,
+                        manager_id=manager_id,
+                        reviewed_at=reviewed_at,
+                        change_reason=decision.change_reason.strip(),
+                        approved_result_json=approved.model_dump_json(),
+                    )
+                )
+            except IntegrityError as exc:
+                raise ReviewConflictError("attempt is already reviewed") from exc
+        return ManagerReviewRecord(
+            session_id=session_id,
+            manager_id=manager_id,
+            reviewed_at=reviewed_at,
+            change_reason=decision.change_reason.strip(),
+            ai_draft=draft,
+            approved_result=approved,
+        )
+
+    def _summary_query(self):
+        return select(
+            self._attempts.c.session_id,
+            self._attempts.c.scenario_id,
+            self._attempts.c.advisor_id,
+            self._attempts.c.started_at,
+            self._attempts.c.completed_at,
+            self._attempts.c.ai_draft_json,
+            self._reviews.c.approved_result_json,
+        ).select_from(self._attempts.outerjoin(self._reviews))
+
+    @staticmethod
+    def _to_summary(row) -> AttemptSummary:
+        draft = SessionEvaluationResult.model_validate_json(row.ai_draft_json) if row.ai_draft_json else None
+        approved = (
+            SessionEvaluationResult.model_validate_json(row.approved_result_json) if row.approved_result_json else None
+        )
+        return AttemptSummary(
+            session_id=row.session_id,
+            scenario_id=row.scenario_id,
+            advisor_id=row.advisor_id,
+            started_at=row.started_at,
+            completed_at=row.completed_at,
+            review_status=(
+                ReviewStatus.MANAGER_APPROVED
+                if approved
+                else ReviewStatus.PENDING_MANAGER_REVIEW
+                if draft
+                else ReviewStatus.AI_DRAFT
+            ),
+            ai_score=draft.overall_score if draft else None,
+            approved_score=approved.overall_score if approved else None,
+        )
