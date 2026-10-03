@@ -25,6 +25,7 @@ from sqlalchemy import (
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 
+from src.agents.roleplay.state import EvaluationStatus
 from src.integrations.practice_persistence import normalize_database_url
 from src.models.evaluation import ReviewStatus, SessionEvaluationResult
 from src.services.practice_records import (
@@ -49,6 +50,7 @@ class SQLPracticeRecordsRepository:
             Column("advisor_id", String(120), nullable=False, index=True),
             Column("started_at", DateTime(timezone=True), nullable=False),
             Column("completed_at", DateTime(timezone=True)),
+            Column("evaluation_status", String(20), nullable=False),
             Column("ai_draft_json", Text),
         )
         self._reviews = Table(
@@ -83,8 +85,26 @@ class SQLPracticeRecordsRepository:
                     scenario_id=scenario_id,
                     advisor_id=advisor_id,
                     started_at=datetime.now(UTC),
+                    evaluation_status=EvaluationStatus.NOT_STARTED.value,
                 )
             )
+
+    async def mark_evaluation_failed(self, session_id: str) -> None:
+        """Keep a finished attempt visible when the evaluator needs retry."""
+        self._ensure_schema()
+        with self._engine.begin() as connection:
+            changed = connection.execute(
+                update(self._attempts)
+                .where(self._attempts.c.session_id == session_id)
+                .where(self._attempts.c.ai_draft_json.is_(None))
+                .values(completed_at=datetime.now(UTC), evaluation_status=EvaluationStatus.FAILED.value)
+            )
+            if changed.rowcount == 0:
+                exists = connection.execute(
+                    select(self._attempts.c.session_id).where(self._attempts.c.session_id == session_id)
+                ).scalar_one_or_none()
+                if exists is None:
+                    raise AttemptNotFoundError(session_id)
 
     async def complete(self, session_id: str, ai_draft: SessionEvaluationResult) -> None:
         if ai_draft.session_id != session_id or ai_draft.review_status is not ReviewStatus.AI_DRAFT:
@@ -102,19 +122,78 @@ class SQLPracticeRecordsRepository:
                 update(self._attempts)
                 .where(self._attempts.c.session_id == session_id)
                 .where(self._attempts.c.ai_draft_json.is_(None))
-                .values(completed_at=datetime.now(UTC), ai_draft_json=ai_draft.model_dump_json())
+                .values(
+                    completed_at=datetime.now(UTC),
+                    evaluation_status=EvaluationStatus.COMPLETE.value,
+                    ai_draft_json=ai_draft.model_dump_json(),
+                )
             )
 
     async def history(self, advisor_id: str, scenario_id: str | None = None) -> list[AttemptSummary]:
         if not advisor_id.strip():
             raise ValueError("advisor_id must not be blank")
         self._ensure_schema()
-        query = self._summary_query().where(self._attempts.c.advisor_id == advisor_id)
+        query = self._summary_query().where(
+            self._attempts.c.advisor_id == advisor_id,
+            self._attempts.c.completed_at.is_not(None),
+        )
         if scenario_id is not None:
             query = query.where(self._attempts.c.scenario_id == scenario_id)
-        query = query.order_by(self._attempts.c.started_at.desc(), self._attempts.c.session_id.desc())
+        query = query.order_by(self._attempts.c.completed_at.desc(), self._attempts.c.session_id.desc())
         with self._engine.connect() as connection:
             return [self._to_summary(row) for row in connection.execute(query).mappings()]
+
+    async def owned_attempt(self, session_id: str, advisor_id: str) -> AttemptSummary:
+        """Use the same not-found error for missing and other-advisor attempts."""
+        if not advisor_id.strip():
+            raise ValueError("advisor_id must not be blank")
+        self._ensure_schema()
+        query = self._summary_query().where(
+            self._attempts.c.session_id == session_id,
+            self._attempts.c.advisor_id == advisor_id,
+        )
+        with self._engine.connect() as connection:
+            row = connection.execute(query).mappings().first()
+        if row is None:
+            raise AttemptNotFoundError(session_id)
+        return self._to_summary(row)
+
+    async def manager_attempt(self, session_id: str) -> AttemptSummary:
+        """Caller must enforce manager role before invoking this method."""
+        self._ensure_schema()
+        query = self._summary_query().where(self._attempts.c.session_id == session_id)
+        with self._engine.connect() as connection:
+            row = connection.execute(query).mappings().first()
+        if row is None:
+            raise AttemptNotFoundError(session_id)
+        return self._to_summary(row)
+
+    async def review_details(self, session_id: str) -> ManagerReviewRecord | None:
+        """Return the immutable AI draft and approved decision; manager-only caller."""
+        self._ensure_schema()
+        query = (
+            select(
+                self._attempts.c.ai_draft_json,
+                self._reviews.c.manager_id,
+                self._reviews.c.reviewed_at,
+                self._reviews.c.change_reason,
+                self._reviews.c.approved_result_json,
+            )
+            .select_from(self._attempts.join(self._reviews))
+            .where(self._attempts.c.session_id == session_id)
+        )
+        with self._engine.connect() as connection:
+            row = connection.execute(query).mappings().first()
+        if row is None:
+            return None
+        return ManagerReviewRecord(
+            session_id=session_id,
+            manager_id=row.manager_id,
+            reviewed_at=row.reviewed_at,
+            change_reason=row.change_reason,
+            ai_draft=SessionEvaluationResult.model_validate_json(row.ai_draft_json),
+            approved_result=SessionEvaluationResult.model_validate_json(row.approved_result_json),
+        )
 
     async def review_queue(self) -> list[AttemptSummary]:
         """Latest unreviewed completed attempt per advisor and scenario."""
@@ -177,6 +256,7 @@ class SQLPracticeRecordsRepository:
             self._attempts.c.advisor_id,
             self._attempts.c.started_at,
             self._attempts.c.completed_at,
+            self._attempts.c.evaluation_status,
             self._attempts.c.ai_draft_json,
             self._reviews.c.approved_result_json,
         ).select_from(self._attempts.outerjoin(self._reviews))
@@ -193,6 +273,7 @@ class SQLPracticeRecordsRepository:
             advisor_id=row.advisor_id,
             started_at=row.started_at,
             completed_at=row.completed_at,
+            evaluation_status=row.evaluation_status,
             review_status=(
                 ReviewStatus.MANAGER_APPROVED
                 if approved

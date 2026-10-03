@@ -50,6 +50,10 @@ async def test_history_is_scoped_to_advisor_and_retains_every_attempt(tmp_path):
     assert all(item.advisor_id == "advisor-a" for item in history)
     assert await reopened.history("advisor-b", "scenario-1") == []
     assert all(item.ai_score == 3 for item in history)
+    assert await reopened.history("advisor-b") == []  # An unfinished attempt is not history yet.
+    assert (await reopened.owned_attempt("attempt-1", "advisor-a")).session_id == "attempt-1"
+    with pytest.raises(AttemptNotFoundError):
+        await reopened.owned_attempt("attempt-1", "advisor-b")
 
 
 @pytest.mark.asyncio
@@ -89,6 +93,12 @@ async def test_manager_review_preserves_ai_draft_and_audits_score_change(tmp_pat
     history = await records.history("advisor-a")
     assert history[0].approved_score == 4
     assert history[0].review_status is ReviewStatus.MANAGER_APPROVED
+    reopened = SQLPracticeRecordsRepository(f"sqlite:///{tmp_path / 'records.db'}")
+    saved_review = await reopened.review_details("attempt-1")
+    assert saved_review is not None
+    assert saved_review.change_reason == "The follow-up question met the higher anchor."
+    assert saved_review.ai_draft.overall_score == 3
+    assert (await reopened.manager_attempt("attempt-1")).advisor_id == "advisor-a"
     with pytest.raises(ReviewConflictError, match="already reviewed"):
         await records.approve("attempt-1", "manager-2", ManagerReviewDecision(change_reason="Repeat."))
 

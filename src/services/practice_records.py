@@ -11,6 +11,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from src.agents.roleplay.state import EvaluationStatus
 from src.models.evaluation import (
     CriterionStatus,
     CriterionType,
@@ -36,6 +37,7 @@ class AttemptSummary(BaseModel):
     advisor_id: str
     started_at: datetime
     completed_at: datetime | None = None
+    evaluation_status: EvaluationStatus = EvaluationStatus.NOT_STARTED
     review_status: ReviewStatus = ReviewStatus.AI_DRAFT
     ai_score: float | None = None
     approved_score: float | None = None
@@ -73,9 +75,17 @@ class ManagerReviewRecord(BaseModel):
 class PracticeRecordsRepository(Protocol):
     async def register(self, session_id: str, scenario_id: str, advisor_id: str) -> None: ...
 
+    async def mark_evaluation_failed(self, session_id: str) -> None: ...
+
     async def complete(self, session_id: str, ai_draft: SessionEvaluationResult) -> None: ...
 
     async def history(self, advisor_id: str, scenario_id: str | None = None) -> list[AttemptSummary]: ...
+
+    async def owned_attempt(self, session_id: str, advisor_id: str) -> AttemptSummary: ...
+
+    async def manager_attempt(self, session_id: str) -> AttemptSummary: ...
+
+    async def review_details(self, session_id: str) -> ManagerReviewRecord | None: ...
 
     async def review_queue(self) -> list[AttemptSummary]: ...
 
