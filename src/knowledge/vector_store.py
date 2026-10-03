@@ -18,6 +18,16 @@ class BaseVectorStore(ABC):
         pass
 
     @abstractmethod
+    def similarity_search_with_scores(
+        self,
+        query_embedding: list[float],
+        top_k: int = 4,
+        where: dict[str, Any] | None = None,
+    ) -> list[tuple[KnowledgeChunk, float]]:
+        """Query top-K similar chunks matching optional metadata filter with cosine similarity scores."""
+        pass
+
+    @abstractmethod
     def similarity_search(
         self,
         query_embedding: list[float],
@@ -64,12 +74,12 @@ class InMemoryVectorStore(BaseVectorStore):
             return 0.0
         return dot / (norm1 * norm2)
 
-    def similarity_search(
+    def similarity_search_with_scores(
         self,
         query_embedding: list[float],
         top_k: int = 4,
         where: dict[str, Any] | None = None,
-    ) -> list[KnowledgeChunk]:
+    ) -> list[tuple[KnowledgeChunk, float]]:
         candidates: list[tuple[float, KnowledgeChunk]] = []
 
         for cid, chunk in self._chunks.items():
@@ -103,7 +113,15 @@ class InMemoryVectorStore(BaseVectorStore):
 
         # Sort descending by score
         candidates.sort(key=lambda x: x[0], reverse=True)
-        return [c[1] for c in candidates[:top_k]]
+        return [(c[1], c[0]) for c in candidates[:top_k]]
+
+    def similarity_search(
+        self,
+        query_embedding: list[float],
+        top_k: int = 4,
+        where: dict[str, Any] | None = None,
+    ) -> list[KnowledgeChunk]:
+        return [chunk for chunk, _ in self.similarity_search_with_scores(query_embedding, top_k, where)]
 
     def get_by_id(self, chunk_id: str) -> KnowledgeChunk | None:
         return self._chunks.get(chunk_id)
@@ -165,12 +183,12 @@ class ChromaVectorStore(BaseVectorStore):
         for c in chunks:
             self._cache[c.chunk_id] = c
 
-    def similarity_search(
+    def similarity_search_with_scores(
         self,
         query_embedding: list[float],
         top_k: int = 4,
         where: dict[str, Any] | None = None,
-    ) -> list[KnowledgeChunk]:
+    ) -> list[tuple[KnowledgeChunk, float]]:
         chroma_where = None
         if where:
             clean_where = {}
@@ -195,16 +213,29 @@ class ChromaVectorStore(BaseVectorStore):
             query_embeddings=[query_embedding],
             n_results=top_k,
             where=chroma_where,
+            include=["metadatas", "documents", "distances"],
         )
 
-        matched: list[KnowledgeChunk] = []
+        matched: list[tuple[KnowledgeChunk, float]] = []
         if results and results.get("ids") and len(results["ids"]) > 0:
-            for chunk_id in results["ids"][0]:
+            ids = results["ids"][0]
+            distances = results.get("distances", [[]])[0] if results.get("distances") else []
+            for i, chunk_id in enumerate(ids):
                 chunk = self.get_by_id(chunk_id)
                 if chunk:
-                    matched.append(chunk)
+                    dist = distances[i] if i < len(distances) else 1.0
+                    sim = 1.0 - dist
+                    matched.append((chunk, sim))
 
         return matched
+
+    def similarity_search(
+        self,
+        query_embedding: list[float],
+        top_k: int = 4,
+        where: dict[str, Any] | None = None,
+    ) -> list[KnowledgeChunk]:
+        return [chunk for chunk, _ in self.similarity_search_with_scores(query_embedding, top_k, where)]
 
     def get_by_id(self, chunk_id: str) -> KnowledgeChunk | None:
         if chunk_id in self._cache:
@@ -241,18 +272,14 @@ _vector_store_instance: BaseVectorStore | None = None
 
 
 def get_vector_store() -> BaseVectorStore:
-    """Singleton accessor for Vector Store, defaulting to Chroma with memory fallback."""
+    """Use the configured backend; a Chroma failure must not create an empty memory store."""
     global _vector_store_instance
     if _vector_store_instance is not None:
         return _vector_store_instance
 
     settings = get_settings()
     if settings.vector_store_type == "chroma":
-        try:
-            _vector_store_instance = ChromaVectorStore()
-            return _vector_store_instance
-        except Exception as e:
-            logger.warning("Could not initialize ChromaVectorStore, falling back to InMemoryVectorStore: %s", e)
-
-    _vector_store_instance = InMemoryVectorStore()
+        _vector_store_instance = ChromaVectorStore()
+    else:
+        _vector_store_instance = InMemoryVectorStore()
     return _vector_store_instance

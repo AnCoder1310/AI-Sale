@@ -10,8 +10,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "ingestion"))
 
-from deduplicate import analyze_duplicates
-from validate_metadata import CORPUS_FIELDS, validate_corpus
+from deduplicate import analyze_duplicates  # noqa: E402
+from validate_metadata import CORPUS_FIELDS, validate_corpus  # noqa: E402
 
 
 @pytest.fixture
