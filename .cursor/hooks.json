@@ -5,11 +5,6 @@
       {
         "command": "bash scripts/_pyrun.sh scripts/log_hook.py --tool=cursor"
       }
-    ],
-    "stop": [
-      {
-        "command": "bash scripts/_pyrun.sh scripts/log_hook.py --tool=cursor"
-      }
     ]
   }
 }
