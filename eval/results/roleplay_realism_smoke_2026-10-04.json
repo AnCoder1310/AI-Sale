@@ -1,0 +1,173 @@
+{
+  "date_utc": "2026-10-03T21:22:04.864199+00:00",
+  "runs": [
+    {
+      "run": "helpful_advisor",
+      "status": "completed",
+      "turns": 4,
+      "termination": "dropped_out",
+      "concern_prompt_counts": {
+        "OBJ_VF5_BATTERY_VS_GAS": 2
+      },
+      "spoken_fact_message_ids": {
+        "daily_distance": "11cc54d3-c2cc-4a43-8b72-4160f9933517"
+      },
+      "false_mileage_memory_detected": false,
+      "transcript": [
+        {
+          "message_id": "a3a0fe9b-8585-43ae-949e-7f0c6e19185f",
+          "role": "customer",
+          "content": "VF 5 Plus lăn bánh khoảng bao nhiêu em? Anh đang chạy Vios dịch vụ, tính đổi sang xe điện mà còn lo tiền pin, tiền sạc có làm giảm thu nhập ròng không."
+        },
+        {
+          "message_id": "066b6a87-f1e3-419b-8aa6-150e122369c8",
+          "role": "advisor",
+          "content": "Anh thường chạy khoảng bao nhiêu km mỗi ngày hoặc mỗi tháng ạ?"
+        },
+        {
+          "message_id": "11cc54d3-c2cc-4a43-8b72-4160f9933517",
+          "role": "customer",
+          "content": "Mỗi ngày anh chạy túc tắc cũng tầm 180 đến 200 cây số em ạ, tháng cũng ngót nghét 5.000 cây."
+        },
+        {
+          "message_id": "e63e9583-d883-4f82-ad58-e38f6fe733bd",
+          "role": "advisor",
+          "content": "Cảm ơn anh. Chi phí đổi xe cần nhìn cả tiền xe, pin, sạc và bảo dưỡng; em chưa muốn hứa mức tiết kiệm khi chưa kiểm tra chính sách đang áp dụng cho xe của anh."
+        },
+        {
+          "message_id": "622fb7ad-f648-4b8b-9fb4-42c4485299f8",
+          "role": "customer",
+          "content": "Anh chạy gần 5.000 cây mỗi tháng nên vẫn lo tiền pin cộng tiền sạc gần bằng tiền xăng. Em ước tính giúp anh xem đổi sang xe điện thì mỗi tháng có dư hơn đáng kể không?"
+        },
+        {
+          "message_id": "faf9c096-eee4-4c28-be2f-f227e2e57453",
+          "role": "advisor",
+          "content": "Em có thể lập bảng so sánh theo 5.000 km mỗi tháng, ghi rõ giả định tiền xăng và điều kiện sạc, rồi gửi anh xem trước khi quyết định."
+        },
+        {
+          "message_id": "a3bd691a-e190-47c8-a591-7684a4986cea",
+          "role": "customer",
+          "content": "Ừ, em làm bảng theo 5.000 km/tháng giúp anh nhé; nhớ đối chiếu tổng tiền pin và sạc với tiền xăng để anh thấy mỗi tháng thực dư khoảng bao nhiêu."
+        },
+        {
+          "message_id": "f6999548-5eab-4956-84bd-52b55f101653",
+          "role": "advisor",
+          "content": "Ngoài chi phí, anh có lo việc dừng sạc trong ca chạy khách không? Mình có thể kiểm tra trạm gần tuyến anh chạy và hẹn trải nghiệm thực tế."
+        },
+        {
+          "message_id": "28270776-bb16-4a5f-9a48-62b7919c588b",
+          "role": "customer",
+          "content": "Anh vẫn chưa yên tâm về điểm này. Mình tạm dừng ở đây; em gửi thông tin phù hợp với trường hợp của anh sau nhé."
+        }
+      ]
+    },
+    {
+      "run": "missed_concern",
+      "status": "completed",
+      "turns": 3,
+      "termination": "dropped_out",
+      "concern_prompt_counts": {
+        "OBJ_VF5_BATTERY_VS_GAS": 2
+      },
+      "spoken_fact_message_ids": {},
+      "false_mileage_memory_detected": false,
+      "transcript": [
+        {
+          "message_id": "ab096f23-0fed-4de7-ad87-a7bcad5f9c18",
+          "role": "customer",
+          "content": "VF 5 Plus lăn bánh khoảng bao nhiêu em? Anh đang chạy Vios dịch vụ, tính đổi sang xe điện nhưng còn lo tiền pin, sạc điện với thời gian phải nghỉ chạy."
+        },
+        {
+          "message_id": "a30d5523-2344-41a4-9450-625ca8b2af30",
+          "role": "advisor",
+          "content": "Xe điện nhiều công nghệ hay lắm anh ạ."
+        },
+        {
+          "message_id": "6e35b795-84bb-4ae0-9390-c7d0f6fe8353",
+          "role": "customer",
+          "content": "Anh nghe nói cộng tiền pin với tiền sạc thì cũng gần bằng tiền xăng. Chạy dịch vụ như anh đổi xe có đáng không em?"
+        },
+        {
+          "message_id": "c26aff26-718d-4a95-8217-1eca99033d4d",
+          "role": "advisor",
+          "content": "Dạ xe rất đẹp và đi êm anh nhé."
+        },
+        {
+          "message_id": "5598aa24-fc71-4a66-a3cf-7410c44037ea",
+          "role": "customer",
+          "content": "Anh đang hỏi thực tế sau khi tính cả tiền pin với tiền sạc thì mỗi tháng chạy dịch vụ có dư hơn so với đổ xăng không em?"
+        },
+        {
+          "message_id": "8704c0cf-b91b-4270-b6a1-ebc4ff671a98",
+          "role": "advisor",
+          "content": "Mình cứ xem màu xe trước anh nhé."
+        },
+        {
+          "message_id": "89804f10-9eab-4018-a9ba-b1d3cd9a2146",
+          "role": "customer",
+          "content": "Anh vẫn chưa yên tâm về điểm này. Mình tạm dừng ở đây; em gửi thông tin phù hợp với trường hợp của anh sau nhé."
+        }
+      ]
+    },
+    {
+      "run": "discovery_and_next_step",
+      "status": "completed",
+      "turns": 4,
+      "termination": "active",
+      "concern_prompt_counts": {
+        "OBJ_VF5_CHARGING_TIME": 2
+      },
+      "spoken_fact_message_ids": {
+        "daily_distance": "787abcd9-5247-4813-b0b7-c0bb0e13d534"
+      },
+      "false_mileage_memory_detected": false,
+      "transcript": [
+        {
+          "message_id": "c4377580-14d4-4204-b2e0-9a19340df812",
+          "role": "customer",
+          "content": "VF 5 Plus lăn bánh khoảng bao nhiêu em? Anh đang chạy Vios dịch vụ, tính đổi sang xe điện mà còn lo tiền pin, sạc điện với thời gian xe phải nằm chờ."
+        },
+        {
+          "message_id": "0ce0f5ff-cf39-48f5-9338-8cfe07ef2f54",
+          "role": "advisor",
+          "content": "Mỗi ngày anh chạy quãng đường khoảng bao nhiêu và chủ yếu ở đâu ạ?"
+        },
+        {
+          "message_id": "787abcd9-5247-4813-b0b7-c0bb0e13d534",
+          "role": "customer",
+          "content": "Mỗi ngày anh chạy túc tắc cũng tầm 180 đến 200 cây số em ạ, tháng cũng ngót nghét 5.000 cây."
+        },
+        {
+          "message_id": "224fcbd7-0625-4dfe-a2d3-d908db160b73",
+          "role": "advisor",
+          "content": "Anh thường nghỉ giữa ca ở khu vực nào, có tiện dừng sạc không ạ?"
+        },
+        {
+          "message_id": "ddb06e93-86d3-407d-b71d-c24d1f7c7433",
+          "role": "customer",
+          "content": "Anh chưa có chỗ nghỉ cố định em ạ. Cái anh ngại là đang giữa ca phải dừng lâu để sạc thì ảnh hưởng thu nhập."
+        },
+        {
+          "message_id": "1a83f1b3-0dee-42d3-93ba-f85cb7e11005",
+          "role": "advisor",
+          "content": "Để so sát với Vios, em sẽ kiểm tra chính sách pin và sạc theo ngày mua xe, rồi tính một khoảng chi phí theo số km anh vừa chia sẻ; em chưa chốt một con số khi thiếu dữ liệu."
+        },
+        {
+          "message_id": "84dce720-c106-4878-ab10-fa6123c1578f",
+          "role": "customer",
+          "content": "Ừ, em tính giúp anh chi phí nhé, nhưng anh chạy 180–200 cây mỗi ngày mà nghỉ không cố định. Thường có cách sắp lịch sạc vào lúc ít ảnh hưởng cuốc xe không em?"
+        },
+        {
+          "message_id": "3384d25d-5cac-41bd-b57b-f8cf623fe7b4",
+          "role": "advisor",
+          "content": "Nếu anh thấy hướng này hợp lý, mình hẹn 15 phút xem xe và đối chiếu bảng chi phí theo ca chạy thực tế của anh nhé?"
+        },
+        {
+          "message_id": "db3107a4-c75f-4725-89d8-4ea1abf9f50f",
+          "role": "customer",
+          "content": "Hẹn xem xe thì được, nhưng anh muốn rõ trước cách sắp lịch sạc khi không có giờ nghỉ cố định—có thể tranh thủ lúc ít khách để không mất nhiều cuốc không em?"
+        }
+      ]
+    }
+  ]
+}
