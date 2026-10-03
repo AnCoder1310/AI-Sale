@@ -136,10 +136,16 @@ def _safe_suggestions(parsed: GeneratedAnswer, allowed_ids: set[str]) -> tuple[l
     # specifications, or policy numbers. Prompt rules constrain their wording;
     # the code also drops obvious quantified claims instead of showing them.
     message = parsed.suggested_message
-    if message and re.search(r"\d|%|₫|vnđ|triệu|tỷ|cam kết|miễn phí|giảm giá|bảo hành|ưu đãi|kèm pin", message, re.I):
+    message_without_model = re.sub(r"\bVF[\s-]*\d+\b", "", message or "", flags=re.I)
+    if message and re.search(
+        r"\d|%|₫|vnđ|triệu|tỷ|cam kết|miễn phí|giảm giá|bảo hành|ưu đãi|kèm pin",
+        message_without_model,
+        re.I,
+    ):
         message = None
     next_question = parsed.suggested_next_question
-    if next_question and (not next_question.endswith("?") or re.search(r"\d|%|₫|vnđ", next_question, re.I)):
+    question_without_model = re.sub(r"\bVF[\s-]*\d+\b", "", next_question or "", flags=re.I)
+    if next_question and (not next_question.endswith("?") or re.search(r"\d|%|₫|vnđ", question_without_model, re.I)):
         next_question = None
     return talking_points, message, next_question
 
