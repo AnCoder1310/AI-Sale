@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.auth import build_auth_service, create_auth_router
 from src.api.copilot import router as copilot_router
 from src.api.practice import create_practice_router
 from src.api.routes import router
@@ -48,6 +49,7 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api/v1")
+app.include_router(create_auth_router(build_auth_service(settings), settings), prefix="/api/v1")
 app.include_router(copilot_router, prefix="/api/v1")
 app.include_router(create_practice_router(build_practice_service()), prefix="/api/v1")
 
