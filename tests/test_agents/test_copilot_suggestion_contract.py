@@ -125,6 +125,24 @@ def test_quantified_sales_suggestion_is_dropped_without_affecting_answer():
     assert message is None
 
 
+def test_model_number_is_allowed_in_non_factual_suggestions():
+    parsed = GeneratedAnswer(
+        status="answered",
+        answer="Thông tin trong nguồn [C1].",
+        citation_ids=["C1"],
+        suggested_message="Em có thể gửi anh/chị tài liệu VF 8 để đối chiếu.",
+        suggested_next_question="Anh/chị muốn xem phiên bản VF 8 nào?",
+    )
+
+    _, message, question = nodes._safe_suggestions(parsed, {"C1"})
+    assert message == parsed.suggested_message
+    assert question == parsed.suggested_next_question
+
+    parsed.suggested_message = "VF 8 giảm giá 20 triệu."
+    _, message, _ = nodes._safe_suggestions(parsed, {"C1"})
+    assert message is None
+
+
 @pytest.mark.asyncio
 async def test_copilot_api_returns_suggestions_without_changing_existing_fields(monkeypatch):
     async def fake_graph(state):
