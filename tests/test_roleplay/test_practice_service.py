@@ -103,7 +103,7 @@ class MemoryCheckpoint:
 
 class OpeningCustomerModel:
     async def generate(self, *, system_prompt, context):
-        return {"reply": "Anh đang cân nhắc mua xe điện."}
+        return {"reply": "Anh đang cân nhắc mua xe điện.", "raised_objection_id": None, "decision": "reply"}
 
 
 class UnusedAnalysisModel:

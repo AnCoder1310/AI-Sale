@@ -69,8 +69,8 @@ class RecordingRetriever:
 async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path: Path):
     model = SchemaQueueModel()
     model.outputs[CustomerModelOutput] = [
-        {"reply": "Anh đang cân nhắc VF 5."},
-        {"reply": "Điều kiện bảo hành cụ thể thế nào em?"},
+        {"reply": "Anh đang cân nhắc VF 5.", "raised_objection_id": None, "decision": "reply"},
+        {"reply": "Điều kiện bảo hành cụ thể thế nào em?", "raised_objection_id": None, "decision": "reply"},
     ]
     model.outputs[TurnAnalysis] = [
         {

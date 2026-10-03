@@ -19,6 +19,7 @@ export function PracticeRoom({
   const [turnCount, setTurnCount] = useState(session?.turn_count || 0);
   const [stage, setStage] = useState(session?.conversation_stage || 'opening');
   const [terminationStatus, setTerminationStatus] = useState(session?.termination_status || 'active');
+  const [pendingReply, setPendingReply] = useState(session?.pending_customer_reply || false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState('');
@@ -40,7 +41,7 @@ export function PracticeRoom({
 
   const handleSendMessage = async () => {
     const text = inputMessage.trim();
-    if (!text || loading || finishing || terminationStatus !== 'active') return;
+    if (!text || loading || finishing || pendingReply || terminationStatus !== 'active') return;
 
     const advisorMsg = {
       message_id: createId('adv'),
@@ -60,6 +61,7 @@ export function PracticeRoom({
       setStage(updated.conversation_stage);
       setTurnCount(updated.turn_count);
       setTerminationStatus(updated.termination_status);
+      setPendingReply(updated.pending_customer_reply);
     } catch (requestError) {
       setError(requestError.message || 'AI Customer chưa phản hồi. Phiên đã được lưu; vui lòng thử tải lại.');
       try {
@@ -68,9 +70,28 @@ export function PracticeRoom({
         setStage(saved.conversation_stage);
         setTurnCount(saved.turn_count);
         setTerminationStatus(saved.termination_status);
+        setPendingReply(saved.pending_customer_reply);
       } catch {
         // Keep the advisor's visible draft; do not fabricate a customer reply.
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRetryReply = async () => {
+    if (!pendingReply || loading) return;
+    setLoading(true);
+    setError('');
+    try {
+      const updated = await practiceApi.retryCustomerReply(session.session_id);
+      setMessages(updated.messages);
+      setStage(updated.conversation_stage);
+      setTurnCount(updated.turn_count);
+      setTerminationStatus(updated.termination_status);
+      setPendingReply(updated.pending_customer_reply);
+    } catch (requestError) {
+      setError(requestError.message || 'AI Customer chưa phản hồi. Hãy thử lại.');
     } finally {
       setLoading(false);
     }
@@ -127,7 +148,7 @@ export function PracticeRoom({
           className="btn-primary"
           style={{ backgroundColor: '#111111', fontSize: '0.82rem', padding: '8px 16px' }}
           onClick={() => setShowFinishConfirm(true)}
-          disabled={loading || finishing}
+          disabled={loading || finishing || pendingReply}
         >
           🏁 Kết thúc & Chấm điểm
         </button>
@@ -217,7 +238,13 @@ export function PracticeRoom({
       {/* INPUT BAR */}
       <div style={{ padding: '16px 20px', borderTop: '1px solid #E5E5E5', backgroundColor: '#FAFAFA' }}>
         {error && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{error}</p>}
-        {terminationStatus !== 'active' && <p style={{ fontSize: '0.82rem', marginBottom: 8 }}>Đã đạt giới hạn lượt. Hãy kết thúc để xem đánh giá.</p>}
+        {pendingReply && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <span style={{ fontSize: '0.82rem' }}>Tin nhắn đã lưu. Khách hàng chưa phản hồi.</span>
+            <button className="btn-primary" onClick={handleRetryReply} disabled={loading}>Thử lại phản hồi</button>
+          </div>
+        )}
+        {terminationStatus !== 'active' && <p style={{ fontSize: '0.82rem', marginBottom: 8 }}>Cuộc trò chuyện đã kết thúc. Hãy xem đánh giá.</p>}
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
           <textarea
             value={inputMessage}
@@ -241,11 +268,11 @@ export function PracticeRoom({
               lineHeight: 1.4,
               backgroundColor: '#FFFFFF',
             }}
-            disabled={loading || finishing || terminationStatus !== 'active'}
+            disabled={loading || finishing || pendingReply || terminationStatus !== 'active'}
           />
           <button
             onClick={handleSendMessage}
-            disabled={!inputMessage.trim() || loading || finishing || terminationStatus !== 'active'}
+            disabled={!inputMessage.trim() || loading || finishing || pendingReply || terminationStatus !== 'active'}
             className="btn-primary"
             style={{ height: 46, padding: '0 20px' }}
           >

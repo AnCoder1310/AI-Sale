@@ -78,6 +78,18 @@ def create_recorded_practice_routers(
         except (CustomerResponseError, TurnAnalysisError) as exc:
             raise HTTPException(status_code=502, detail="AI response failed; the saved turn can be retried.") from exc
 
+    @practice.post("/{session_id}/retry-reply", response_model=PracticeSessionView)
+    async def retry_customer_reply(session_id: SessionId, identity: actor) -> PracticeSessionView:
+        require_role(identity, "advisor")
+        try:
+            return await service.retry_customer_reply(session_id, identity.user_id)
+        except (AttemptNotFoundError, RoleplaySessionNotFoundError) as exc:
+            raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+        except RoleplaySessionConflictError as exc:
+            raise HTTPException(status_code=409, detail="No customer reply is pending.") from exc
+        except CustomerResponseError as exc:
+            raise HTTPException(status_code=502, detail="The AI customer reply is still unavailable.") from exc
+
     @practice.post("/{session_id}/finish", response_model=PracticeResultView)
     async def finish_session(session_id: SessionId, identity: actor) -> PracticeResultView:
         require_role(identity, "advisor")

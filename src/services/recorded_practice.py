@@ -56,6 +56,10 @@ class RecordedPracticeService:
         await self._records.owned_attempt(session_id, advisor_id)
         return await self._practice.send_message(session_id, message)
 
+    async def retry_customer_reply(self, session_id: str, advisor_id: str) -> PracticeSessionView:
+        await self._records.owned_attempt(session_id, advisor_id)
+        return await self._practice.retry_customer_reply(session_id)
+
     async def finish_session(self, session_id: str, advisor_id: str) -> PracticeResultView:
         await self._records.owned_attempt(session_id, advisor_id)
         try:

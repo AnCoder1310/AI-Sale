@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict
 
 from src.agents.roleplay.contracts import RoleplayGraphContract, ScenarioContract
 from src.agents.roleplay.evaluator import KnowledgeEvidence, RoleplayEvaluator
+from src.agents.roleplay.graph import RoleplaySessionConflictError
 from src.agents.roleplay.scenario_loader import ScenarioRepository, ScenarioSummary
 from src.agents.roleplay.state import (
     ConversationStage,
@@ -35,6 +36,7 @@ class PracticeSessionView(BaseModel):
     conversation_stage: ConversationStage
     turn_count: int
     max_turns: int = 10
+    pending_customer_reply: bool = False
     visible_context: str
     termination_status: TerminationStatus
     termination_reason: str | None = None
@@ -99,6 +101,14 @@ class PracticeService:
             result = await self._graph.continue_session(session_id, advisor_message)
             return PracticeSessionView.model_validate(result)
 
+    async def retry_customer_reply(self, session_id: str) -> PracticeSessionView:
+        async with self._lock_for(session_id):
+            state = await self._graph.get_session_state(session_id)
+            if not state.pending_customer_reply:
+                raise RoleplaySessionConflictError("no customer reply is pending")
+            result = await self._graph.continue_session(session_id, state.messages[-1].content)
+            return PracticeSessionView.model_validate(result)
+
     async def finish_session(self, session_id: str) -> PracticeResultView:
         async with self._lock_for(session_id):
             state = await self._graph.finish_session(session_id)
@@ -108,7 +118,7 @@ class PracticeService:
             try:
                 if self._evaluator is None or self._knowledge_evidence is None:
                     raise PracticeEvaluationUnavailableError("evaluation dependencies are not configured")
-                scenario = self._scenarios.get(state.scenario_id)
+                scenario = state.scenario_snapshot or self._scenarios.get(state.scenario_id)
                 evidence = await self._knowledge_evidence.for_session(scenario, state)
                 result = await self._evaluator.evaluate(scenario, state, evidence)
             except Exception as exc:
