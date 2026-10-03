@@ -18,6 +18,17 @@ def test_repository_default_path_loads_project_scenarios():
     assert len(repository.list_public()) == 3
 
 
+def test_project_scenarios_have_reachable_facts_and_buyer_decision_criteria():
+    repository = ScenarioRepository()
+    for summary in repository.list_public():
+        scenario = repository.get(summary.scenario_id)
+        assert scenario.termination_conditions.max_turns >= 8
+        assert {rule.fact_key for rule in scenario.disclosure_rules} == set(scenario.hidden_facts)
+        assert scenario.buyer_decision_policy.primary_motivation
+        assert scenario.buyer_decision_policy.evidence_needed
+        assert scenario.buyer_decision_policy.acceptable_next_steps
+
+
 def test_repository_loads_scenarios_and_returns_defensive_copies():
     repository = ScenarioRepository(SCENARIOS)
 

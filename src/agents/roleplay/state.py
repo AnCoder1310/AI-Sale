@@ -49,6 +49,14 @@ class AdvisorFactualClaim(BaseModel):
     category: ClaimCategory
 
 
+class CustomerDecisionEvent(BaseModel):
+    message_id: str = Field(min_length=1)
+    decision: Literal["reply", "acknowledge", "accept_step", "defer", "decline"]
+    raised_objection_id: str | None = None
+    resolved_objection_id: str | None = None
+    source: Literal["model", "scenario_disclosure", "follow_up_guard"] = "model"
+
+
 class RoleplayState(BaseModel):
     session_id: str
     scenario_id: str
@@ -62,10 +70,15 @@ class RoleplayState(BaseModel):
     interest_level: int = Field(default=3, ge=1, le=5)
     visible_context: str
     hidden_facts: dict[str, str] = Field(default_factory=dict)
+    scenario_snapshot: ScenarioContract | None = None
     revealed_facts: list[str] = Field(default_factory=list)
     spoken_fact_message_ids: dict[str, str] = Field(default_factory=dict)
     spoken_concern_message_ids: dict[str, str] = Field(default_factory=dict)
     concern_prompt_counts: dict[str, int] = Field(default_factory=dict)
+    pending_customer_reply: bool = False
+    pending_next_step_attempted: bool = False
+    pending_addressed_objection_ids: list[str] = Field(default_factory=list)
+    pending_disclosure_fact_ids: list[str] = Field(default_factory=list)
     max_turns: int = Field(default=10, ge=1, le=15)
     advisor_discoveries: list[str] = Field(default_factory=list)
     active_objections: list[str] = Field(default_factory=list)
@@ -80,6 +93,7 @@ class RoleplayState(BaseModel):
     evaluation_result: SessionEvaluationResult | None = None
     messages: list[RoleplayMessage] = Field(default_factory=list)
     factual_claims: list[AdvisorFactualClaim] = Field(default_factory=list)
+    customer_decisions: list[CustomerDecisionEvent] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_evaluation_lifecycle(self) -> "RoleplayState":
@@ -91,8 +105,16 @@ class RoleplayState(BaseModel):
             raise ValueError("spoken facts must reference an actual customer message")
         if any(message_id not in customer_message_ids for message_id in self.spoken_concern_message_ids.values()):
             raise ValueError("spoken concerns must reference an actual customer message")
+        if any(event.message_id not in customer_message_ids for event in self.customer_decisions):
+            raise ValueError("customer decision events must reference customer messages")
         if any(count < 0 or count > 2 for count in self.concern_prompt_counts.values()):
             raise ValueError("concern prompt counts must remain within the two-prompt limit")
+        if self.pending_customer_reply and (not self.messages or self.messages[-1].role != "advisor"):
+            raise ValueError("a pending customer reply must follow an advisor message")
+        if any(item not in self.revealed_facts for item in self.pending_disclosure_fact_ids):
+            raise ValueError("pending disclosures must be permitted by advisor discovery")
+        if self.scenario_snapshot is not None and self.scenario_snapshot.scenario_id != self.scenario_id:
+            raise ValueError("scenario snapshot does not match session")
         if (self.evaluation_status is EvaluationStatus.COMPLETE) != (self.evaluation_result is not None):
             raise ValueError("complete evaluation status and saved result must occur together")
         if self.evaluation_result is not None and (
@@ -121,6 +143,7 @@ class RoleplayState(BaseModel):
             persona=scenario.persona,
             visible_context=scenario.visible_context,
             hidden_facts=scenario.hidden_facts,
+            scenario_snapshot=scenario,
             unresolved_objections=objection_ids,
             customer_goals=scenario.customer_goals,
             current_intent=scenario.buyer_intent,
@@ -129,10 +152,13 @@ class RoleplayState(BaseModel):
 
     def customer_prompt_context(self) -> dict[str, Any]:
         """Server-only context for the customer model; unrevealed facts stay private."""
+        customer_messages = {
+            message.message_id: message.content for message in self.messages if message.role == "customer"
+        }
         revealed_fact_values = {
-            fact_key: self.hidden_facts[fact_key]
-            for fact_key in self.spoken_fact_message_ids
-            if fact_key in self.hidden_facts
+            fact_key: customer_messages[message_id]
+            for fact_key, message_id in self.spoken_fact_message_ids.items()
+            if message_id in customer_messages
         }
         return {
             "scenario_id": self.scenario_id,
@@ -163,6 +189,7 @@ class RoleplayState(BaseModel):
             "conversation_stage": self.conversation_stage.value,
             "turn_count": self.turn_count,
             "max_turns": self.max_turns,
+            "pending_customer_reply": self.pending_customer_reply,
             "visible_context": self.visible_context,
             "termination_status": self.termination_status.value,
             "termination_reason": self.termination_reason,

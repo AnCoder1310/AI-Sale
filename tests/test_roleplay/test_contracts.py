@@ -9,7 +9,7 @@ from src.agents.roleplay.contracts import (
     RUBRIC_SCORE_MIN,
     ScenarioContract,
 )
-from src.agents.roleplay.state import RoleplayState
+from src.agents.roleplay.state import RoleplayMessage, RoleplayState
 from src.models.evaluation import (
     CriterionEvaluation,
     CriterionStatus,
@@ -60,9 +60,10 @@ def test_customer_prompt_only_contains_revealed_fact_values():
     prompt_context = state.customer_prompt_context()
 
     assert prompt_context["revealed_facts"] == {}
+    state.messages.append(RoleplayMessage(message_id="customer-2", role="customer", content="Anh đi khoảng 180 cây."))
     state.spoken_fact_message_ids["daily_distance"] = "customer-2"
     prompt_context = state.customer_prompt_context()
-    assert prompt_context["revealed_facts"] == {"daily_distance": scenario.hidden_facts["daily_distance"]}
+    assert prompt_context["revealed_facts"] == {"daily_distance": "Anh đi khoảng 180 cây."}
     assert prompt_context["spoken_fact_message_ids"] == {"daily_distance": "customer-2"}
     assert scenario.hidden_facts["budget"] not in str(prompt_context)
 

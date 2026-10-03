@@ -5,7 +5,7 @@
     "difficulty": "Medium",
     "sales_channel": "Fanpage",
     "training_objective": "Khai thác nhu cầu chạy dịch vụ, trao đổi chi phí sử dụng một cách trung thực và chốt bước kiểm chứng phù hợp.",
-    "scenario_version": "2.1",
+    "scenario_version": "2.2",
     "target_skills": ["need_discovery", "objection_handling", "closing_next_step"],
     "persona": {
       "name": "Anh Nam",
@@ -33,6 +33,12 @@
         "trigger_intent": "ask_budget_or_financing",
         "trigger_keywords": ["tài chính", "ngân sách", "trả trước", "vay vốn", "góp"],
         "revealed_statement": "Anh dồn hết vốn liếng trong tay chỉ có tầm 150 triệu thôi, còn lại phải vay ngân hàng thì mới kham nổi."
+      },
+      {
+        "fact_key": "real_concern",
+        "trigger_intent": "ask_biggest_switching_concern",
+        "trigger_keywords": ["lo nhất", "ngại nhất", "băn khoăn chính"],
+        "revealed_statement": "Anh lo cả tổng tiền pin với tiền sạc, rồi đang chạy khách mà phải dừng lâu thì mất cuốc."
       }
     ],
     "objections": [
@@ -56,6 +62,12 @@
     "termination_conditions": {
       "max_turns": 10,
       "drop_out_trigger": "Nếu báo giá thiếu căn cứ hoặc sau hai lần khách hỏi cùng một băn khoăn mà tư vấn viên vẫn không giải quyết được, khách tạm hoãn quyết định thay vì hỏi đi hỏi lại."
+    },
+    "buyer_decision_policy": {
+      "primary_motivation": "Giữ thu nhập ròng ổn định khi đổi từ Vios sang xe điện.",
+      "evidence_needed": ["So sánh chi phí theo quãng đường và điều kiện sạc của anh", "Cách kiểm tra thời gian dừng sạc trong ca chạy"],
+      "acceptable_next_steps": ["Nhận bảng so sánh có giả định rõ ràng", "Kiểm tra trạm trên tuyến chạy hoặc trải nghiệm sạc"],
+      "walk_away_signals": ["Khẳng định tiết kiệm chắc chắn mà không có dữ liệu", "Lặp lại quảng cáo và né câu hỏi về chi phí hoặc mất cuốc"]
     }
   },
   {
@@ -64,7 +76,7 @@
     "difficulty": "Hard",
     "sales_channel": "Tin nhắn tư vấn",
     "training_objective": "Khám phá nhu cầu gia đình và người cùng ra quyết định, sau đó so sánh giá trị mà không hạ thấp đối thủ hoặc đưa ra cam kết khấu hao thiếu căn cứ.",
-    "scenario_version": "2.0",
+    "scenario_version": "2.1",
     "target_skills": ["product_knowledge", "objection_handling", "closing_next_step"],
     "persona": {
       "name": "Chị Thanh",
@@ -92,6 +104,12 @@
         "trigger_intent": "ask_decision_maker_opinion",
         "trigger_keywords": ["anh nhà", "ông xã", "chồng", "ai quyết định"],
         "revealed_statement": "Chị thì mê kiểu dáng công nghệ của VF 7 rồi, nhưng ông xã chị cứ cản, bảo mua CX-5 cho lành, sợ xe điện sau này bán mất giá."
+      },
+      {
+        "fact_key": "budget",
+        "trigger_intent": "ask_budget_or_value_threshold",
+        "trigger_keywords": ["ngân sách", "tài chính", "chi thêm", "mức giá"],
+        "revealed_statement": "Tài chính nhà chị đủ mua cả hai xe; chị chỉ muốn biết phần chênh lệch có đáng với nhu cầu gia đình không."
       }
     ],
     "objections": [
@@ -115,6 +133,12 @@
     "termination_conditions": {
       "max_turns": 10,
       "drop_out_trigger": "Nếu tư vấn viên chê bai dìm hàng CX-5 thô thiển hoặc không chứng minh được giá trị xe."
+    },
+    "buyer_decision_policy": {
+      "primary_motivation": "Chọn xe phù hợp gia đình và thuyết phục được người cùng quyết định.",
+      "evidence_needed": ["So sánh trung lập những điểm liên quan nhu cầu gia đình", "Nêu rõ điều gì chưa thể dự đoán về giá bán lại"],
+      "acceptable_next_steps": ["Gửi so sánh có nguồn để hai vợ chồng xem", "Mời cả hai cùng xem hoặc lái thử xe"],
+      "walk_away_signals": ["Chê bai CX-5 thiếu công bằng", "Hứa chắc giá bán lại hoặc khoản tiết kiệm tương lai"]
     }
   },
   {
@@ -123,7 +147,7 @@
     "difficulty": "Easy",
     "sales_channel": "Chat trực tuyến",
     "training_objective": "Khai thác quãng đường và khả năng tiếp cận điểm sạc để xử lý lo ngại sạc tại chung cư bằng phương án có thể kiểm chứng.",
-    "scenario_version": "2.0",
+    "scenario_version": "2.1",
     "target_skills": ["need_discovery", "objection_handling"],
     "persona": {
       "name": "Anh Tuấn",
@@ -151,6 +175,12 @@
         "trigger_intent": "ask_living_location",
         "trigger_keywords": ["ở khu nào", "chung cư nào", "địa chỉ", "quận mấy"],
         "revealed_statement": "Anh ở chung cư bên mạn Cầu Giấy, gần ngay cái Vincom Trần Duy Hưng ấy."
+      },
+      {
+        "fact_key": "real_concern",
+        "trigger_intent": "ask_charging_worry",
+        "trigger_keywords": ["lo nhất về sạc", "ngại chuyện sạc", "vì sao sợ sạc"],
+        "revealed_statement": "Anh cứ nghĩ tối nào đi làm về cũng phải lo tìm chỗ sạc như sạc điện thoại, nên thấy mệt trước rồi."
       }
     ],
     "objections": [
@@ -165,8 +195,14 @@
     "expected_discovery": "Nhân viên phải hỏi về khoảng cách đi lại trung bình và vị trí sinh sống để chỉ ra điểm sạc công cộng tiện lợi gần nhà.",
     "success_conditions": "Tư vấn viên khai thác quãng đường và khu vực, giải thích phương án sạc bằng dữ liệu có nguồn, không hứa thời gian hay tần suất cố định và giúp khách xác minh điểm sạc phù hợp.",
     "termination_conditions": {
-      "max_turns": 6,
+      "max_turns": 8,
       "drop_out_trigger": "Nếu tư vấn viên bỏ qua câu hỏi sạc mà chuyển sang ép chốt cọc."
+    },
+    "buyer_decision_policy": {
+      "primary_motivation": "Có cách sạc khả thi khi sống ở chung cư và dùng xe đi làm hằng ngày.",
+      "evidence_needed": ["Ước lượng nhu cầu sạc theo quãng đường thực tế", "Cách tự kiểm tra trạm gần nhà và phương án dự phòng"],
+      "acceptable_next_steps": ["Cùng kiểm tra trạm và lịch sạc phù hợp", "Xem xe sau khi đã rõ phương án sạc"],
+      "walk_away_signals": ["Ép cọc trước khi giải đáp chuyện sạc", "Hứa tần suất hoặc thời gian sạc cố định không có căn cứ"]
     }
   }
 ]
