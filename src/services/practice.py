@@ -34,6 +34,7 @@ class PracticeSessionView(BaseModel):
     training_objective: str | None = None
     conversation_stage: ConversationStage
     turn_count: int
+    max_turns: int = 10
     visible_context: str
     termination_status: TerminationStatus
     termination_reason: str | None = None
@@ -80,9 +81,13 @@ class PracticeService:
     def list_scenarios(self) -> list[ScenarioSummary]:
         return self._scenarios.list_public()
 
-    async def start_session(self, scenario_id: str) -> PracticeSessionView:
+    async def start_session(self, scenario_id: str, max_turns: int | None = None) -> PracticeSessionView:
         session_id = self._session_id_factory()
-        result = await self._graph.start(session_id, scenario_id)
+        result = (
+            await self._graph.start(session_id, scenario_id, max_turns=max_turns)
+            if max_turns is not None
+            else await self._graph.start(session_id, scenario_id)
+        )
         return PracticeSessionView.model_validate(result)
 
     async def send_message(

@@ -25,7 +25,7 @@ class StubPractice:
     def list_scenarios(self):
         return ScenarioRepository().list_public()
 
-    async def start_session(self, scenario_id):
+    async def start_session(self, scenario_id, max_turns=None):
         self.counter += 1
         session_id = f"session-{self.counter}"
         session = PracticeSessionView(
@@ -34,6 +34,7 @@ class StubPractice:
             difficulty="Medium",
             conversation_stage="opening",
             turn_count=0,
+            max_turns=max_turns or 10,
             visible_context="Customer asks about a car.",
             termination_status="active",
             messages=[],
@@ -76,9 +77,10 @@ async def test_history_and_review_routes_enforce_identity_and_ownership(tmp_path
         created = await client.post(
             "/api/v1/practice/sessions",
             headers={"X-Test-Identity": "advisor-a:advisor"},
-            json={"scenario_id": "SCENARIO_01_VF5_TAXI"},
+            json={"scenario_id": "SCENARIO_01_VF5_TAXI", "max_turns": 15},
         )
         assert created.status_code == 201
+        assert created.json()["max_turns"] == 15
         session_id = created.json()["session_id"]
         # Ownership exists at start, but history only lists finished/evaluated attempts.
         await records.complete(session_id, draft_for(session_id))

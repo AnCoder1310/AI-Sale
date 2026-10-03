@@ -41,8 +41,14 @@ class RecordedPracticeService:
     def list_scenarios(self) -> list[ScenarioSummary]:
         return self._practice.list_scenarios()
 
-    async def start_session(self, scenario_id: str, advisor_id: str) -> PracticeSessionView:
-        session = await self._practice.start_session(scenario_id)
+    async def start_session(
+        self, scenario_id: str, advisor_id: str, max_turns: int | None = None
+    ) -> PracticeSessionView:
+        session = (
+            await self._practice.start_session(scenario_id, max_turns=max_turns)
+            if max_turns is not None
+            else await self._practice.start_session(scenario_id)
+        )
         await self._records.register(session.session_id, session.scenario_id, advisor_id)
         return session
 

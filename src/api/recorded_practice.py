@@ -55,7 +55,7 @@ def create_recorded_practice_routers(
     async def start_session(request: CreatePracticeSessionRequest, identity: actor) -> PracticeSessionView:
         require_role(identity, "advisor")
         try:
-            return await service.start_session(request.scenario_id, identity.user_id)
+            return await service.start_session(request.scenario_id, identity.user_id, max_turns=request.max_turns)
         except RoleplayScenarioNotFoundError as exc:
             raise HTTPException(status_code=404, detail="Practice scenario was not found.") from exc
 

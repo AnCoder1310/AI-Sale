@@ -7,10 +7,10 @@ export const practiceApi = {
     });
   },
 
-  async startSession(scenarioId) {
+  async startSession(scenarioId, maxTurns = 10) {
     return request('/practice/sessions', {
       method: 'POST',
-      body: JSON.stringify({ scenario_id: scenarioId }),
+      body: JSON.stringify({ scenario_id: scenarioId, max_turns: maxTurns }),
     });
   },
 

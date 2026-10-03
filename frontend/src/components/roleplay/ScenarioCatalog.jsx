@@ -15,6 +15,7 @@ export function ScenarioCatalog({
 }) {
   const [filterModel, setFilterModel] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
+  const [maxTurns, setMaxTurns] = useState(10);
 
   const modelOptions = [
     { id: 'all', label: 'Tất cả mẫu xe' },
@@ -61,6 +62,14 @@ export function ScenarioCatalog({
         </div>
 
       </div>
+
+      <label className="card-white" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px' }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Số lượt tư vấn tối đa: {maxTurns}</span>
+        <input type="range" min="8" max="15" step="1" value={maxTurns}
+          onChange={(event) => setMaxTurns(Number(event.target.value))}
+          aria-label="Số lượt tư vấn tối đa" style={{ flex: 1 }} />
+        <span style={{ fontSize: '0.78rem', color: '#737373' }}>8–15 lượt</span>
+      </label>
 
       {/* FILTER BAR */}
       <div
@@ -135,7 +144,7 @@ export function ScenarioCatalog({
                 <Badge variant="highlight">{s.model_badge || s.model}</Badge>
                 <Badge variant="default">Độ khó: {s.difficulty}</Badge>
                 <span style={{ fontSize: '0.78rem', color: '#737373', display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 2 }}>
-                  Tối đa {s.max_turns} lượt
+                  Tối đa {maxTurns} lượt
                 </span>
               </div>
 
@@ -212,7 +221,7 @@ export function ScenarioCatalog({
                 <button className="btn-ghost" onClick={() => onOpenHistory(s.scenario_id)}>Lịch sử</button>
                 <button
                   className="btn-primary"
-                  onClick={() => onStartScenario(s.scenario_id)}
+                  onClick={() => onStartScenario(s.scenario_id, maxTurns)}
                   disabled={starting}
                   style={{ padding: '8px 18px', fontSize: '0.85rem' }}
                 >
