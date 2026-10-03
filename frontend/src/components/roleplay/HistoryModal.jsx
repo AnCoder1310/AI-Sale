@@ -1,71 +1,39 @@
 import { Modal } from '../common/Modal';
-import { Badge } from '../common/Badge';
-import { ClockIcon } from '../common/Icons';
 
-export function HistoryModal({ isOpen, onClose, historyList, onSelectSession }) {
+const reviewLabel = (attempt) => {
+  if (attempt.review_status === 'manager_approved') return 'Quản lý đã duyệt';
+  if (attempt.evaluation_status === 'failed') return 'Chấm điểm thất bại';
+  return 'Bản nháp AI • chờ duyệt';
+};
+
+export function HistoryModal({ isOpen, onClose, attempts, status, error, onRetry, onSelectSession }) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Lịch sử Luyện tập Thực chiến" maxWidth={680}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <p style={{ fontSize: '0.85rem', color: '#737373' }}>
-          Các phiên thực chiến đã hoàn thành và kết quả đánh giá theo tiêu chuẩn Rubric của VinFast Academy.
-        </p>
-
+    <Modal isOpen={isOpen} onClose={onClose} title="Lịch sử luyện tập" maxWidth={680}>
+      {status === 'loading' && <p>Đang tải lịch sử...</p>}
+      {status === 'error' && (
+        <div role="alert">
+          <p>Không tải được lịch sử: {error}</p>
+          <button className="btn-ghost" onClick={onRetry}>Thử lại</button>
+        </div>
+      )}
+      {status === 'ready' && attempts.length === 0 && <p>Chưa có phiên luyện tập hoàn tất.</p>}
+      {status === 'ready' && attempts.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {historyList.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => {
-                onSelectSession && onSelectSession(item);
-                onClose();
-              }}
-              style={{
-                padding: '16px 20px',
-                borderRadius: 12,
-                border: '1px solid #E5E5E5',
-                backgroundColor: '#FAFAFA',
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#FFFFFF';
-                e.currentTarget.style.borderColor = '#CFCFCB';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#FAFAFA';
-                e.currentTarget.style.borderColor = '#E5E5E5';
-              }}
+          {attempts.map((item) => (
+            <button
+              key={item.session_id}
+              onClick={() => onSelectSession(item.session_id)}
+              style={{ padding: 16, textAlign: 'left', border: '1px solid #E5E5E5', borderRadius: 10, background: '#FAFAFA', cursor: 'pointer' }}
             >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: '0.78rem', color: '#737373', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <ClockIcon style={{ width: 12, height: 12 }} />
-                    {item.time}
-                  </span>
-                  <Badge variant="default">{item.model || 'VF'}</Badge>
-                </div>
-                <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#111111' }}>
-                  {item.title}
-                </h4>
-                <div style={{ fontSize: '0.78rem', color: '#555555', marginTop: 4 }}>
-                  Khách hàng: {item.customer} • Thời lượng: {item.duration}
-                </div>
-              </div>
-
-              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111111' }}>
-                  {item.score} <span style={{ fontSize: '0.75rem', color: '#737373' }}>/ 100</span>
-                </span>
-                <Badge variant={item.score >= 80 ? 'highlight' : 'default'}>
-                  {item.score >= 80 ? 'Đạt chuẩn' : 'Cần rèn luyện'}
-                </Badge>
-              </div>
-            </div>
+              <strong>{new Date(item.completed_at).toLocaleString('vi-VN')}</strong>
+              <span style={{ display: 'block', fontSize: '0.82rem', color: '#555' }}>{reviewLabel(item)}</span>
+              <span style={{ display: 'block', marginTop: 4 }}>
+                {item.approved_score ?? item.ai_score ?? '—'} / 5
+              </span>
+            </button>
           ))}
         </div>
-      </div>
+      )}
     </Modal>
   );
 }

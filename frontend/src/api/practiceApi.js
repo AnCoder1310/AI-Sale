@@ -38,4 +38,13 @@ export const practiceApi = {
       method: 'GET',
     });
   },
+
+  async getHistory(scenarioId = null) {
+    const query = scenarioId ? `?scenario_id=${encodeURIComponent(scenarioId)}` : '';
+    return request(`/practice/history${query}`, { method: 'GET' });
+  },
+
+  async getAttempt(sessionId) {
+    return request(`/practice/${encodeURIComponent(sessionId)}/attempt`, { method: 'GET' });
+  },
 };

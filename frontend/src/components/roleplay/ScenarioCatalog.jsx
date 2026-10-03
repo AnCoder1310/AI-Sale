@@ -9,6 +9,8 @@ import { SKILL_LABELS } from '../../data/scenarioData';
 export function ScenarioCatalog({
   scenarios,
   onStartScenario,
+  onOpenHistory,
+  latestByScenario = {},
   starting = false,
 }) {
   const [filterModel, setFilterModel] = useState('all');
@@ -118,6 +120,16 @@ export function ScenarioCatalog({
             }}
           >
             <div>
+              {latestByScenario[s.scenario_id] && (
+                <p style={{ fontSize: '0.82rem', marginBottom: 10 }}>
+                  Kết quả gần nhất: {latestByScenario[s.scenario_id].approved_score ?? latestByScenario[s.scenario_id].ai_score ?? '—'} / 5
+                  {' • '}{latestByScenario[s.scenario_id].review_status === 'manager_approved'
+                    ? 'Đã duyệt'
+                    : latestByScenario[s.scenario_id].evaluation_status === 'failed'
+                      ? 'Chấm điểm thất bại'
+                      : 'Chờ duyệt'}
+                </p>
+              )}
               {/* Badges */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                 <Badge variant="highlight">{s.model_badge || s.model}</Badge>
@@ -196,15 +208,18 @@ export function ScenarioCatalog({
                 Khai thác nhu cầu trong hội thoại
               </span>
 
-              <button
-                className="btn-primary"
-                onClick={() => onStartScenario(s.scenario_id)}
-                disabled={starting}
-                style={{ padding: '8px 18px', fontSize: '0.85rem' }}
-              >
-                <span>Vào phòng luyện tập</span>
-                <ArrowRight style={{ width: 14, height: 14 }} />
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn-ghost" onClick={() => onOpenHistory(s.scenario_id)}>Lịch sử</button>
+                <button
+                  className="btn-primary"
+                  onClick={() => onStartScenario(s.scenario_id)}
+                  disabled={starting}
+                  style={{ padding: '8px 18px', fontSize: '0.85rem' }}
+                >
+                  <span>Vào phòng luyện tập</span>
+                  <ArrowRight style={{ width: 14, height: 14 }} />
+                </button>
+              </div>
             </div>
           </div>
         ))}
