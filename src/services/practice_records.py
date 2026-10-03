@@ -56,8 +56,8 @@ class ManagerReviewDecision(BaseModel):
     def validate_reason(self) -> ManagerReviewDecision:
         if not self.change_reason.strip():
             raise ValueError("change_reason must not be blank")
-        if any(score < 1 or score > 5 for score in self.score_overrides.values()):
-            raise ValueError("score overrides must be between 1 and 5")
+        if any(score < 1 or score > 3 for score in self.score_overrides.values()):
+            raise ValueError("score overrides must be between 1 and 3")
         return self
 
 

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 RUBRIC_CRITERIA = ("need_discovery", "product_knowledge", "objection_handling", "policy_accuracy", "closing_next_step")
 RUBRIC_SCORE_MIN = 1
-RUBRIC_SCORE_MAX = 5
+RUBRIC_SCORE_MAX = 3
 CUSTOMER_BEHAVIOR_RULES = (
     "Always role-play the customer, never the sales advisor.",
     "Keep the scenario persona consistent throughout the session.",

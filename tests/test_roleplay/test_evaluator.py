@@ -63,7 +63,7 @@ def evaluation_output():
         {
             "criterion": CriterionType.NEED_DISCOVERY.value,
             "status": "assessed",
-            "score": 4,
+            "score": 2,
             "evidence": [
                 {
                     "message_id": "advisor-1",
@@ -80,7 +80,7 @@ def evaluation_output():
         evaluations.append(
             {
                 "criterion": criterion.value,
-                "status": "not_observed",
+                "status": "unassessed",
                 "score": None,
                 "evidence": [],
                 "reason": "No fair opportunity occurred.",
@@ -132,7 +132,7 @@ async def test_evaluator_validates_evidence_and_computes_aggregate(scenario, com
     result = await evaluator.evaluate(scenario, completed_state, approved_evidence())
 
     assert result.assessed_criteria_count == 1
-    assert result.overall_score == 4.0
+    assert result.overall_score == 2.0
     assert result.review_status is ReviewStatus.AI_DRAFT
     assert result.factual_findings[0].source_ids == ["policy-a"]
     assert model.calls[0]["system_prompt"] == EVALUATOR_SYSTEM_PROMPT
@@ -147,6 +147,30 @@ async def test_evaluator_rejects_non_exact_transcript_quote(scenario, completed_
 
     with pytest.raises(EvaluationError, match="quote is not exact"):
         await evaluator.evaluate(scenario, completed_state, approved_evidence())
+
+
+@pytest.mark.asyncio
+async def test_evaluator_rejects_out_of_range_v3_score(scenario, completed_state):
+    output = evaluation_output()
+    output["evaluations"][0]["score"] = 4
+    evaluator = RoleplayEvaluator(CapturingEvaluationModel(output))
+
+    with pytest.raises(EvaluationError, match="invalid evaluation output"):
+        await evaluator.evaluate(scenario, completed_state, approved_evidence())
+
+
+@pytest.mark.asyncio
+async def test_score_three_requires_customer_and_advisor_turns(scenario, completed_state):
+    output = evaluation_output()
+    output["evaluations"][0]["score"] = 3
+    evaluator = RoleplayEvaluator(CapturingEvaluationModel(output))
+
+    with pytest.raises(EvaluationError, match="customer context evidence"):
+        await evaluator.evaluate(scenario, completed_state, approved_evidence())
+
+    output["evaluations"][0]["evidence"].append({"message_id": "customer-2", "quote": "Khoảng 180 km mỗi ngày."})
+    result = await evaluator.evaluate(scenario, completed_state, approved_evidence())
+    assert result.overall_score == 3
 
 
 @pytest.mark.asyncio

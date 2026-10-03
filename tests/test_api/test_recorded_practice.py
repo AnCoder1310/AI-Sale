@@ -126,11 +126,11 @@ async def test_manager_can_review_finished_attempt_once_and_advisor_sees_result(
         approved = await client.patch(
             f"/api/v1/manager/reviews/{session_id}",
             headers={"X-Test-Identity": "manager-a:manager"},
-            json={"score_overrides": {"need_discovery": 4}, "change_reason": "Follow-up was strong."},
+            json={"score_overrides": {"need_discovery": 2}, "change_reason": "Follow-up was strong."},
         )
         assert approved.status_code == 200
         assert approved.json()["ai_draft"]["overall_score"] == 3
-        assert approved.json()["approved_result"]["overall_score"] == 4
+        assert approved.json()["approved_result"]["overall_score"] == 2
         assert (
             await client.patch(
                 f"/api/v1/manager/reviews/{session_id}",
@@ -171,7 +171,7 @@ def draft_for(session_id: str) -> SessionEvaluationResult:
     evaluations = [
         {
             "criterion": criterion,
-            "status": "assessed" if criterion is CriterionType.NEED_DISCOVERY else "not_observed",
+            "status": "assessed" if criterion is CriterionType.NEED_DISCOVERY else "unassessed",
             "score": 3 if criterion is CriterionType.NEED_DISCOVERY else None,
             "evidence": (
                 [{"message_id": "a-1", "quote": "What matters most?"}]

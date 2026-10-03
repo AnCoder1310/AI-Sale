@@ -135,7 +135,7 @@ class RecordingEvaluator:
             evaluations=[
                 CriterionEvaluation(
                     criterion=criterion,
-                    status=CriterionStatus.NOT_OBSERVED,
+                    status=CriterionStatus.UNASSESSED,
                     reason="No opportunity to assess this skill.",
                 )
                 for criterion in CriterionType

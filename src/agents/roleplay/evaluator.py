@@ -132,6 +132,16 @@ class RoleplayEvaluator:
             if evidence.quote not in message:
                 raise EvaluationError(f"evidence quote is not exact for message_id: {evidence.message_id}")
 
+        roles = {message.message_id: message.role for message in messages}
+        for evaluation in draft.evaluations:
+            if evaluation.status is not CriterionStatus.ASSESSED:
+                continue
+            cited_roles = {roles[item.message_id] for item in evaluation.evidence}
+            if evaluation.score >= 2 and "advisor" not in cited_roles:
+                raise EvaluationError("scores 2-3 require advisor behavior evidence")
+            if evaluation.score == 3 and "customer" not in cited_roles:
+                raise EvaluationError("score 3 requires customer context evidence")
+
     @staticmethod
     def _validate_factual_claim_coverage(
         draft: EvaluationDraft,

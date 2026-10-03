@@ -106,7 +106,7 @@ async def test_evaluation_adapter_validates_draft_schema():
             "evaluations": [
                 {
                     "criterion": criterion,
-                    "status": "not_observed",
+                    "status": "unassessed",
                     "score": None,
                     "reason": "Chưa có cơ hội quan sát trong transcript.",
                 }
@@ -141,7 +141,7 @@ async def test_evaluation_adapter_retries_once_after_malformed_output():
                         return {"unexpected": "field"}
                     return {
                         "evaluations": [
-                            {"criterion": criterion, "status": "not_observed", "reason": "No opportunity."}
+                            {"criterion": criterion, "status": "unassessed", "reason": "No opportunity."}
                             for criterion in (
                                 "need_discovery",
                                 "product_knowledge",
