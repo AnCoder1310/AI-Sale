@@ -132,7 +132,7 @@ def reciprocal_rank_fusion(
     dense_hits: list[RetrievalHit],
     sparse_hits: list[RetrievalHit],
     rrf_k: int = 60,
-    top_k: int = 8,
+    top_k: int = 20,
     target_date: date | None = None,
 ) -> list[FusedHit]:
     fused: dict[str, FusedHit] = {}

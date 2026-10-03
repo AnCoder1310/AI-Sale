@@ -113,3 +113,32 @@ def test_current_lookup_excludes_expired_or_out_of_date_documents():
 
 def test_public_ingest_endpoint_is_not_registered():
     assert not any(getattr(route, "path", "") == "/copilot/ingest" for route in router.routes)
+
+
+@pytest.mark.asyncio
+async def test_evidence_gate_does_not_let_one_document_crowd_out_a_price_list():
+    product_hits = [{**EVIDENCE, "chunk_id": f"product-{index}", "document_id": "product-vf8"} for index in range(1, 6)]
+    price_hit = {**EVIDENCE, "chunk_id": "price-1", "document_id": "price-list"}
+
+    result = await nodes.evidence_gate_node({"fused_hits": [*product_hits, price_hit]})
+
+    assert result["evidence_status"] == "sufficient"
+    assert len(result["selected_evidence"]) == 4
+    assert price_hit in result["selected_evidence"]
+    assert result["selected_evidence"][0] == product_hits[0]
+
+
+@pytest.mark.asyncio
+async def test_short_price_query_can_select_sparse_price_evidence():
+    product_hits = [{**EVIDENCE, "chunk_id": f"product-{index}", "document_id": "product-vf8"} for index in range(1, 8)]
+    price_hit = {
+        **EVIDENCE,
+        "chunk_id": "price-1",
+        "document_id": "price-list",
+        "dense_score": None,
+        "bm25_score": 2.48,
+    }
+
+    result = await nodes.evidence_gate_node({"fused_hits": [*product_hits, price_hit]})
+
+    assert price_hit in result["selected_evidence"]

@@ -22,7 +22,9 @@ from src.services.llm import get_llm
 
 logger = logging.getLogger(__name__)
 DENSE_THRESHOLD = 0.48
-BM25_THRESHOLD = 3.5
+# BM25 scores depend on query length. A two-term product query such as
+# "giá vf8" scores relevant price-list chunks around 2.5 on the MVP corpus.
+BM25_THRESHOLD = 2.4
 MAX_RETRIES = 1
 CITATION_PATTERN = re.compile(r"\[(C[^\]\s]*)\]")
 
@@ -43,8 +45,8 @@ async def dual_retrieval_node(state: CopilotState) -> dict[str, Any]:
         dense_engine, bm25_engine = get_dense_search_engine(), get_bm25_search_engine()
         dense_hits, sparse_hits = await asyncio.wait_for(
             asyncio.gather(
-                asyncio.to_thread(dense_engine.search, query=query, top_k=10, target_date=target_date),
-                asyncio.to_thread(bm25_engine.search, query=query, top_k=10, target_date=target_date),
+                asyncio.to_thread(dense_engine.search, query=query, top_k=20, target_date=target_date),
+                asyncio.to_thread(bm25_engine.search, query=query, top_k=20, target_date=target_date),
             ),
             timeout=get_settings().retrieval_timeout_seconds,
         )
@@ -66,12 +68,26 @@ async def rrf_fusion_node(state: CopilotState) -> dict[str, Any]:
 
 
 async def evidence_gate_node(state: CopilotState) -> dict[str, Any]:
-    selected = [
+    eligible = [
         hit
         for hit in state.get("fused_hits", [])
         if (hit["dense_score"] is not None and hit["dense_score"] >= DENSE_THRESHOLD)
         or (hit["bm25_score"] is not None and hit["bm25_score"] >= BM25_THRESHOLD)
-    ][:4]
+    ]
+    # Dense retrieval can return many adjacent chunks from one document. Give
+    # other eligible sources a place before filling the remaining context slots.
+    selected: list[Any] = []
+    seen_documents: set[str] = set()
+    for hit in eligible:
+        if hit["document_id"] not in seen_documents:
+            selected.append(hit)
+            seen_documents.add(hit["document_id"])
+            if len(selected) == 4:
+                break
+    if len(selected) < 4:
+        selected_ids = {hit["chunk_id"] for hit in selected}
+        selected.extend(hit for hit in eligible if hit["chunk_id"] not in selected_ids)
+        selected = selected[:4]
     return {"evidence_status": "sufficient" if selected else "insufficient", "selected_evidence": selected}
 
 
