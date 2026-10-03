@@ -14,6 +14,7 @@ export function Header({
   unreadCount = 0,
   onOpenNotifications,
   advisorProfile,
+  onLogout,
 }) {
   const tabs = [
     { id: 'home', label: 'Home' },
@@ -77,6 +78,9 @@ export function Header({
                 <span className="user-role">{advisorProfile.role}</span>
               </div>
           </div>
+          <button className="header-logout-btn" type="button" onClick={onLogout}>
+            Đăng xuất
+          </button>
         </div>
       </div>
     </header>
