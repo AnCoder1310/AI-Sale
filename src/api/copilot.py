@@ -1,4 +1,4 @@
-"""HTTP contracts for the baseline Copilot and corpus ingestion."""
+"""HTTP contracts for the baseline Copilot."""
 
 import asyncio
 import json
@@ -11,8 +11,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, StringConstraints, computed_field, field_validator
 
 from src.agents.copilot.graph import copilot_agent
+from src.agents.copilot.nodes import CopilotDependencyError
 from src.agents.copilot.state import CopilotResponse
-from src.knowledge.retrieval_service import get_retrieval_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/copilot", tags=["Copilot"])
@@ -43,18 +43,16 @@ class CopilotQueryResponse(CopilotResponse):
         return self.status == "abstained"
 
 
-class IngestResponse(BaseModel):
-    status: str
-    chunks_ingested: int
-    message: str
-
-
 @router.post("/query", response_model=CopilotQueryResponse)
 async def query_copilot(request: CopilotQueryRequest) -> CopilotQueryResponse:
     try:
         result = await copilot_agent.ainvoke({"query": request.query, "target_date": request.target_date})
         final = CopilotResponse.model_validate(result["final_response"])
         return CopilotQueryResponse(**final.model_dump())
+    except CopilotDependencyError as exc:
+        raise HTTPException(
+            status_code=503, detail="Dịch vụ tra cứu tạm thời không khả dụng. Vui lòng thử lại."
+        ) from exc
     except Exception as exc:
         logger.warning("Copilot request failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=500, detail="Không thể xử lý câu hỏi lúc này.") from None
@@ -74,17 +72,3 @@ async def get_source_document(document_id: str) -> dict[str, Any]:
         logger.warning("Source lookup failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=500, detail="Không thể đọc tài liệu lúc này.") from None
     raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu.")
-
-
-@router.post("/ingest", response_model=IngestResponse)
-async def trigger_ingestion(reset: bool = False) -> IngestResponse:
-    try:
-        count = await asyncio.to_thread(get_retrieval_service().ingest_corpus, reset=reset)
-        return IngestResponse(
-            status="success",
-            chunks_ingested=count,
-            message=f"Đã nạp {count} chunks vào Vector Database và BM25 (reset={reset}).",
-        )
-    except Exception as exc:
-        logger.warning("Copilot ingestion failed (%s)", type(exc).__name__)
-        raise HTTPException(status_code=500, detail="Không thể cập nhật kho tài liệu lúc này.") from None

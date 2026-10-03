@@ -18,11 +18,7 @@ def parse_target_date(value: date | str | None) -> date | None:
 
 
 def is_document_retrievable(metadata: ChunkMetadata, target_date: date | None = None) -> bool:
-    """Keep published history; enforce expiry only for an explicit lookup date.
-
-    Expired status does not establish a historical expiry date. Missing bounds
-    remain missing; generation must inspect the source conditions.
-    """
+    """Only current active documents or dated historical documents may be used."""
     if metadata.status not in {"active", "expired"}:
         return False
     try:
@@ -31,6 +27,10 @@ def is_document_retrievable(metadata: ChunkMetadata, target_date: date | None = 
     except ValueError:
         return False
     lookup_date = target_date or today_in_vietnam()
+    if target_date is None and metadata.status != "active":
+        return False
+    if metadata.status == "expired" and effective_to is None:
+        return False
     if effective_from and effective_from > lookup_date:
         return False
-    return not (target_date and effective_to and effective_to < target_date)
+    return not (effective_to and effective_to < lookup_date)
