@@ -15,13 +15,13 @@ function ScoreEditor({ evaluation, value, onChange }) {
       <div className="review-criterion-heading">
         <div>
           <strong>{CRITERION_LABELS[evaluation.criterion] || evaluation.criterion}</strong>
-          <span>{assessed ? 'Đã đánh giá' : 'Chưa đủ bằng chứng'}</span>
+          <span>{assessed ? 'Đã đánh giá' : 'Chưa chấm — xem lý do'}</span>
         </div>
         {assessed && (
           <label>
             <span className="sr-only">Điểm quản lý</span>
             <select value={value} onChange={(event) => onChange(Number(event.target.value))}>
-              {[1, 2, 3, 4, 5].map((score) => <option key={score} value={score}>{score}/5</option>)}
+              {[1, 2, 3].map((score) => <option key={score} value={score}>{score}/3</option>)}
             </select>
           </label>
         )}
@@ -94,7 +94,7 @@ export function ManagerReviewModal({ detail, onClose, onApprove }) {
             <section className="review-summary-card">
               <div>
                 <span>AI draft score</span>
-                <strong>{draft?.overall_score?.toFixed(1) || '—'}<small>/5</small></strong>
+                <strong>{draft?.overall_score?.toFixed(1) || '—'}<small>/3</small></strong>
               </div>
               <div>
                 <span>Rubric version</span>

@@ -131,7 +131,7 @@ export function ScenarioCatalog({
             <div>
               {latestByScenario[s.scenario_id] && (
                 <p style={{ fontSize: '0.82rem', marginBottom: 10 }}>
-                  Kết quả gần nhất: {latestByScenario[s.scenario_id].approved_score ?? latestByScenario[s.scenario_id].ai_score ?? '—'} / 5
+                  Kết quả gần nhất: {latestByScenario[s.scenario_id].approved_score ?? latestByScenario[s.scenario_id].ai_score ?? '—'} / 3
                   {' • '}{latestByScenario[s.scenario_id].review_status === 'manager_approved'
                     ? 'Đã duyệt'
                     : latestByScenario[s.scenario_id].evaluation_status === 'failed'

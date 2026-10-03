@@ -111,7 +111,7 @@ export function ManagerReviewView({ currentUser, onLogout }) {
                   </div>
                   <div className="manager-ai-score">
                     <span>AI draft</span>
-                    <strong>{attempt.ai_score?.toFixed(1) || '—'}<small>/5</small></strong>
+                    <strong>{attempt.ai_score?.toFixed(1) || '—'}<small>/3</small></strong>
                   </div>
                   <button type="button" onClick={() => openReview(attempt.session_id)}>
                     {detailStatus === 'loading' ? 'Đang mở…' : 'Thẩm định điểm →'}

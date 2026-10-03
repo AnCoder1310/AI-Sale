@@ -28,7 +28,7 @@ export function HistoryModal({ isOpen, onClose, attempts, status, error, onRetry
               <strong>{new Date(item.completed_at).toLocaleString('vi-VN')}</strong>
               <span style={{ display: 'block', fontSize: '0.82rem', color: '#555' }}>{reviewLabel(item)}</span>
               <span style={{ display: 'block', marginTop: 4 }}>
-                {item.approved_score ?? item.ai_score ?? '—'} / 5
+                {item.approved_score ?? item.ai_score ?? '—'} / 3
               </span>
             </button>
           ))}
