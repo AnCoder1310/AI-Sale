@@ -58,7 +58,21 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Mở `.env` và điền `OPENAI_API_KEY`. Riêng `AI_LOG_API_KEY`, mỗi thành viên tự
+Mở `.env` và điền `OPENROUTER_API_KEY`. Copilot dùng
+`EMBEDDING_MODEL_NAME=openai/text-embedding-3-small` qua OpenRouter; chat và
+role-play dùng `OPENROUTER_MODEL_NAME`. Không có key, ứng dụng sẽ báo lỗi thay
+vì âm thầm dùng hash embeddings. Hash chỉ dành cho test với
+`EMBEDDING_PROVIDER=hash`.
+
+Local MVP dùng `DATABASE_URL=sqlite:///./data/app.db` để lưu phiên luyện tập
+và ChromaDB tại `CHROMA_PERSIST_DIR=./data/chroma` để tra cứu kiến thức. Hai
+kho này khác nhau. Khi đổi embedding model, dùng collection Chroma mới và
+nạp lại corpus; không trộn vector từ các model khác nhau. Cấu hình ví dụ đã
+đặt `CHROMA_COLLECTION_NAME=vinfast_knowledge_openrouter_3_small` để tránh
+collection hash cũ. SQLite và Chroma trên ổ đĩa local không tự trở thành kho
+bền vững khi backend deploy trên host có filesystem tạm thời.
+
+Riêng `AI_LOG_API_KEY`, mỗi thành viên tự
 tạo key riêng tại [dashboard Phoenix](https://phoenix.note.transformerlabs.ai/api-keys)
 rồi thay vào chỗ `<get-your-api-key-from-dashboard-phoenix>` — giá trị trong
 `.env.example` chỉ là placeholder, để nguyên thì log không vào được hệ thống chấm.

@@ -278,7 +278,7 @@ Sau đó:
 │                                                          │
 │ Gợi ý tiếp theo: [Tài liệu / Tình huống]                 │
 │                                                          │
-│ [ Luyện tập lại ]       [ Gửi attempt này để review ]    │
+│ [ Luyện tập lại ]       [ Xem lịch sử attempt ]          │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -293,8 +293,10 @@ Mỗi điểm/nhận định mở được turn và exact quote liên quan. Fact
 thị riêng với trạng thái `Được nguồn hỗ trợ`, `Mâu thuẫn với nguồn` hoặc `Chưa
 đủ nguồn xác minh`.
 
-Chỉ nút **Gửi attempt này để review** mới tạo item trong hàng đợi Manager. Retry
-không tự động gửi mọi lần luyện tập cho Manager.
+Mọi attempt hoàn thành được lưu tự động. Card tình huống hiển thị result gần nhất;
+**Xem lịch sử attempt** mở các lần cũ theo thứ tự mới nhất trước. Manager có thể mở
+mọi attempt, nhưng hàng đợi mặc định group theo Advisor + Scenario và chỉ đưa attempt
+mới nhất chưa review lên đầu; Manager không bắt buộc review từng lần luyện tập.
 
 ---
 
@@ -388,7 +390,8 @@ O --> P[Tạo và lưu bản nháp AI]
 P --> Q[Xem kết quả]
 
 Q -->|Luyện tập lại| J
-Q -->|Gửi attempt đã chọn| R[Hàng đợi Manager review]
+Q -->|Xem lịch sử attempt| W[Lịch sử theo tình huống]
+P --> R[Hàng đợi Manager group theo Advisor + Scenario]
 
 M --> R
 R --> S[Xem hội thoại + đánh giá]
@@ -411,7 +414,7 @@ Tra cứu bằng Trợ lý kiến thức
 Chọn tình huống luyện tập
 Hội thoại nhiều lượt với AI Customer
 Xem kết quả phiên luyện tập
-Luyện tập lại hoặc gửi attempt đã chọn để review
+Luyện tập lại hoặc xem lịch sử attempt của tình huống
 Xem các phiên gần đây
 ```
 

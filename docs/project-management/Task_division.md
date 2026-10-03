@@ -113,8 +113,8 @@ Chương phụ trách runtime/tool/persistence nodes trong cùng graph.
 Implement:
 
 ```text
-backend/roleplay/customer_agent.py
-backend/roleplay/prompts/
+src/agents/roleplay/customer_agent.py
+src/agents/roleplay/prompts/
 ```
 
 AI Customer Agent cần:
@@ -135,7 +135,7 @@ AI Customer Agent cần:
 Phụ trách:
 
 ```text
-backend/roleplay/state.py
+src/agents/roleplay/state.py
 ```
 
 State fields:
@@ -180,7 +180,7 @@ Scenario format hỗ trợ:
 Implement:
 
 ```text
-backend/roleplay/scenario_loader.py
+src/agents/roleplay/scenario_loader.py
 ```
 
 Phối hợp với Đạt về scenario content.
@@ -189,7 +189,7 @@ Phối hợp với Đạt về scenario content.
 Implement:
 
 ```text
-backend/roleplay/turn_analyzer.py
+src/agents/roleplay/turn_analyzer.py
 ```
 
 Phân tích mỗi salesperson turn để phát hiện:
@@ -241,14 +241,14 @@ Phụ trách:
 POST /practice/sessions
 POST /practice/{id}/message
 POST /practice/{id}/finish
-POST /practice/{id}/submit-review
+GET  /practice/history?scenario_id={scenario_id}
 ```
 
 Implement:
 
 ```text
-backend/api/practice_chat.py
-backend/services/practice_service.py
+src/api/practice.py
+src/services/practice.py
 ```
 
 `POST /practice/sessions`:
@@ -270,12 +270,20 @@ backend/services/practice_service.py
 `POST /practice/{id}/finish`:
 - persist final turn and freeze transcript idempotently
 - invoke evaluator once for the transcript/rubric version
+- persist the completed attempt and provisional AI result automatically
 - return provisional result or retryable evaluation status
 
-`POST /practice/{id}/submit-review`:
-- validate session ownership and completed evaluation
-- create one pending Manager review for the selected attempt
-- remain idempotent for duplicate requests
+`GET /practice/history?scenario_id={scenario_id}`:
+- validate current-user ownership
+- return every completed attempt for that Advisor and scenario, newest first
+- expose enough summary data for the scenario card to render the latest result
+- preserve transcript/result access for older attempts
+
+Manager Review Queue:
+- make every completed attempt available for Manager inspection
+- group the default queue by `advisor + scenario`
+- prioritize the latest unreviewed attempt in each group
+- do not require the Manager to review every stored attempt
 
 Persistence mechanism do Chương cung cấp.
 
@@ -283,7 +291,7 @@ Persistence mechanism do Chương cung cấp.
 Phụ trách:
 
 ```text
-backend/roleplay/evaluator.py
+src/agents/roleplay/evaluator.py
 ```
 
 Evaluation input:
@@ -366,7 +374,8 @@ Duy phụ trách:
 - evaluation reasoning
 - coaching logic
 - practice start/message backend
-- practice finish/result/submit-review business lifecycle
+- practice finish/result/history business lifecycle
+- lịch sử attempt và nghiệp vụ/API/lưu trữ Manager Review sau khi có auth dùng chung
 
 Cần phối hợp với Chương trước khi thay đổi:
 - shared FastAPI setup
@@ -464,7 +473,7 @@ answer / abstain
 Implement:
 
 ```text
-backend/copilot/
+src/agents/copilot/
 ├── graph.py
 ├── state.py
 ├── prompts.py
@@ -517,7 +526,7 @@ Chương phụ trách phần runtime sau khi corpus đã được Đạt chuẩn
 Chương phụ trách:
 
 ```text
-backend/knowledge/
+src/knowledge/
 ├── chunking.py
 ├── embeddings.py
 ├── vector_store.py
@@ -554,8 +563,8 @@ RoleplayGraph
 Đạt phụ trách:
 
 ```text
-backend/knowledge/ingestion.py
-backend/knowledge/metadata.py
+src/knowledge/ingestion.py
+src/models/evaluation.py
 ```
 
 bao gồm ingestion orchestration và metadata schema/validation.
@@ -585,10 +594,8 @@ Phụ trách:
 Implement:
 
 ```text
-backend/roleplay/
-├── checkpoint.py
-├── persistence.py
-└── knowledge_tools.py
+src/persistence/sqlite_checkpoint.py
+src/integrations/practice_runtime.py
 ```
 
 Trong `RoleplayGraph`:
@@ -618,7 +625,7 @@ next customer turn
 Co-own:
 
 ```text
-backend/roleplay/graph.py
+src/agents/roleplay/graph.py
 ```
 
 Chương phụ trách:
@@ -643,9 +650,6 @@ GET  /copilot/sources/{id}
 
 GET  /practice/{id}/evaluation
 
-GET   /manager/reviews
-PATCH /manager/reviews/{id}
-
 GET /progress
 ```
 
@@ -654,16 +658,28 @@ Duy phụ trách:
 ```text
 POST /practice/sessions
 POST /practice/{id}/message
+POST /practice/{id}/finish
+GET  /practice/history?scenario_id={scenario_id}
+GET  /manager/reviews
+GET  /manager/reviews/{id}
+PATCH /manager/reviews/{id}
 ```
+
+`GET /manager/reviews` mặc định trả các group `advisor + scenario` với latest
+unreviewed attempt; review detail vẫn có thể truy cập các attempt cũ trong group.
 
 #### 9. Evaluation backend
 Phụ trách:
 - evaluation persistence
 - criterion-score persistence
 - evaluation retrieval API
-- manager-review persistence
-- manager-review API
-- authorization, idempotency and audit persistence for review submission/approval
+- shared authentication/current-user dependency and role verification contract
+
+Duy phụ trách attempt index của Practice, API/lưu trữ Manager Review, quy tắc
+duyệt một lần và audit. Chương cung cấp `current_user` đã xác thực gồm `user_id`
+ổn định và role `advisor`/`manager`; không dùng user ID do client tự gửi làm
+danh tính. Khi auth sẵn sàng, router Practice có phân quyền thay thế router cũ;
+không mount cả hai cùng lúc.
 
 Flow:
 
@@ -709,13 +725,11 @@ Phối hợp với Đạt về corpus metadata.
 Phụ trách:
 
 ```text
-backend/platform/
-├── database.py
-├── llm_client.py
-├── logging.py
-├── config.py
-├── errors.py
-└── dependencies.py
+src/config.py
+src/services/llm.py
+src/main.py
+src/persistence/
+src/integrations/
 ```
 
 Bao gồm:
@@ -787,8 +801,8 @@ Cần phối hợp với Đạt trước khi thay đổi:
 - corpus labeling conventions
 
 Không tự ý thay đổi phần do Đạt owner:
-- `backend/knowledge/ingestion.py`
-- `backend/knowledge/metadata.py`
+- `src/knowledge/ingestion.py`
+- `src/models/evaluation.py`
 - raw/normalized corpus preprocessing
 - automated evaluation runner và metrics implementation
 
@@ -869,12 +883,12 @@ Cung cấp normalized data cho knowledge runtime của Chương.
 Đạt phụ trách coding cho data-to-knowledge boundary:
 
 ```text
-backend/knowledge/
+src/knowledge/
 ├── ingestion.py
-└── metadata.py
+└── schemas.py
 ```
 
-`metadata.py` phụ trách:
+`schemas.py` phụ trách:
 
 ```text
 metadata schema
@@ -1274,8 +1288,9 @@ Với mỗi criterion:
 - reason
 - improvement suggestion
 
-Hiển thị riêng factual findings và trạng thái `AI draft`. Advisor có thể retry hoặc
-submit attempt hiện tại; chỉ submit mới tạo Manager review.
+Hiển thị riêng factual findings và trạng thái `AI draft`. Mọi attempt hoàn thành được
+lưu tự động. Scenario card hiển thị result gần nhất; Advisor có thể retry hoặc mở
+history để xem transcript/result của các attempt cũ.
 
 Cung cấp transcript view.
 
@@ -1400,7 +1415,9 @@ Không tự ý thay đổi:
 | Evaluation persistence | Chương | Duy |
 | Practice start API | Duy | Chương |
 | Practice message API | Duy | Chương |
-| Practice finish/result/submit-review business flow | Duy | Chương |
+| Practice finish/result/history business flow | Duy | Chương |
+| Practice manager-review API and persistence | Duy | Chương (auth contract) |
+| Shared authentication/current-user role dependency | Chương | Duy (Practice integration) |
 | Evaluation persistence/result API | Chương | Duy |
 | Practice Room UI | An | Duy |
 | Result UI | An | Duy + Đạt |
@@ -1518,8 +1535,8 @@ Không tự ý thay đổi:
 ## Duy
 
 ```text
-backend/
-├── roleplay/
+src/
+├── agents/roleplay/
 │   ├── graph.py
 │   ├── state.py
 │   ├── customer_agent.py
@@ -1527,56 +1544,36 @@ backend/
 │   ├── turn_analyzer.py
 │   ├── evaluator.py
 │   └── prompts/
-│
-├── api/
-│   └── practice_chat.py
-│
-└── services/
-    └── practice_service.py
+├── api/practice.py
+├── services/practice.py
+└── models/evaluation.py
 ```
 
-`roleplay/graph.py` do Duy làm editor-owner; Chương review các boundary liên quan
+`src/agents/roleplay/graph.py` do Duy làm editor-owner; Chương review các boundary liên quan
 runtime, checkpoint, persistence và shared tools.
 
 ## Chương
 
 ```text
-backend/
-├── copilot/
+src/
+├── agents/copilot/
 │   ├── graph.py
 │   ├── state.py
-│   ├── prompts.py
 │   ├── intent_router.py
-│   ├── retrieval.py
-│   ├── reranker.py
 │   ├── answer_generator.py
-│   ├── citation_validator.py
 │   └── guardrails.py
 │
 ├── knowledge/
 │   ├── chunking.py
-│   ├── embeddings.py
+│   ├── embedding.py
 │   ├── vector_store.py
-│   ├── policy_versioning.py
+│   ├── ingestion.py
+│   ├── schemas.py
 │   └── retrieval_service.py
 │
-├── roleplay/
-│   ├── checkpoint.py
-│   ├── persistence.py
-│   └── knowledge_tools.py
-│
-├── api/
-│   ├── copilot.py
-│   ├── practice_result.py
-│   └── manager.py
-│
-└── platform/
-    ├── database.py
-    ├── llm_client.py
-    ├── logging.py
-    ├── config.py
-    ├── errors.py
-    └── dependencies.py
+├── api/copilot.py
+├── services/llm.py
+└── config.py
 ```
 
 ## Đạt
@@ -1589,10 +1586,9 @@ data/
 ├── scenarios/
 └── evaluation/
 
-backend/
-└── knowledge/
-    ├── ingestion.py
-    └── metadata.py
+src/knowledge/
+├── ingestion.py
+└── schemas.py
 
 scripts/
 ├── ingestion/

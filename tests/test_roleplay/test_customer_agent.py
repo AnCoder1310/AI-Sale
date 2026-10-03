@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from backend.roleplay.customer_agent import CustomerAgent, CustomerResponseError
-from backend.roleplay.prompts import CUSTOMER_PROMPT_VERSION, CUSTOMER_SYSTEM_PROMPT
-from backend.roleplay.scenario_loader import ScenarioRepository
-from backend.roleplay.state import RoleplayState
+from src.agents.roleplay.customer_agent import CustomerAgent, CustomerResponseError
+from src.agents.roleplay.prompts import CUSTOMER_PROMPT_VERSION, CUSTOMER_SYSTEM_PROMPT
+from src.agents.roleplay.scenario_loader import ScenarioRepository
+from src.agents.roleplay.state import RoleplayState
 
 SCENARIOS = Path("data/scenarios/scenarios.json")
 

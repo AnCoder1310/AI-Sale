@@ -3,13 +3,19 @@ from pathlib import Path
 
 import pytest
 
-from backend.roleplay.scenario_loader import (
+from src.agents.roleplay.scenario_loader import (
     ScenarioDatasetError,
     ScenarioNotFoundError,
     ScenarioRepository,
 )
 
 SCENARIOS = Path("data/scenarios/scenarios.json")
+
+
+def test_repository_default_path_loads_project_scenarios():
+    repository = ScenarioRepository()
+
+    assert len(repository.list_public()) == 3
 
 
 def test_repository_loads_scenarios_and_returns_defensive_copies():

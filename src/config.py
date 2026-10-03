@@ -37,6 +37,10 @@ class Settings(BaseSettings):
             "OPEN_ROUTER_API",
         ),
     )
+    openrouter_model_name: str = Field(
+        default="openai/gpt-6-luna",
+        validation_alias=AliasChoices("openrouter_model_name", "OPENROUTER_MODEL_NAME"),
+    )
     gemini_api_key: str = Field(
         default="",
         validation_alias=AliasChoices("gemini_api_key", "GEMINI_API_KEY", "google_api_key", "GOOGLE_API_KEY"),

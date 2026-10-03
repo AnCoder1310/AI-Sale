@@ -29,7 +29,7 @@ env/
 Thumbs.db
 
 # Data (never commit large data)
-data/
+/data/
 *.db
 *.sqlite3
 
@@ -58,3 +58,5 @@ out/
 # AI logs — tracked structure, ignored content
 .ai-log/*.jsonl
 .ai-log/archive/
+
+sales-research.zip

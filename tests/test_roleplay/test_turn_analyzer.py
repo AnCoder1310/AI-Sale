@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from backend.roleplay.scenario_loader import ScenarioRepository
-from backend.roleplay.state import RoleplayState
-from backend.roleplay.turn_analyzer import TurnAnalysisError, TurnAnalyzer
+from src.agents.roleplay.scenario_loader import ScenarioRepository
+from src.agents.roleplay.state import RoleplayState
+from src.agents.roleplay.turn_analyzer import TurnAnalysisError, TurnAnalyzer
 
 SCENARIOS = Path("data/scenarios/scenarios.json")
 
@@ -94,3 +94,23 @@ async def test_malformed_structured_output_has_a_domain_specific_error():
 
     with pytest.raises(TurnAnalysisError, match="invalid turn analysis"):
         await analyzer.analyze("Giá hiện tại là...", scenario, state)
+
+
+@pytest.mark.asyncio
+async def test_analyzer_keeps_only_claims_exactly_present_in_advisor_turn():
+    scenario = ScenarioRepository(SCENARIOS).get("SCENARIO_01_VF5_TAXI")
+    state = RoleplayState.from_scenario("session-1", scenario)
+    analyzer = TurnAnalyzer(
+        StaticAnalysisModel(
+            {
+                "factual_claims": [
+                    {"text": "VF 5 được bảo hành 7 năm", "category": "warranty"},
+                    {"text": "VF 5 miễn phí hoàn toàn", "category": "promotion"},
+                ]
+            }
+        )
+    )
+
+    result = await analyzer.analyze("VF 5 được bảo hành 7 năm.", scenario, state)
+
+    assert [claim.text for claim in result.factual_claims] == ["VF 5 được bảo hành 7 năm"]

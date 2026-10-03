@@ -19,3 +19,11 @@ async def test_chat_empty_message(client):
 async def test_agent_status(client):
     response = await client.get("/api/v1/status")
     assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_practice_scenarios_are_mounted_on_application(client):
+    response = await client.get("/api/v1/practice/scenarios")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 3

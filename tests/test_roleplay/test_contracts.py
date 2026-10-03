@@ -3,7 +3,14 @@ from pathlib import Path
 
 import pytest
 
-from backend.knowledge.metadata import (
+from src.agents.roleplay.contracts import (
+    RUBRIC_CRITERIA,
+    RUBRIC_SCORE_MAX,
+    RUBRIC_SCORE_MIN,
+    ScenarioContract,
+)
+from src.agents.roleplay.state import RoleplayState
+from src.models.evaluation import (
     CriterionEvaluation,
     CriterionStatus,
     CriterionType,
@@ -12,13 +19,6 @@ from backend.knowledge.metadata import (
     SessionEvaluationResult,
     TranscriptEvidence,
 )
-from backend.roleplay.contracts import (
-    RUBRIC_CRITERIA,
-    RUBRIC_SCORE_MAX,
-    RUBRIC_SCORE_MIN,
-    ScenarioContract,
-)
-from backend.roleplay.state import RoleplayState
 
 SCENARIOS = Path("data/scenarios/scenarios.json")
 

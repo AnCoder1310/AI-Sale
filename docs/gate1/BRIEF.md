@@ -142,10 +142,12 @@ Kết quả có thể bao gồm:
 - dẫn chứng từ hội thoại;
 - gợi ý cải thiện.
 
-Kết quả AI ngay sau phiên là bản nháp để tư vấn viên học và thử lại. Tư vấn viên
-chọn attempt muốn gửi đánh giá chính thức; chỉ attempt đã gửi mới vào hàng đợi
-Manager. Quản lý có thể **phê duyệt hoặc chỉnh sửa** điểm, nhận xét và đề xuất
-luyện tập tiếp theo trước khi kết quả trở thành chính thức.
+Kết quả AI ngay sau phiên là bản nháp để tư vấn viên học và thử lại. Mọi attempt
+hoàn thành được lưu tự động; card tình huống hiển thị kết quả gần nhất và cho phép
+mở lịch sử các attempt cũ. Hàng đợi Manager group theo tư vấn viên + tình huống và
+ưu tiên attempt mới nhất chưa review. Quản lý có thể **phê duyệt hoặc chỉnh sửa**
+điểm, nhận xét và đề xuất luyện tập tiếp theo trước khi một kết quả trở thành chính
+thức.
 
 ---
 
@@ -170,9 +172,9 @@ luyện tập tiếp theo trước khi kết quả trở thành chính thức.
                                         │
                             Bản nháp + dẫn chứng
                                         │
-                              Gửi attempt đã chọn
+                              Tự động lưu attempt
                                         │
-                                 Quản lý review
+                         Manager ưu tiên attempt mới nhất
                                         │
                               Phê duyệt / chỉnh sửa
 ```
@@ -293,7 +295,7 @@ Hội thoại nhiều lượt với AI Customer
 
 Xem kết quả sau phiên
 
-Luyện tập lại và chọn attempt để gửi Manager review
+Luyện tập lại hoặc mở lịch sử attempt của tình huống
 
 Xem các phiên luyện tập gần đây
 ```

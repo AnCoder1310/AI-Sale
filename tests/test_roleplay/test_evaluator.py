@@ -2,15 +2,15 @@ from pathlib import Path
 
 import pytest
 
-from backend.knowledge.metadata import CriterionType, ReviewStatus
-from backend.roleplay.evaluator import (
+from src.agents.roleplay.evaluator import (
     EvaluationError,
     KnowledgeEvidence,
     RoleplayEvaluator,
 )
-from backend.roleplay.prompts import EVALUATOR_PROMPT_VERSION, EVALUATOR_SYSTEM_PROMPT
-from backend.roleplay.scenario_loader import ScenarioRepository
-from backend.roleplay.state import RoleplayMessage, RoleplayState, TerminationStatus
+from src.agents.roleplay.prompts import EVALUATOR_PROMPT_VERSION, EVALUATOR_SYSTEM_PROMPT
+from src.agents.roleplay.scenario_loader import ScenarioRepository
+from src.agents.roleplay.state import AdvisorFactualClaim, RoleplayMessage, RoleplayState, TerminationStatus
+from src.models.evaluation import CriterionType, ReviewStatus
 
 SCENARIOS = Path("data/scenarios/scenarios.json")
 
@@ -46,6 +46,13 @@ def completed_state(scenario):
             role="advisor",
             content="Chính sách A đang áp dụng cho trường hợp này.",
         ),
+    ]
+    state.factual_claims = [
+        AdvisorFactualClaim(
+            message_id="advisor-2",
+            text="Chính sách A đang áp dụng",
+            category="policy",
+        )
     ]
     state.termination_status = TerminationStatus.ADVISOR_ENDED
     return state
@@ -159,6 +166,26 @@ async def test_evaluator_rejects_model_supplied_aggregate(scenario, completed_st
     evaluator = RoleplayEvaluator(CapturingEvaluationModel(output))
 
     with pytest.raises(EvaluationError, match="invalid evaluation output"):
+        await evaluator.evaluate(scenario, completed_state, approved_evidence())
+
+
+@pytest.mark.asyncio
+async def test_evaluator_rejects_missing_recorded_factual_claim(scenario, completed_state):
+    output = evaluation_output()
+    output["factual_findings"] = []
+    evaluator = RoleplayEvaluator(CapturingEvaluationModel(output))
+
+    with pytest.raises(EvaluationError, match="omitted recorded factual claims"):
+        await evaluator.evaluate(scenario, completed_state, approved_evidence())
+
+
+@pytest.mark.asyncio
+async def test_evaluator_rejects_duplicate_factual_finding(scenario, completed_state):
+    output = evaluation_output()
+    output["factual_findings"].append(output["factual_findings"][0].copy())
+    evaluator = RoleplayEvaluator(CapturingEvaluationModel(output))
+
+    with pytest.raises(EvaluationError, match="duplicate claims"):
         await evaluator.evaluate(scenario, completed_state, approved_evidence())
 
 

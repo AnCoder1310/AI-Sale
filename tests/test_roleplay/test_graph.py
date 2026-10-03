@@ -4,15 +4,15 @@ from pathlib import Path
 
 import pytest
 
-from backend.roleplay.customer_agent import CustomerAgent, CustomerResponseError
-from backend.roleplay.graph import (
+from src.agents.roleplay.customer_agent import CustomerAgent, CustomerResponseError
+from src.agents.roleplay.graph import (
     RoleplayGraph,
     RoleplaySessionConflictError,
     RoleplaySessionNotFoundError,
 )
-from backend.roleplay.scenario_loader import ScenarioRepository
-from backend.roleplay.state import RoleplayState, TerminationStatus
-from backend.roleplay.turn_analyzer import TurnAnalyzer
+from src.agents.roleplay.scenario_loader import ScenarioRepository
+from src.agents.roleplay.state import EvaluationStatus, RoleplayState, TerminationStatus
+from src.agents.roleplay.turn_analyzer import TurnAnalyzer
 
 SCENARIOS = Path("data/scenarios/scenarios.json")
 
@@ -155,6 +155,45 @@ async def test_explicit_finish_skips_another_customer_generation():
     assert result["termination_status"] == TerminationStatus.ADVISOR_ENDED.value
     assert saved.termination_status is TerminationStatus.ADVISOR_ENDED
     assert len(customer_model.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_finish_freezes_session_without_adding_a_fake_advisor_message():
+    graph, checkpoint, customer_model, analysis_model = build_graph(
+        [{"reply": "Anh muốn tìm hiểu xe."}],
+        [],
+    )
+    await graph.start("session-1", "SCENARIO_01_VF5_TAXI")
+
+    first = await graph.finish_session("session-1")
+    saves_after_first_finish = checkpoint.save_count
+    second = await graph.finish_session("session-1")
+
+    assert first.termination_status is TerminationStatus.ADVISOR_ENDED
+    assert first.evaluation_status is EvaluationStatus.PENDING
+    assert second == first
+    assert checkpoint.save_count == saves_after_first_finish
+    assert [message.role for message in first.messages] == ["customer"]
+    assert len(customer_model.calls) == 1
+    with pytest.raises(RoleplaySessionConflictError):
+        await graph.continue_session("session-1", "Một tin nhắn sau khi kết thúc")
+    assert analysis_model.calls == []
+
+
+@pytest.mark.asyncio
+async def test_finish_accepts_session_already_ended_by_turn_limit():
+    graph, checkpoint, _, _ = build_graph(
+        [{"reply": "Anh muốn tìm hiểu xe."}],
+        [{"advisor_requested_finish": True}],
+    )
+    await graph.start("session-1", "SCENARIO_01_VF5_TAXI")
+    await graph.continue_session("session-1", "Kết thúc bài luyện tập.")
+
+    finished = await graph.finish_session("session-1")
+
+    assert finished.termination_status is TerminationStatus.ADVISOR_ENDED
+    assert finished.evaluation_status is EvaluationStatus.PENDING
+    assert len(RoleplayState.model_validate(await checkpoint.load("session-1")).messages) == 2
 
 
 @pytest.mark.asyncio
