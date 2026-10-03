@@ -77,13 +77,45 @@ def build_roleplay_turn_graph(
         return "customer_turn"
 
     async def customer_turn(state: RoleplayRuntimeState) -> RoleplayRuntimeState:
-        message = await customer_agent.generate_reply(
+        prior = state["roleplay_state"]
+        pending = customer_agent.pending_disclosures(state["scenario"], prior)
+        focus_id = customer_agent.focus_objection_id(prior) if not pending else None
+        turn = await customer_agent.generate_turn(
             state["scenario"],
-            state["roleplay_state"],
+            prior,
             mode="response",
+            consider_next_step=state["analysis"].next_step_attempted,
         )
-        updated = state["roleplay_state"].model_copy(deep=True)
+        message = turn.message
+        updated = prior.model_copy(deep=True)
         updated.messages.append(message)
+        for rule in pending:
+            if rule.revealed_statement in message.content:
+                updated.spoken_fact_message_ids[rule.fact_key] = message.message_id
+        if turn.accepted_next_step and state["analysis"].next_step_attempted:
+            accepted_id = focus_id or next(iter(updated.active_objections), None)
+            if accepted_id is not None:
+                objection_id = accepted_id
+                updated.active_objections.remove(objection_id)
+                if objection_id in updated.unresolved_objections:
+                    updated.unresolved_objections.remove(objection_id)
+                if objection_id not in updated.resolved_objections:
+                    updated.resolved_objections.append(objection_id)
+        if turn.raised_objection_id and turn.raised_objection_id in updated.unresolved_objections:
+            if turn.raised_objection_id not in updated.active_objections:
+                updated.active_objections.append(turn.raised_objection_id)
+                updated.conversation_stage = ConversationStage.OBJECTION_HANDLING
+            if turn.raised_objection_id not in updated.spoken_concern_message_ids:
+                updated.spoken_concern_message_ids[turn.raised_objection_id] = message.message_id
+            elif focus_id == turn.raised_objection_id:
+                updated.concern_prompt_counts[focus_id] = updated.concern_prompt_counts.get(focus_id, 0) + 1
+        elif focus_id and turn.raised_objection_id is None and not turn.accepted_next_step:
+            # Legacy provider fixtures omit the structured concern marker.
+            updated.concern_prompt_counts[focus_id] = updated.concern_prompt_counts.get(focus_id, 0) + 1
+        elif prior.active_objections and not pending and not turn.accepted_next_step:
+            updated.termination_status = TerminationStatus.DROPPED_OUT
+            updated.termination_reason = "Customer deferred unresolved concerns after two prompts each."
+            updated.conversation_stage = ConversationStage.FINISHED
         return {
             "roleplay_state": updated,
             "customer_reply": message.content,
@@ -131,7 +163,7 @@ class RoleplayGraph:
             checkpoint,
         )
 
-    async def start(self, session_id: str, scenario_id: str) -> dict:
+    async def start(self, session_id: str, scenario_id: str, max_turns: int | None = None) -> dict:
         if not session_id.strip():
             raise RoleplayGraphError("session_id must not be blank")
         try:
@@ -144,16 +176,23 @@ class RoleplayGraph:
             state = self._validate_checkpoint(existing, session_id)
             if state.scenario_id != scenario_id:
                 raise RoleplaySessionConflictError("session_id already belongs to a different scenario")
+            if max_turns is not None and state.max_turns != max_turns:
+                raise RoleplaySessionConflictError("session_id already has a different turn limit")
             return state.advisor_visible_context()
 
-        state = RoleplayState.from_scenario(session_id, scenario)
+        state = RoleplayState.from_scenario(session_id, scenario, max_turns=max_turns)
         await _save_state(self._checkpoint, state)
-        opening_message = await self._customer_agent.generate_reply(
+        opening_turn = await self._customer_agent.generate_turn(
             scenario,
             state,
             mode="opening",
         )
+        opening_message = opening_turn.message
         state.messages.append(opening_message)
+        if opening_turn.raised_objection_id and opening_turn.raised_objection_id in state.unresolved_objections:
+            state.spoken_concern_message_ids[opening_turn.raised_objection_id] = opening_message.message_id
+            state.active_objections.append(opening_turn.raised_objection_id)
+            state.conversation_stage = ConversationStage.OBJECTION_HANDLING
         await _save_state(self._checkpoint, state)
         return state.advisor_visible_context()
 

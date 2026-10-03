@@ -111,8 +111,105 @@ async def test_continue_session_updates_state_and_preserves_history():
         "customer",
     ]
     assert saved.revealed_facts == ["daily_distance"]
+    assert saved.spoken_fact_message_ids["daily_distance"] == saved.messages[-1].message_id
+    assert "180" in saved.messages[-1].content
     assert saved.current_topic == "daily_usage"
     assert analysis_model.calls == ["Mỗi ngày anh thường chạy khoảng bao nhiêu km?"]
+
+
+@pytest.mark.asyncio
+async def test_customer_discloses_mileage_once_before_claiming_it_was_spoken():
+    graph, checkpoint, customer_model, _ = build_graph(
+        [{"reply": "Anh đang xem VF 5."}, {"reply": "Anh muốn tính tiếp."}],
+        [
+            {"detected_intents": ["ask_daily_travel_distance"], "discovered_fact_ids": ["daily_distance"]},
+            {},
+        ],
+    )
+    await graph.start("session-1", "SCENARIO_01_VF5_TAXI")
+    first = await graph.continue_session("session-1", "Mỗi ngày anh đi bao nhiêu km?")
+    assert "180" in first["messages"][-1]["content"]
+    assert len(customer_model.calls) == 1  # Disclosure is guaranteed by the scenario, not left to the model.
+    await graph.continue_session("session-1", "Em sẽ tính theo quãng đường đó.")
+    assert len(customer_model.calls) == 2
+    assert (
+        customer_model.calls[-1]["context"]["spoken_fact_message_ids"]["daily_distance"]
+        == first["messages"][-1]["message_id"]
+    )
+    assert RoleplayState.model_validate(await checkpoint.load("session-1")).spoken_fact_message_ids
+
+
+@pytest.mark.asyncio
+async def test_unresolved_cost_concern_gets_two_prompts_then_customer_defers():
+    graph, checkpoint, customer_model, _ = build_graph(
+        [
+            {"reply": "Anh đang cân nhắc đổi xe."},
+            {"reply": "Cộng tiền pin với sạc thì có đáng đổi không em?"},
+            {"reply": "Anh muốn biết tổng chi phí thực tế thôi."},
+        ],
+        [
+            {"factual_claims": [{"text": "Giá xe là 500 triệu", "category": "price"}]},
+            {},
+            {},
+        ],
+    )
+    await graph.start("session-1", "SCENARIO_01_VF5_TAXI")
+    await graph.continue_session("session-1", "Giá xe là 500 triệu")
+    await graph.continue_session("session-1", "Dạ em hiểu.")
+    final = await graph.continue_session("session-1", "Để em xem thêm.")
+
+    assert [call["context"]["focus_objection_prompt_number"] for call in customer_model.calls[1:]] == [1, 2]
+    assert len(customer_model.calls) == 3
+    assert final["termination_status"] == TerminationStatus.DROPPED_OUT.value
+    saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
+    assert saved.concern_prompt_counts["OBJ_VF5_BATTERY_VS_GAS"] == 2
+
+
+@pytest.mark.asyncio
+async def test_customer_acceptance_after_follow_up_allows_next_concern():
+    cost = "OBJ_VF5_BATTERY_VS_GAS"
+    charging = "OBJ_VF5_CHARGING_TIME"
+    graph, checkpoint, _, _ = build_graph(
+        [
+            {"reply": "Anh đang cân nhắc đổi xe."},
+            {"reply": "Tiền pin và sạc có đáng đổi không?", "raised_objection_id": cost},
+            {"reply": "Em tính thêm giúp anh nhé.", "raised_objection_id": cost},
+            {"reply": "Ừ, em gửi bảng tính cho anh.", "accepted_next_step": True},
+            {"reply": "Sạc giữa ca có mất nhiều cuốc không?", "raised_objection_id": charging},
+        ],
+        [
+            {"factual_claims": [{"text": "Giá xe là 500 triệu", "category": "price"}]},
+            {},
+            {"next_step_attempted": True},
+            {"next_step_attempted": True},
+        ],
+    )
+    await graph.start("session-1", "SCENARIO_01_VF5_TAXI")
+    await graph.continue_session("session-1", "Giá xe là 500 triệu")
+    await graph.continue_session("session-1", "Em ghi nhận điều này.")
+    accepted = await graph.continue_session("session-1", "Em sẽ gửi bảng chi phí theo quãng đường anh chạy.")
+    assert accepted["termination_status"] == TerminationStatus.ACTIVE.value
+    assert cost in RoleplayState.model_validate(await checkpoint.load("session-1")).resolved_objections
+    continued = await graph.continue_session("session-1", "Mình cũng kiểm tra lịch sạc giữa ca nhé?")
+    saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
+    assert continued["termination_status"] == TerminationStatus.ACTIVE.value
+    assert charging in saved.active_objections
+    assert saved.concern_prompt_counts.get(charging, 0) == 0
+
+
+@pytest.mark.asyncio
+async def test_selected_turn_limit_is_persisted_and_enforced():
+    graph, checkpoint, _, _ = build_graph(
+        [{"reply": "Anh muốn tìm hiểu xe."}, *[{"reply": "Vâng."} for _ in range(11)]],
+        [{} for _ in range(11)],
+    )
+    started = await graph.start("session-1", "SCENARIO_01_VF5_TAXI", max_turns=11)
+    assert started["max_turns"] == 11
+    for turn in range(11):
+        final = await graph.continue_session("session-1", f"Tin nhắn {turn}")
+    assert final["turn_count"] == 11
+    assert final["termination_status"] == TerminationStatus.MAX_TURNS.value
+    assert RoleplayState.model_validate(await checkpoint.load("session-1")).max_turns == 11
 
 
 @pytest.mark.asyncio

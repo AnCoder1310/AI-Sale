@@ -63,6 +63,10 @@ class RoleplayState(BaseModel):
     visible_context: str
     hidden_facts: dict[str, str] = Field(default_factory=dict)
     revealed_facts: list[str] = Field(default_factory=list)
+    spoken_fact_message_ids: dict[str, str] = Field(default_factory=dict)
+    spoken_concern_message_ids: dict[str, str] = Field(default_factory=dict)
+    concern_prompt_counts: dict[str, int] = Field(default_factory=dict)
+    max_turns: int = Field(default=10, ge=1, le=15)
     advisor_discoveries: list[str] = Field(default_factory=list)
     active_objections: list[str] = Field(default_factory=list)
     resolved_objections: list[str] = Field(default_factory=list)
@@ -79,6 +83,16 @@ class RoleplayState(BaseModel):
 
     @model_validator(mode="after")
     def validate_evaluation_lifecycle(self) -> "RoleplayState":
+        customer_message_ids = {message.message_id for message in self.messages if message.role == "customer"}
+        if any(
+            fact_key not in self.revealed_facts or message_id not in customer_message_ids
+            for fact_key, message_id in self.spoken_fact_message_ids.items()
+        ):
+            raise ValueError("spoken facts must reference an actual customer message")
+        if any(message_id not in customer_message_ids for message_id in self.spoken_concern_message_ids.values()):
+            raise ValueError("spoken concerns must reference an actual customer message")
+        if any(count < 0 or count > 2 for count in self.concern_prompt_counts.values()):
+            raise ValueError("concern prompt counts must remain within the two-prompt limit")
         if (self.evaluation_status is EvaluationStatus.COMPLETE) != (self.evaluation_result is not None):
             raise ValueError("complete evaluation status and saved result must occur together")
         if self.evaluation_result is not None and (
@@ -94,7 +108,9 @@ class RoleplayState(BaseModel):
         return self
 
     @classmethod
-    def from_scenario(cls, session_id: str, scenario: ScenarioContract) -> "RoleplayState":
+    def from_scenario(
+        cls, session_id: str, scenario: ScenarioContract, max_turns: int | None = None
+    ) -> "RoleplayState":
         objection_ids = [item.objection_id for item in scenario.objections]
         return cls(
             session_id=session_id,
@@ -108,12 +124,15 @@ class RoleplayState(BaseModel):
             unresolved_objections=objection_ids,
             customer_goals=scenario.customer_goals,
             current_intent=scenario.buyer_intent,
+            max_turns=max_turns or scenario.termination_conditions.max_turns,
         )
 
     def customer_prompt_context(self) -> dict[str, Any]:
         """Server-only context for the customer model; unrevealed facts stay private."""
         revealed_fact_values = {
-            fact_key: self.hidden_facts[fact_key] for fact_key in self.revealed_facts if fact_key in self.hidden_facts
+            fact_key: self.hidden_facts[fact_key]
+            for fact_key in self.spoken_fact_message_ids
+            if fact_key in self.hidden_facts
         }
         return {
             "scenario_id": self.scenario_id,
@@ -126,6 +145,9 @@ class RoleplayState(BaseModel):
             "customer_goals": self.customer_goals,
             "current_intent": self.current_intent,
             "revealed_facts": revealed_fact_values,
+            "spoken_fact_message_ids": self.spoken_fact_message_ids,
+            "spoken_concern_message_ids": self.spoken_concern_message_ids,
+            "concern_prompt_counts": self.concern_prompt_counts,
             "active_objections": self.active_objections,
             "messages": [message.model_dump() for message in self.messages],
         }
@@ -140,6 +162,7 @@ class RoleplayState(BaseModel):
             "training_objective": self.training_objective,
             "conversation_stage": self.conversation_stage.value,
             "turn_count": self.turn_count,
+            "max_turns": self.max_turns,
             "visible_context": self.visible_context,
             "termination_status": self.termination_status.value,
             "termination_reason": self.termination_reason,

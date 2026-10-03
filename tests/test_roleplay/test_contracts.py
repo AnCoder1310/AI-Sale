@@ -59,7 +59,11 @@ def test_customer_prompt_only_contains_revealed_fact_values():
 
     prompt_context = state.customer_prompt_context()
 
+    assert prompt_context["revealed_facts"] == {}
+    state.spoken_fact_message_ids["daily_distance"] = "customer-2"
+    prompt_context = state.customer_prompt_context()
     assert prompt_context["revealed_facts"] == {"daily_distance": scenario.hidden_facts["daily_distance"]}
+    assert prompt_context["spoken_fact_message_ids"] == {"daily_distance": "customer-2"}
     assert scenario.hidden_facts["budget"] not in str(prompt_context)
 
 

@@ -4,14 +4,14 @@
     "title": "Bác tài chạy dịch vụ cân nhắc đổi từ xe xăng sang VF 5 Plus",
     "difficulty": "Medium",
     "sales_channel": "Fanpage",
-    "training_objective": "Khai thác cường độ sử dụng và xử lý băn khoăn về tổng chi phí cùng thời gian sạc bằng thông tin có nguồn.",
-    "scenario_version": "2.0",
+    "training_objective": "Khai thác nhu cầu chạy dịch vụ, trao đổi chi phí sử dụng một cách trung thực và chốt bước kiểm chứng phù hợp.",
+    "scenario_version": "2.1",
     "target_skills": ["need_discovery", "objection_handling", "closing_next_step"],
     "persona": {
       "name": "Anh Nam",
       "age": 35,
       "current_car": "Toyota Vios 2017",
-      "communication_style": "Thực dụng, thẳng thắn, tính toán chi phí chi li"
+      "communication_style": "Thực dụng, nói ngắn gọn, quan tâm thu nhập ròng và thời gian không chạy khách; hỏi ước lượng trước, chỉ muốn bảng tính chi tiết khi thấy đáng cân nhắc"
     },
     "buyer_intent": "Muốn tối ưu chi phí chạy xe công nghệ nhưng sợ chi phí pin và sạc điện phát sinh",
     "customer_goals": "Tìm hiểu xem chi phí nuôi xe điện mỗi tháng có thực sự rẻ hơn xe xăng không",
@@ -39,23 +39,23 @@
       {
         "objection_id": "OBJ_VF5_BATTERY_VS_GAS",
         "trigger_stage": "presentation",
-        "objection_text": "Nghe anh em bảo tiền thuê pin với tiền sạc điện tính ra cũng bằng tiền xăng, vậy đổi làm gì cho tốn tiền mua xe hả em?",
-        "resolve_condition": "Tư vấn viên ghi nhận băn khoăn, xác nhận quãng đường sử dụng, chỉ dùng giá/chính sách còn hiệu lực từ nguồn được cung cấp để lập phép so sánh có nêu giả định; nếu thiếu dữ liệu thì hỏi thêm hoặc nói chưa thể kết luận.",
-        "ideal_sales_response": "Một phản hồi đạt yêu cầu cần giải thích cách so sánh tổng chi phí theo nhu cầu 5.000 km/tháng, nêu rõ đầu vào và nguồn cho từng khoản, tránh hứa chắc mức tiết kiệm khi chưa đủ dữ liệu, rồi kiểm tra xem băn khoăn của khách đã được giải quyết chưa."
+        "objection_text": "Anh nghe nói cộng tiền pin với tiền sạc thì cũng gần bằng tiền xăng. Chạy dịch vụ như anh đổi xe có đáng không em?",
+        "resolve_condition": "Tư vấn viên ghi nhận lo ngại, dùng quãng đường của khách để giải thích ngắn gọn các khoản cần so sánh, chỉ nêu ước lượng khi có dữ liệu đáng tin và điều kiện áp dụng rõ ràng; nếu còn thiếu dữ liệu thì đề nghị gửi bảng tính riêng thay vì hứa mức tiết kiệm chắc chắn.",
+        "ideal_sales_response": "Một phản hồi tốt giúp khách hiểu chi phí nào đã biết, chi phí nào còn phụ thuộc cách sạc và chính sách, rồi đề xuất bước kiểm chứng theo lịch chạy của khách. Không cần ép phép tính chi tiết vào một tin nhắn."
       },
       {
         "objection_id": "OBJ_VF5_CHARGING_TIME",
         "trigger_stage": "closing",
-        "objection_text": "Giữa trưa nắng chạy khách mệt mỏi mà phải xếp hàng sạc 1-2 tiếng thì mất hết cuốc em ơi.",
+        "objection_text": "Anh hay chạy liền ca trưa. Nếu phải dừng sạc lâu thì mất cuốc, có cách nào sắp lịch sạc hợp lý không em?",
         "resolve_condition": "Tư vấn viên hỏi thêm về lịch chạy và điểm sạc khả dụng, dùng thông số sạc có nguồn với điều kiện áp dụng rõ ràng, đồng thời đề xuất cách kiểm chứng thực tế thay vì bảo đảm một thời gian sạc cố định.",
         "ideal_sales_response": "Một phản hồi đạt yêu cầu cần thừa nhận chi phí cơ hội khi dừng sạc, đối chiếu lịch chạy với lựa chọn sạc phù hợp, nêu rằng thời gian thực tế phụ thuộc trụ, mức pin và điều kiện vận hành, rồi đề xuất kiểm tra trạm hoặc trải nghiệm sạc."
       }
     ],
-    "expected_discovery": "Nhân viên phải khai thác được số km đi lại mỗi ngày (180-200 km) và khả năng tài chính trả trước (150 triệu) để đưa ra gói vay và gói pin phù hợp.",
-    "success_conditions": "Tư vấn viên khai thác được quãng đường và khả năng tài chính, so sánh chi phí bằng dữ liệu có nguồn hoặc chủ động nói chưa đủ dữ liệu, xử lý lo ngại thời gian sạc và thống nhất một bước tiếp theo phù hợp.",
+    "expected_discovery": "Ưu tiên hỏi quãng đường và lịch chạy để hiểu nhu cầu dịch vụ; chỉ hỏi khả năng tài chính trả trước khi khách quan tâm đến vay hoặc giá mua xe.",
+    "success_conditions": "Tư vấn viên khai thác quãng đường và bối cảnh chạy dịch vụ, giải thích chi phí trung thực bằng dữ liệu có nguồn hoặc hẹn bảng tính riêng khi thiếu dữ liệu, xử lý lo ngại thời gian sạc và thống nhất bước tiếp theo phù hợp.",
     "termination_conditions": {
-      "max_turns": 8,
-      "drop_out_trigger": "Nếu tư vấn viên báo giá sai hoặc 3 lượt liên tiếp không trả lời được băn khoăn về chi phí sạc pin."
+      "max_turns": 10,
+      "drop_out_trigger": "Nếu báo giá thiếu căn cứ hoặc sau hai lần khách hỏi cùng một băn khoăn mà tư vấn viên vẫn không giải quyết được, khách tạm hoãn quyết định thay vì hỏi đi hỏi lại."
     }
   },
   {

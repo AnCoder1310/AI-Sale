@@ -115,7 +115,7 @@ def apply_turn_analysis(
     if analysis.advisor_requested_finish:
         updated.termination_status = TerminationStatus.ADVISOR_ENDED
         updated.termination_reason = "Advisor explicitly ended the practice session."
-    elif updated.turn_count >= scenario.termination_conditions.max_turns:
+    elif updated.turn_count >= updated.max_turns:
         updated.termination_status = TerminationStatus.MAX_TURNS
         updated.termination_reason = "Scenario turn limit reached."
 
