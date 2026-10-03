@@ -72,7 +72,7 @@ Quản lý đào tạo       → Danh sách đánh giá
 │             │ └──────────────────┘ └───────────────────┘ │
 │             │                                             │
 │             │ Phiên luyện tập gần đây                     │
-│             │ Tình huống A       4.0/5  Đã duyệt        │
+│             │ Tình huống A       2.7/3  Đã duyệt        │
 │             │ Tình huống B       Bản nháp               │
 └─────────────┴─────────────────────────────────────────────┘
 ```
@@ -263,8 +263,8 @@ Sau đó:
 │ BẢN NHÁP AI — CHƯA ĐƯỢC MANAGER DUYỆT                    │
 │ Đã đánh giá                            4 / 5 kỹ năng      │
 │                                                          │
-│ Kỹ năng 1                             4 / 5               │
-│ Kỹ năng 2                             3 / 5               │
+│ Kỹ năng 1                             3 / 3               │
+│ Kỹ năng 2                             2 / 3               │
 │ Kỹ năng 3                    Chưa quan sát đủ             │
 │                                                          │
 │ ĐIỂM LÀM TỐT                                            │
@@ -324,9 +324,9 @@ Manager xem transcript và bản nháp AI của attempt mà Advisor đã chủ �
 │                                                          │
 │ Hội thoại                  Đánh giá AI                    │
 │ ┌──────────────────────┐   ┌───────────────────────────┐ │
-│ │ Lượt 1               │   │ Kỹ năng 1          4/5   │ │
-│ │ Lượt 2               │   │ Kỹ năng 2          3/5   │ │
-│ │ ...                  │   │ Kỹ năng 3          4/5   │ │
+│ │ Lượt 1               │   │ Kỹ năng 1          3/3   │ │
+│ │ Lượt 2               │   │ Kỹ năng 2          2/3   │ │
+│ │ ...                  │   │ Kỹ năng 3          3/3   │ │
 │ └──────────────────────┘   │                           │ │
 │                            │ Bằng chứng: Lượt 4, 8     │ │
 │                            │ Gợi ý tiếp theo: [...]    │ │

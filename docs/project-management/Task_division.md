@@ -303,7 +303,7 @@ Evaluation input:
 
 Evaluation output:
 - criterion
-- status (`ASSESSED`, `NOT_OBSERVED`, `INSUFFICIENT_EVIDENCE`)
+- status (`ASSESSED`, `UNASSESSED`; lý do phân biệt thiếu cơ hội và thiếu bằng chứng)
 - nullable score
 - observable checks
 - turn IDs + exact quotes
@@ -1032,7 +1032,7 @@ Metrics:
 - MAE
 - exact agreement
 - ±1 agreement
-- applicability / NOT_OBSERVED agreement
+- applicability / UNASSESSED agreement
 - evidence-reference correctness
 - critical factual miss rate
 - repeat stability

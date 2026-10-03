@@ -359,21 +359,22 @@ Suggested improvement
 ```
 
 MVP dùng năm chiều: Need Discovery, Product Knowledge, Objection Handling,
-Policy Accuracy và Closing / Next Step, thang điểm 1–5. Mỗi chiều phải có:
+Policy Accuracy và Closing / Next Step, thang điểm 1–3 theo `docs/project-management/RUBRIC_V3.md`. Mỗi chiều phải có:
 
 ```text
-status: ASSESSED | NOT_OBSERVED | INSUFFICIENT_EVIDENCE
+status: ASSESSED | UNASSESSED
 observable checks: MET | MISSED | NOT_APPLICABLE | UNCLEAR
-score: 1–5 khi status = ASSESSED, ngược lại null
+score: 1–3 khi status = ASSESSED, ngược lại null
 transcript turn IDs + exact quotes
 reason
 improvement suggestion
 ```
 
-`NOT_OBSERVED` được dùng khi scenario không tạo cơ hội hợp lý để thể hiện kỹ
-năng; nó không bị quy đổi thành điểm thấp. Overall score do code tính trên các
+`UNASSESSED` được dùng khi không có cơ hội hợp lý hoặc thiếu bằng chứng để kết
+luận; `reason` phải phân biệt hai nguyên nhân. Nó không bị quy đổi thành điểm
+thấp. Overall score do code tính trên các
 criterion đã được assessed và phải hiển thị coverage. Không suy diễn phần trăm
-năng lực từ thang 1–5 khi chưa có định nghĩa được hiệu chuẩn.
+năng lực từ thang 1–3 khi chưa có định nghĩa được hiệu chuẩn.
 
 ---
 
@@ -993,7 +994,7 @@ Có thể report:
 * MAE;
 * exact agreement;
 * ±1 score agreement;
-* N/A / NOT_OBSERVED agreement;
+* ASSESSED / UNASSESSED agreement;
 * evidence-reference correctness;
 * critical factual miss rate;
 * repeat stability trên fixed transcripts;

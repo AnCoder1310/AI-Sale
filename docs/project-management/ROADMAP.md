@@ -240,7 +240,7 @@ Evaluator chạy trên:
 
 ### Acceptance
 - Session finish sinh result cho 5 criterion; criterion không có cơ hội hợp lý dùng
-  `NOT_OBSERVED` và score `null`.
+  `UNASSESSED` và score `null` (nêu rõ lý do).
 - Mỗi assessed score có turn ID + exact quote đã validate.
 - Factual findings tách `SUPPORTED`, `CONTRADICTED`, `UNVERIFIABLE`.
 - Overall score do code tính trên criterion đã assessed.
@@ -779,7 +779,7 @@ Chạy:
 - Judge MAE.
 - Criterion-level agreement.
 - Exact và ±1 agreement.
-- NOT_OBSERVED agreement.
+- ASSESSED / UNASSESSED agreement.
 - Evidence-reference correctness.
 - Critical factual miss rate.
 - Repeat stability trên fixed transcripts.
