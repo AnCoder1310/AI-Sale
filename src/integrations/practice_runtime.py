@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 from src.agents.roleplay.contracts import ScenarioContract
 from src.agents.roleplay.customer_agent import CustomerAgent, CustomerModelOutput
-from src.agents.roleplay.evaluator import EvaluationDraft, RoleplayEvaluator
+from src.agents.roleplay.evaluator import EvaluationDraft, FactualFindingsDraft, RoleplayEvaluator
 from src.agents.roleplay.graph import RoleplayGraph
 from src.agents.roleplay.prompts import (
     TURN_ANALYZER_PROMPT_VERSION,
@@ -131,6 +131,17 @@ class SharedLLMEvaluationModel:
                 system_prompt=system_prompt,
                 context=context,
             )
+
+    async def evaluate_factual_claims(
+        self,
+        *,
+        system_prompt: str,
+        context: dict[str, Any],
+    ) -> FactualFindingsDraft:
+        try:
+            return await self._invoker.invoke(FactualFindingsDraft, system_prompt=system_prompt, context=context)
+        except StructuredModelInvocationError:
+            return await self._invoker.invoke(FactualFindingsDraft, system_prompt=system_prompt, context=context)
 
 
 def build_practice_service(
