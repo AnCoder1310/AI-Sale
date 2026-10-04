@@ -11,11 +11,19 @@ contracts, consumers, tests, and UI semantics aligned.
 `RoleplayState` is initialized from `ScenarioContract` with a `session_id`. It keeps
 scenario identity, difficulty, persona, stages, turn count, trust/interest, visible
 and hidden facts, objections, discoveries, termination state, and message history.
+Validated advisor factual claims are retained with their originating message ID and
+category so Finish can retrieve evidence for the exact claim rather than the whole
+transcript.
 Objections and termination conditions are nested typed contracts. All scenario
 objections start as unresolved. They are not active until D2 checks `trigger_stage`.
 D2 loads a scenario, creates state, persists every turn, and checkpoints it. On
-termination it persists the final turn, freezes the transcript, then starts the
-recoverable evaluation job. A provider/evaluator failure must not lose the session.
+termination it persists the final turn and freezes the transcript. `POST
+/practice/{session_id}/finish` then evaluates the saved attempt. The checkpoint
+records `pending`, `failed`, or `complete`; a failed evaluation can be retried
+through Finish without losing the transcript. `GET /practice/{session_id}/result`
+returns the status and, when complete, the provisional AI result.
+`GET /practice/{session_id}` returns only `advisor_visible_context()` so the
+Practice Room can recover the saved transcript after a reply fails.
 
 Difficulty is selected before the session and remains fixed for that attempt.
 Adaptive difficulty inside an attempt is out of MVP scope; later attempts may use a
@@ -60,15 +68,30 @@ active, completed, advisor-ended, dropped-out, or max-turns.
 ## Integration boundary
 
 `RoleplayGraphContract.start(session_id, scenario_id)` and
-`continue_session(session_id, advisor_message)` are the stable D2 graph boundary.
-The session lifecycle additionally needs idempotent finish and selected-attempt submit
-operations at the service/API layer. Finishing creates a provisional AI result; it
-does not automatically enter Manager review. Only an advisor-submitted attempt enters
-the queue and only Manager approval makes it official.
+`continue_session(session_id, advisor_message)` are the D2 turn boundary. The
+graph also exposes finish, state load, and result save operations through the same
+checkpoint contract.
+The application composition uses `SQLCheckpointRepository`, selected through
+`DATABASE_URL`, so the same checkpoint contract works with local SQLite and hosted
+PostgreSQL. Role-play model calls use the shared provider factory through strict
+structured-output adapters; provider and malformed-output failures remain visible.
+The session lifecycle additionally needs an idempotent finish operation at the
+service/API layer. Finishing creates and persists one provisional AI result for that
+attempt. Every completed attempt remains available in the advisor's scenario history;
+there is no separate selected-attempt submit operation. The Manager queue groups by
+advisor and scenario and prioritizes the latest unreviewed attempt, while preserving
+access to older attempts. Only Manager approval makes a specific attempt official.
 
 Duy owns the complete practice lifecycle and role-play graph semantics. Chương
 supplies checkpoint, persistence, knowledge and platform integrations. An consumes
-public scenario/session DTOs only. Evaluation uses the shared five criteria and 1–5
-scale from `backend/knowledge/metadata.py`, supports `ASSESSED`, `NOT_OBSERVED`, and
-`INSUFFICIENT_EVIDENCE`, and requires verified transcript evidence for every assessed
+public scenario/session DTOs only. Evaluation uses the shared five criteria and 1–3
+scale from `src/models/evaluation.py`, supports `ASSESSED` and `UNASSESSED`
+(with a reason for no opportunity or insufficient evidence), and requires verified transcript evidence for every assessed
 score.
+
+The practice service requires an evaluator and a knowledge-evidence provider. The
+mounted runtime supplies those dependencies and retrieves bounded evidence for each
+recorded factual claim through the shared knowledge service. Every recorded claim
+must receive exactly one factual verdict; missing verdicts invalidate the draft.
+Session ownership checks must still be supplied by the shared authentication boundary
+before exposing attempt history, transcript, or training-result operations to users.

@@ -247,7 +247,6 @@ opening_statement
 difficulty
 reveal_rules
 assessment_dimensions
-evidence_snapshot
 scenario_version
 ```
 
@@ -360,21 +359,22 @@ Suggested improvement
 ```
 
 MVP dùng năm chiều: Need Discovery, Product Knowledge, Objection Handling,
-Policy Accuracy và Closing / Next Step, thang điểm 1–5. Mỗi chiều phải có:
+Policy Accuracy và Closing / Next Step, thang điểm 1–3 theo `docs/project-management/RUBRIC_V3.md`. Mỗi chiều phải có:
 
 ```text
-status: ASSESSED | NOT_OBSERVED | INSUFFICIENT_EVIDENCE
+status: ASSESSED | UNASSESSED
 observable checks: MET | MISSED | NOT_APPLICABLE | UNCLEAR
-score: 1–5 khi status = ASSESSED, ngược lại null
+score: 1–3 khi status = ASSESSED, ngược lại null
 transcript turn IDs + exact quotes
 reason
 improvement suggestion
 ```
 
-`NOT_OBSERVED` được dùng khi scenario không tạo cơ hội hợp lý để thể hiện kỹ
-năng; nó không bị quy đổi thành điểm thấp. Overall score do code tính trên các
+`UNASSESSED` được dùng khi không có cơ hội hợp lý hoặc thiếu bằng chứng để kết
+luận; `reason` phải phân biệt hai nguyên nhân. Nó không bị quy đổi thành điểm
+thấp. Overall score do code tính trên các
 criterion đã được assessed và phải hiển thị coverage. Không suy diễn phần trăm
-năng lực từ thang 1–5 khi chưa có định nghĩa được hiệu chuẩn.
+năng lực từ thang 1–3 khi chưa có định nghĩa được hiệu chuẩn.
 
 ---
 
@@ -466,6 +466,9 @@ status
 Advisor có thể xem:
 
 ```text
+Latest result on each scenario card
+Attempt count per scenario
+Scenario attempt history (newest first)
 Recent Sessions
 Previous Feedback
 Basic Skill Summary
@@ -476,8 +479,13 @@ Recommended Next Practice
 
 ### F12. Manager HITL Review
 
-Mọi session được lưu trong lịch sử của Advisor, nhưng chỉ attempt được Advisor
-chủ động gửi mới xuất hiện trong Manager Review Queue.
+Mọi attempt hoàn thành được lưu tự động trong lịch sử của Advisor cùng transcript
+và AI assessment. Advisor không cần chọn hoặc submit riêng một attempt để lưu.
+
+Manager có thể truy cập mọi attempt đã hoàn thành. Manager Review Queue mặc định
+group theo `advisor + scenario` và ưu tiên attempt mới nhất chưa review; các attempt
+cũ vẫn nằm trong history và có thể mở khi cần, nhưng không chiếm các queue item ngang
+hàng riêng biệt.
 
 Manager có thể xem:
 
@@ -515,8 +523,8 @@ reason
 timestamp
 ```
 
-AI assessment không được coi là đánh giá chính thức của nhân viên. Attempt đã
-submit chỉ trở thành kết quả chính thức sau khi Manager review và approve.
+AI assessment không được coi là đánh giá chính thức của nhân viên. Mỗi attempt chỉ
+trở thành kết quả chính thức sau khi Manager review và approve attempt đó.
 
 ---
 
@@ -569,7 +577,9 @@ Assessment
        ↓
 Provisional Session Review
        ↓
-Retry OR Submit selected attempt
+Save attempt automatically
+       ↓
+Retry OR View scenario history
 ```
 
 ---
@@ -577,7 +587,7 @@ Retry OR Submit selected attempt
 ## 5.3. Manager Review
 
 ```text
-Advisor-submitted Attempt
+Latest unreviewed Attempt per Advisor + Scenario
        ↓
 AI Assessment
        ↓
@@ -776,7 +786,8 @@ Acceptance:
 * strengths;
 * improvement suggestions.
 * trạng thái bản nháp/chính thức;
-* Advisor có thể retry hoặc submit attempt đã chọn.
+* mọi attempt hoàn thành được lưu tự động;
+* Advisor có thể retry hoặc xem lịch sử các attempt của scenario.
 
 ---
 
@@ -831,8 +842,9 @@ Main actions:
 Reviews
 ```
 
-MVP chỉ cần hàng đợi các attempt do Advisor chủ động submit. Overview và Team
-Analytics thuộc P1.
+MVP chỉ cần hàng đợi group theo Advisor + Scenario, mặc định ưu tiên attempt mới
+nhất chưa review và cho phép mở lịch sử attempt cũ. Overview và Team Analytics
+thuộc P1.
 
 ---
 
@@ -874,7 +886,9 @@ Analytics thuộc P1.
                                         │
                               AI Draft Feedback
                                         │
-                         Advisor submits chosen attempt
+                      Attempt saved automatically
+                                        │
+                   Manager queue prioritizes latest attempt
                                         │
                                   Manager HITL
 ```
@@ -926,6 +940,7 @@ Relations:
 ```text
 User
  └── Practice Session
+      ├── Scenario + attempt number + started/finished timestamps
       ├── Conversation Turns (message_id ổn định)
       └── Assessment (rubric_version, coverage, review_status)
            ├── Dimension Results + Evidence(message_id)
@@ -979,7 +994,7 @@ Có thể report:
 * MAE;
 * exact agreement;
 * ±1 score agreement;
-* N/A / NOT_OBSERVED agreement;
+* ASSESSED / UNASSESSED agreement;
 * evidence-reference correctness;
 * critical factual miss rate;
 * repeat stability trên fixed transcripts;
@@ -1126,7 +1141,7 @@ Session Review
 
 Manager Review / Edit / Approve
 
-Selected-attempt submission
+Automatic attempt history + latest-attempt Manager queue
 
 Session History
 ```
@@ -1216,7 +1231,7 @@ End session
 
 Receive assessment and feedback
 
-Retry or submit selected attempt for Manager review
+Retry or view the scenario's saved attempt history
 ```
 
 ---
@@ -1226,7 +1241,9 @@ Retry or submit selected attempt for Manager review
 Manager có thể:
 
 ```text
-View Advisor-submitted assessment
+View the latest unreviewed assessment per Advisor + Scenario
+
+Open previous attempts from scenario history
 
 View transcript
 

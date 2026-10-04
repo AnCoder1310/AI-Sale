@@ -9,6 +9,24 @@
 
 # 1. Mốc chung của toàn team
 
+## Source layout dùng cho implementation
+
+Build Phase app chạy từ `src.main:app`, vì vậy mọi runtime production nằm dưới
+`src/`. Không tạo thêm cây `backend/` song song.
+
+```text
+src/agents/copilot/       Copilot LangGraph của Chương
+src/agents/roleplay/      Role-play LangGraph, customer, analyzer, evaluator của Duy
+src/api/                  FastAPI routers
+src/services/             Application services và shared LLM factory
+src/knowledge/            Corpus, ingestion, retrieval và vector store
+src/models/               Shared request/result contracts
+src/persistence/          Durable session/checkpoint adapters
+```
+
+Nếu tài liệu cũ còn nhắc `backend/...`, đường dẫn `src/...` trong mục này và code
+đang chạy là nguồn chính thức.
+
 | Ngày | Milestone | Điều kiện pass |
 |---|---|---|
 | **21–22/09** | Gate 1 + Contract Freeze | Chốt PRD, Wireframe, API contract, RoleplayState, scenario schema, knowledge metadata, evaluation schema |
@@ -19,6 +37,32 @@
 | **30/09** | MVP Release | Deployed product chạy đủ Copilot + Practice + selected-attempt HITL |
 | **01–02/10** | Product Complete | Benchmark, hardening, history, tester readiness và polish |
 | **03/10** | Sales Tester Release | Sales tester nhận URL + task + feedback form |
+
+## Current attempt/review lifecycle amendment
+
+Các checkpoint đã qua được giữ nguyên như lịch sử kế hoạch. Từ Product Complete
+trở đi, `selected-attempt submission` được thay bằng lifecycle MVP đơn giản hơn:
+
+```text
+Finish attempt
+→ persist transcript + provisional AI evaluation automatically
+→ show latest result on the scenario card
+→ keep every older attempt in scenario history
+→ Manager queue groups by Advisor + Scenario and prioritizes the latest unreviewed attempt
+→ Manager may open any older attempt and approve/edit one specific attempt
+```
+
+Không có private practice hoặc bước Advisor chọn attempt để submit. Việc lưu mọi
+attempt không đồng nghĩa Manager phải review từng attempt.
+
+### Bàn giao ownership cho phần tích hợp còn lại
+
+Giữ nguyên ngày của các checkpoint đã qua. Với phần triển khai còn lại, Duy
+phụ trách lịch sử attempt và nghiệp vụ/API/lưu trữ Manager Review của Practice;
+Chương phụ trách auth/current-user và role dùng chung. Khi auth sẵn sàng, router
+Practice có phân quyền thay thế router cũ, không chạy song song. Checkpoint cũ
+chưa gắn owner đã xác thực không được tự gán cho advisor; nếu cần khôi phục
+lịch sử cũ thì phải có ánh xạ danh tính rõ ràng.
 
 ---
 
@@ -80,12 +124,12 @@ evaluation output schema
 Implement:
 
 ```text
-backend/roleplay/state.py
-backend/roleplay/scenario_loader.py
-backend/roleplay/customer_agent.py
-backend/roleplay/turn_analyzer.py
-backend/api/practice_chat.py
-backend/services/practice_service.py
+src/agents/roleplay/state.py
+src/agents/roleplay/scenario_loader.py
+src/agents/roleplay/customer_agent.py
+src/agents/roleplay/turn_analyzer.py
+src/api/practice.py
+src/services/practice.py
 ```
 
 API:
@@ -172,7 +216,7 @@ get_product_comparison()
 Implement:
 
 ```text
-backend/roleplay/evaluator.py
+src/agents/roleplay/evaluator.py
 ```
 
 Output mỗi criterion:
@@ -196,7 +240,7 @@ Evaluator chạy trên:
 
 ### Acceptance
 - Session finish sinh result cho 5 criterion; criterion không có cơ hội hợp lý dùng
-  `NOT_OBSERVED` và score `null`.
+  `UNASSESSED` và score `null` (nêu rõ lý do).
 - Mỗi assessed score có turn ID + exact quote đã validate.
 - Factual findings tách `SUPPORTED`, `CONTRADICTED`, `UNVERIFIABLE`.
 - Overall score do code tính trên criterion đã assessed.
@@ -267,7 +311,7 @@ Hoàn thiện:
 - Fix benchmark failures.
 - Add more realistic scenarios.
 - Improve coaching feedback.
-- Fix selected-attempt Manager review issues found after MVP.
+- Complete automatic attempt history and latest-attempt Manager queue behavior.
 
 ### Acceptance
 - Không còn P0/P1 bug trên role-play.
@@ -333,13 +377,10 @@ metadata requirements
 Implement:
 
 ```text
-backend/platform/database.py
-backend/platform/llm_client.py
-backend/platform/config.py
-backend/platform/logging.py
-
-backend/roleplay/checkpoint.py
-backend/roleplay/persistence.py
+src/config.py
+src/services/llm.py
+src/persistence/sqlite_checkpoint.py
+src/main.py
 ```
 
 Flow:
@@ -374,14 +415,13 @@ RoleplayGraph
 Implement:
 
 ```text
-backend/knowledge/chunking.py
-backend/knowledge/embeddings.py
-backend/knowledge/vector_store.py
-backend/knowledge/retrieval_service.py
+src/knowledge/chunking.py
+src/knowledge/embedding.py
+src/knowledge/vector_store.py
+src/knowledge/retrieval_service.py
 
-backend/copilot/retrieval.py
-backend/copilot/answer_generator.py
-backend/copilot/graph.py
+src/agents/copilot/answer_generator.py
+src/agents/copilot/graph.py
 ```
 
 Flow:
@@ -451,7 +491,7 @@ effective_date
 Hoàn thiện:
 
 ```text
-backend/roleplay/knowledge_tools.py
+src/integrations/practice_runtime.py
 checkpoint integration
 persistence integration
 session recovery
@@ -577,9 +617,9 @@ scripts/ingestion/
 ├── deduplicate.py
 └── build_corpus.py
 
-backend/knowledge/
+src/knowledge/
 ├── ingestion.py
-└── metadata.py
+└── schemas.py
 ```
 
 Support:
@@ -739,7 +779,7 @@ Chạy:
 - Judge MAE.
 - Criterion-level agreement.
 - Exact và ±1 agreement.
-- NOT_OBSERVED agreement.
+- ASSESSED / UNASSESSED agreement.
 - Evidence-reference correctness.
 - Critical factual miss rate.
 - Repeat stability trên fixed transcripts.
@@ -1066,8 +1106,9 @@ MVP pass khi salesperson có thể:
 
 10. See evidence + improvement feedback
 
-11. Retry or submit the selected attempt
-12. Manager opens the submitted attempt, approves/edits it, and saves the official result
+11. Retry or open the scenario's saved attempt history
+12. Manager opens the latest unreviewed attempt by default, may inspect older attempts,
+    then approves/edits one attempt and saves its official result
 ```
 
 MVP không bắt buộc:

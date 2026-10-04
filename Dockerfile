@@ -11,9 +11,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy installed packages from builder
-COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
+# Keep builder-installed packages reachable by the non-root runtime user.
+COPY --from=builder /root/.local /opt/python-packages
+ENV PATH=/opt/python-packages/bin:$PATH
+ENV PYTHONPATH=/opt/python-packages/lib/python3.11/site-packages
 
 # Security: run as non-root user
 RUN useradd -m appuser

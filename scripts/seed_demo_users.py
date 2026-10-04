@@ -1,0 +1,38 @@
+"""Seed local demo accounts without storing passwords in the repository."""
+
+import asyncio
+import os
+
+from src.config import get_settings
+from src.integrations.auth_repository import SQLAuthRepository
+from src.models.auth import UserRole
+from src.services.auth import AuthService
+
+
+def required_password(variable_name: str) -> str:
+    value = os.getenv(variable_name, "")
+    if not value:
+        raise RuntimeError(f"Set {variable_name} before seeding demo users.")
+    return value
+
+
+async def seed() -> None:
+    settings = get_settings()
+    service = AuthService(SQLAuthRepository(settings.database_url))
+    accounts = (
+        ("advisor-demo", "advisor.demo", "Tư vấn viên Demo", UserRole.ADVISOR, "DEMO_ADVISOR_PASSWORD"),
+        ("manager-demo", "manager.demo", "Quản lý Demo", UserRole.MANAGER, "DEMO_MANAGER_PASSWORD"),
+    )
+    for user_id, username, display_name, role, password_variable in accounts:
+        await service.seed_user(
+            user_id=user_id,
+            username=username,
+            display_name=display_name,
+            role=role,
+            password=required_password(password_variable),
+        )
+        print(f"Seeded {role.value} account: {username}")
+
+
+if __name__ == "__main__":
+    asyncio.run(seed())

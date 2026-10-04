@@ -1,10 +1,19 @@
+import os
 from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from src.main import app
+previous_embedding_provider = os.environ.get("EMBEDDING_PROVIDER")
+os.environ["EMBEDDING_PROVIDER"] = "hash"
+
+from src.main import app  # noqa: E402
+
+if previous_embedding_provider is None:
+    os.environ.pop("EMBEDDING_PROVIDER")
+else:
+    os.environ["EMBEDDING_PROVIDER"] = previous_embedding_provider
 
 
 @pytest_asyncio.fixture
