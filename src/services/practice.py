@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable
 from typing import Protocol
 from uuid import uuid4
@@ -10,7 +11,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict
 
 from src.agents.roleplay.contracts import RoleplayGraphContract, ScenarioContract
-from src.agents.roleplay.evaluator import KnowledgeEvidence, RoleplayEvaluator
+from src.agents.roleplay.evaluator import EvaluationError, KnowledgeEvidence, RoleplayEvaluator
 from src.agents.roleplay.graph import RoleplaySessionConflictError
 from src.agents.roleplay.scenario_loader import ScenarioRepository, ScenarioSummary
 from src.agents.roleplay.state import (
@@ -21,6 +22,27 @@ from src.agents.roleplay.state import (
     TerminationStatus,
 )
 from src.models.evaluation import SessionEvaluationResult
+
+logger = logging.getLogger(__name__)
+
+
+def _evaluation_error_code(exc: Exception) -> str:
+    if not isinstance(exc, EvaluationError):
+        return "not_validation_error"
+    message = str(exc)
+    if message.startswith("invalid evaluation output"):
+        return "invalid_output_schema"
+    if message.startswith("evaluation omitted recorded factual claims"):
+        return "missing_factual_findings"
+    if message.startswith("evidence quote is not exact"):
+        return "transcript_quote_mismatch"
+    if message.startswith("factual source quote is not exact"):
+        return "source_quote_mismatch"
+    if message.startswith("factual finding references"):
+        return "invalid_factual_reference"
+    if message.startswith("scores 2-3 require") or message.startswith("score 3 requires"):
+        return "score_evidence_mismatch"
+    return "other_validation_error"
 
 
 class PracticeSessionView(BaseModel):
@@ -115,13 +137,28 @@ class PracticeService:
             if state.evaluation_result is not None:
                 return self._result_view(state)
 
+            stage = "configuration"
+            evidence: list[KnowledgeEvidence] = []
             try:
                 if self._evaluator is None or self._knowledge_evidence is None:
                     raise PracticeEvaluationUnavailableError("evaluation dependencies are not configured")
                 scenario = state.scenario_snapshot or self._scenarios.get(state.scenario_id)
+                stage = "retrieval"
                 evidence = await self._knowledge_evidence.for_session(scenario, state)
+                stage = "judge_or_validation"
                 result = await self._evaluator.evaluate(scenario, state, evidence)
             except Exception as exc:
+                logger.warning(
+                    "practice_evaluation_failed session_id=%s stage=%s error_type=%s cause_type=%s root_cause_type=%s validation_code=%s claim_count=%d evidence_count=%d",
+                    session_id,
+                    stage,
+                    type(exc).__name__,
+                    type(exc.__cause__).__name__ if exc.__cause__ else "none",
+                    type(exc.__cause__.__cause__).__name__ if exc.__cause__ and exc.__cause__.__cause__ else "none",
+                    _evaluation_error_code(exc),
+                    len(state.factual_claims),
+                    len(evidence),
+                )
                 await self._graph.mark_evaluation_failed(session_id)
                 raise PracticeEvaluationUnavailableError(
                     "Evaluation is unavailable; the finished attempt can be retried."
