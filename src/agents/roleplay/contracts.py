@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 RUBRIC_CRITERIA = ("need_discovery", "product_knowledge", "objection_handling", "policy_accuracy", "closing_next_step")
 RUBRIC_SCORE_MIN = 1
-RUBRIC_SCORE_MAX = 5
+RUBRIC_SCORE_MAX = 3
 CUSTOMER_BEHAVIOR_RULES = (
     "Always role-play the customer, never the sales advisor.",
     "Keep the scenario persona consistent throughout the session.",
@@ -142,7 +142,7 @@ class CheckpointContract(Protocol):
 class RoleplayGraphContract(Protocol):
     """Shared D2 graph boundary without choosing its implementation."""
 
-    async def start(self, session_id: str, scenario_id: str) -> dict[str, Any]: ...
+    async def start(self, session_id: str, scenario_id: str, max_turns: int | None = None) -> dict[str, Any]: ...
 
     async def continue_session(self, session_id: str, advisor_message: str) -> dict[str, Any]: ...
 

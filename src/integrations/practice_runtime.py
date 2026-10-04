@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 from src.agents.roleplay.contracts import ScenarioContract
 from src.agents.roleplay.customer_agent import CustomerAgent, CustomerModelOutput
-from src.agents.roleplay.evaluator import EvaluationDraft, RoleplayEvaluator
+from src.agents.roleplay.evaluator import EvaluationDraft, FactualFindingsDraft, RoleplayEvaluator
 from src.agents.roleplay.graph import RoleplayGraph
 from src.agents.roleplay.prompts import (
     TURN_ANALYZER_PROMPT_VERSION,
@@ -132,6 +132,17 @@ class SharedLLMEvaluationModel:
                 context=context,
             )
 
+    async def evaluate_factual_claims(
+        self,
+        *,
+        system_prompt: str,
+        context: dict[str, Any],
+    ) -> FactualFindingsDraft:
+        try:
+            return await self._invoker.invoke(FactualFindingsDraft, system_prompt=system_prompt, context=context)
+        except StructuredModelInvocationError:
+            return await self._invoker.invoke(FactualFindingsDraft, system_prompt=system_prompt, context=context)
+
 
 def build_practice_service(
     *,
@@ -176,7 +187,10 @@ def _turn_analysis_context(
             "disclosure_rules": [rule.model_dump(mode="json") for rule in scenario.disclosure_rules],
             "objections": [objection.model_dump(mode="json") for objection in scenario.objections],
             "success_conditions": scenario.success_conditions,
-            "termination_conditions": scenario.termination_conditions.model_dump(mode="json"),
+            "termination_conditions": {
+                **scenario.termination_conditions.model_dump(mode="json"),
+                "max_turns": state.max_turns,
+            },
         },
         "state": {
             "conversation_stage": state.conversation_stage.value,
@@ -185,6 +199,7 @@ def _turn_analysis_context(
             "resolved_objection_ids": list(state.resolved_objections),
             "unresolved_objection_ids": list(state.unresolved_objections),
             "current_topic": state.current_topic,
+            "concern_prompt_counts": dict(state.concern_prompt_counts),
             "recent_messages": [message.model_dump(mode="json") for message in state.messages[-6:]],
         },
     }

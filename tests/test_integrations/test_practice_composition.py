@@ -87,7 +87,7 @@ async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path:
             "evaluations": [
                 {
                     "criterion": criterion,
-                    "status": "not_observed",
+                    "status": "unassessed",
                     "score": None,
                     "reason": "Chưa đủ cơ hội quan sát trong transcript ngắn.",
                 }

@@ -15,8 +15,7 @@ class CriterionType(StrEnum):
 
 class CriterionStatus(StrEnum):
     ASSESSED = "assessed"
-    NOT_OBSERVED = "not_observed"
-    INSUFFICIENT_EVIDENCE = "insufficient_evidence"
+    UNASSESSED = "unassessed"
 
 
 class CheckVerdict(StrEnum):
@@ -55,7 +54,7 @@ class CriterionEvaluation(BaseModel):
 
     criterion: CriterionType
     status: CriterionStatus
-    score: int | None = Field(None, ge=1, le=5)
+    score: int | None = Field(None, ge=1, le=3)
     checks: list[ObservableCheckResult] = Field(default_factory=list)
     evidence: list[TranscriptEvidence] = Field(default_factory=list)
     reason: str = Field(min_length=1)
@@ -113,7 +112,7 @@ class SessionEvaluationResult(BaseModel):
     scenario_id: str
     rubric_version: str = Field(min_length=1)
     assessed_criteria_count: int = Field(ge=0, le=5)
-    overall_score: float | None = Field(None, ge=1.0, le=5.0)
+    overall_score: float | None = Field(None, ge=1.0, le=3.0)
     passed: bool | None = None
     evaluations: list[CriterionEvaluation] = Field(min_length=5, max_length=5)
     factual_findings: list[FactualFinding] = Field(default_factory=list)

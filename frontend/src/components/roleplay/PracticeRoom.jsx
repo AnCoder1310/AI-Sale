@@ -117,7 +117,7 @@ export function PracticeRoom({
                 {stageLabels[stage] || stage}
               </span>
               <span style={{ fontSize: '0.75rem', color: '#888888' }}>
-                • Lượt trao đổi: {turnCount}
+                • Lượt trao đổi: {turnCount}/{session?.max_turns || scenario?.max_turns}
               </span>
             </div>
           </div>

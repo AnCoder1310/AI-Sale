@@ -7,10 +7,10 @@ export const practiceApi = {
     });
   },
 
-  async startSession(scenarioId) {
+  async startSession(scenarioId, maxTurns = 10) {
     return request('/practice/sessions', {
       method: 'POST',
-      body: JSON.stringify({ scenario_id: scenarioId }),
+      body: JSON.stringify({ scenario_id: scenarioId, max_turns: maxTurns }),
     });
   },
 
@@ -37,5 +37,14 @@ export const practiceApi = {
     return request(`/practice/${encodeURIComponent(sessionId)}`, {
       method: 'GET',
     });
+  },
+
+  async getHistory(scenarioId = null) {
+    const query = scenarioId ? `?scenario_id=${encodeURIComponent(scenarioId)}` : '';
+    return request(`/practice/history${query}`, { method: 'GET' });
+  },
+
+  async getAttempt(sessionId) {
+    return request(`/practice/${encodeURIComponent(sessionId)}/attempt`, { method: 'GET' });
   },
 };

@@ -5,9 +5,14 @@ import pytest
 from fastapi import FastAPI, Header, HTTPException
 
 from src.agents.roleplay.scenario_loader import ScenarioRepository
-from src.api.recorded_practice import PracticeIdentity, create_recorded_practice_routers
+from src.api.auth import CurrentUserDependency, create_auth_router
+from src.api.recorded_practice import create_recorded_practice_routers
+from src.config import Settings
+from src.integrations.auth_repository import SQLAuthRepository
 from src.integrations.practice_records import SQLPracticeRecordsRepository
+from src.models.auth import AuthenticatedUser, UserRole
 from src.models.evaluation import CriterionType, SessionEvaluationResult
+from src.services.auth import AuthService
 from src.services.practice import PracticeEvaluationUnavailableError, PracticeResultView, PracticeSessionView
 from src.services.recorded_practice import RecordedPracticeService
 
@@ -20,7 +25,7 @@ class StubPractice:
     def list_scenarios(self):
         return ScenarioRepository().list_public()
 
-    async def start_session(self, scenario_id):
+    async def start_session(self, scenario_id, max_turns=None):
         self.counter += 1
         session_id = f"session-{self.counter}"
         session = PracticeSessionView(
@@ -29,6 +34,7 @@ class StubPractice:
             difficulty="Medium",
             conversation_stage="opening",
             turn_count=0,
+            max_turns=max_turns or 10,
             visible_context="Customer asks about a car.",
             termination_status="active",
             messages=[],
@@ -46,11 +52,16 @@ class StubPractice:
         raise PracticeEvaluationUnavailableError("Evaluator is unavailable")
 
 
-async def fake_identity(x_test_identity: str | None = Header(None)) -> PracticeIdentity:
+async def fake_identity(x_test_identity: str | None = Header(None)) -> AuthenticatedUser:
     if not x_test_identity:
         raise HTTPException(status_code=401, detail="Authentication required.")
     user_id, role = x_test_identity.split(":", 1)
-    return PracticeIdentity(user_id=user_id, role=role)
+    return AuthenticatedUser(
+        user_id=user_id,
+        username=f"{user_id}.test",
+        display_name=user_id,
+        role=role,
+    )
 
 
 @pytest.mark.asyncio
@@ -66,9 +77,10 @@ async def test_history_and_review_routes_enforce_identity_and_ownership(tmp_path
         created = await client.post(
             "/api/v1/practice/sessions",
             headers={"X-Test-Identity": "advisor-a:advisor"},
-            json={"scenario_id": "SCENARIO_01_VF5_TAXI"},
+            json={"scenario_id": "SCENARIO_01_VF5_TAXI", "max_turns": 15},
         )
         assert created.status_code == 201
+        assert created.json()["max_turns"] == 15
         session_id = created.json()["session_id"]
         # Ownership exists at start, but history only lists finished/evaluated attempts.
         await records.complete(session_id, draft_for(session_id))
@@ -87,6 +99,17 @@ async def test_history_and_review_routes_enforce_identity_and_ownership(tmp_path
         ).status_code == 403
         manager_queue = await client.get("/api/v1/manager/reviews", headers={"X-Test-Identity": "manager-a:manager"})
         assert [item["session_id"] for item in manager_queue.json()] == [session_id]
+        assert (
+            await client.get("/api/v1/manager/attempts", headers={"X-Test-Identity": "advisor-a:advisor"})
+        ).status_code == 403
+        assert (
+            await client.get("/api/v1/manager/overview", headers={"X-Test-Identity": "advisor-a:advisor"})
+        ).status_code == 403
+        manager_history = await client.get("/api/v1/manager/attempts", headers={"X-Test-Identity": "manager-a:manager"})
+        assert [item["session_id"] for item in manager_history.json()] == [session_id]
+        overview = await client.get("/api/v1/manager/overview", headers={"X-Test-Identity": "manager-a:manager"})
+        assert overview.json()["completed_attempts"] == 1
+        assert overview.json()["pending_attempts"] == 1
 
 
 @pytest.mark.asyncio
@@ -114,11 +137,11 @@ async def test_manager_can_review_finished_attempt_once_and_advisor_sees_result(
         approved = await client.patch(
             f"/api/v1/manager/reviews/{session_id}",
             headers={"X-Test-Identity": "manager-a:manager"},
-            json={"score_overrides": {"need_discovery": 4}, "change_reason": "Follow-up was strong."},
+            json={"score_overrides": {"need_discovery": 2}, "change_reason": "Follow-up was strong."},
         )
         assert approved.status_code == 200
         assert approved.json()["ai_draft"]["overall_score"] == 3
-        assert approved.json()["approved_result"]["overall_score"] == 4
+        assert approved.json()["approved_result"]["overall_score"] == 2
         assert (
             await client.patch(
                 f"/api/v1/manager/reviews/{session_id}",
@@ -159,7 +182,7 @@ def draft_for(session_id: str) -> SessionEvaluationResult:
     evaluations = [
         {
             "criterion": criterion,
-            "status": "assessed" if criterion is CriterionType.NEED_DISCOVERY else "not_observed",
+            "status": "assessed" if criterion is CriterionType.NEED_DISCOVERY else "unassessed",
             "score": 3 if criterion is CriterionType.NEED_DISCOVERY else None,
             "evidence": (
                 [{"message_id": "a-1", "quote": "What matters most?"}]
@@ -178,3 +201,68 @@ def draft_for(session_id: str) -> SessionEvaluationResult:
         overall_score=3,
         evaluations=evaluations,
     )
+
+
+@pytest.mark.asyncio
+async def test_real_auth_cookie_is_used_for_practice_ownership_and_manager_access(tmp_path):
+    database_url = f"sqlite:///{tmp_path / 'vertical.db'}"
+    settings = Settings(
+        _env_file=None,
+        database_url=database_url,
+        embedding_provider="hash",
+        app_env="test",
+    )
+    auth = AuthService(SQLAuthRepository(database_url))
+    for user_id, username, role in (
+        ("advisor-a", "advisor.a", UserRole.ADVISOR),
+        ("advisor-b", "advisor.b", UserRole.ADVISOR),
+        ("manager-a", "manager.a", UserRole.MANAGER),
+    ):
+        await auth.seed_user(
+            user_id=user_id,
+            username=username,
+            display_name=user_id,
+            role=role,
+            password="correct horse battery staple",
+        )
+    records = SQLPracticeRecordsRepository(database_url)
+    service = RecordedPracticeService(StubPractice(), records)
+    current_user = CurrentUserDependency(auth, settings.auth_cookie_name)
+    practice_router, manager_router = create_recorded_practice_routers(service, current_user)
+    app = FastAPI()
+    app.include_router(create_auth_router(auth, settings), prefix="/api/v1")
+    app.include_router(practice_router, prefix="/api/v1")
+    app.include_router(manager_router, prefix="/api/v1")
+
+    transport = httpx.ASGITransport(app=app)
+    async with (
+        httpx.AsyncClient(transport=transport, base_url="http://test") as advisor_a,
+        httpx.AsyncClient(transport=transport, base_url="http://test") as advisor_b,
+        httpx.AsyncClient(transport=transport, base_url="http://test") as manager,
+    ):
+        for client, username in (
+            (advisor_a, "advisor.a"),
+            (advisor_b, "advisor.b"),
+            (manager, "manager.a"),
+        ):
+            response = await client.post(
+                "/api/v1/auth/login",
+                json={"username": username, "password": "correct horse battery staple"},
+            )
+            assert response.status_code == 200
+
+        created = await advisor_a.post(
+            "/api/v1/practice/sessions",
+            json={"scenario_id": "SCENARIO_01_VF5_TAXI"},
+        )
+        assert created.status_code == 201
+        session_id = created.json()["session_id"]
+        await records.complete(session_id, draft_for(session_id))
+
+        assert [item["session_id"] for item in (await advisor_a.get("/api/v1/practice/history")).json()] == [session_id]
+        assert (await advisor_b.get("/api/v1/practice/history")).json() == []
+        assert (await advisor_b.get(f"/api/v1/practice/{session_id}/attempt")).status_code == 404
+        assert (await advisor_a.get("/api/v1/manager/reviews")).status_code == 403
+        assert (await manager.get("/api/v1/practice/history")).status_code == 403
+        assert [item["session_id"] for item in (await manager.get("/api/v1/manager/reviews")).json()] == [session_id]
+        assert (await manager.get(f"/api/v1/manager/reviews/{session_id}")).status_code == 200

@@ -129,9 +129,10 @@ Policy Accuracy
 Closing / Next Step
 ```
 
-Mỗi chiều có mô tả hành vi quan sát được, trạng thái áp dụng, thang điểm 1–5 và
+Mỗi chiều có mô tả hành vi quan sát được, trạng thái áp dụng, thang điểm 1–3 và
 dẫn chứng bằng lượt hội thoại. Nếu phiên không tạo cơ hội hợp lý để thể hiện một
-kỹ năng, hệ thống ghi `NOT_OBSERVED` thay vì tự gán điểm thấp.
+kỹ năng, hoặc thiếu bằng chứng để kết luận, hệ thống ghi `UNASSESSED` với lý do
+cụ thể thay vì tự gán điểm thấp.
 
 Kết quả có thể bao gồm:
 

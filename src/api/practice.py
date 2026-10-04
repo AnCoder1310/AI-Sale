@@ -26,6 +26,7 @@ class CreatePracticeSessionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     scenario_id: str = Field(min_length=1, max_length=120)
+    max_turns: int | None = Field(default=None, ge=8, le=15)
 
     @field_validator("scenario_id")
     @classmethod
@@ -67,7 +68,9 @@ def create_practice_router(service: PracticeService) -> APIRouter:
         request: CreatePracticeSessionRequest,
     ) -> PracticeSessionView:
         try:
-            return await service.start_session(request.scenario_id)
+            if request.max_turns is None:
+                return await service.start_session(request.scenario_id)
+            return await service.start_session(request.scenario_id, max_turns=request.max_turns)
         except RoleplayScenarioNotFoundError as exc:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

@@ -59,7 +59,11 @@ def test_customer_prompt_only_contains_revealed_fact_values():
 
     prompt_context = state.customer_prompt_context()
 
+    assert prompt_context["revealed_facts"] == {}
+    state.spoken_fact_message_ids["daily_distance"] = "customer-2"
+    prompt_context = state.customer_prompt_context()
     assert prompt_context["revealed_facts"] == {"daily_distance": scenario.hidden_facts["daily_distance"]}
+    assert prompt_context["spoken_fact_message_ids"] == {"daily_distance": "customer-2"}
     assert scenario.hidden_facts["budget"] not in str(prompt_context)
 
 
@@ -141,9 +145,9 @@ def test_visible_context_must_not_contain_a_hidden_fact_value():
         ScenarioContract.model_validate(raw_scenario)
 
 
-def test_rubric_contract_uses_the_shared_one_to_five_scale():
+def test_rubric_contract_uses_the_shared_one_to_three_scale():
     assert len(RUBRIC_CRITERIA) == 5
-    assert (RUBRIC_SCORE_MIN, RUBRIC_SCORE_MAX) == (1, 5)
+    assert (RUBRIC_SCORE_MIN, RUBRIC_SCORE_MAX) == (1, 3)
 
 
 def test_assessed_criterion_requires_transcript_evidence():
@@ -151,25 +155,46 @@ def test_assessed_criterion_requires_transcript_evidence():
         CriterionEvaluation(
             criterion=CriterionType.NEED_DISCOVERY,
             status=CriterionStatus.ASSESSED,
-            score=4,
+            score=3,
             reason="The advisor discovered intended use.",
         )
 
 
-def test_not_observed_criterion_rejects_numeric_score():
+def test_unassessed_criterion_rejects_numeric_score():
     with pytest.raises(ValueError, match="must not contain a score"):
         CriterionEvaluation(
             criterion=CriterionType.CLOSING_NEXT_STEP,
-            status=CriterionStatus.NOT_OBSERVED,
+            status=CriterionStatus.UNASSESSED,
             score=2,
             reason="No fair closing opportunity occurred.",
         )
 
 
-def _not_observed(criterion: CriterionType) -> CriterionEvaluation:
+def test_assessed_criterion_rejects_score_above_three():
+    with pytest.raises(ValueError):
+        CriterionEvaluation(
+            criterion=CriterionType.NEED_DISCOVERY,
+            status=CriterionStatus.ASSESSED,
+            score=4,
+            evidence=[TranscriptEvidence(message_id="turn-1", quote="Anh đi bao nhiêu km?")],
+            reason="Asked about usage.",
+        )
+
+
+def test_old_unassessed_statuses_are_not_part_of_v3_contract():
+    for old_status in ("not_observed", "insufficient_evidence"):
+        with pytest.raises(ValueError):
+            CriterionEvaluation(
+                criterion=CriterionType.CLOSING_NEXT_STEP,
+                status=old_status,
+                reason="No reliable score.",
+            )
+
+
+def _unassessed(criterion: CriterionType) -> CriterionEvaluation:
     return CriterionEvaluation(
         criterion=criterion,
-        status=CriterionStatus.NOT_OBSERVED,
+        status=CriterionStatus.UNASSESSED,
         reason="The scenario did not create a fair opportunity.",
     )
 
@@ -178,14 +203,14 @@ def test_session_result_validates_coverage_and_aggregate():
     result = SessionEvaluationResult(
         session_id="session-1",
         scenario_id="scenario-1",
-        rubric_version="v2",
+        rubric_version="v3",
         assessed_criteria_count=1,
-        overall_score=4.0,
+        overall_score=3.0,
         evaluations=[
             CriterionEvaluation(
                 criterion=CriterionType.NEED_DISCOVERY,
                 status=CriterionStatus.ASSESSED,
-                score=4,
+                score=3,
                 evidence=[
                     TranscriptEvidence(
                         message_id="turn-1",
@@ -196,17 +221,17 @@ def test_session_result_validates_coverage_and_aggregate():
             ),
             CriterionEvaluation(
                 criterion=CriterionType.CLOSING_NEXT_STEP,
-                status=CriterionStatus.NOT_OBSERVED,
+                status=CriterionStatus.UNASSESSED,
                 reason="The session ended before a closing opportunity.",
             ),
-            _not_observed(CriterionType.PRODUCT_KNOWLEDGE),
-            _not_observed(CriterionType.OBJECTION_HANDLING),
-            _not_observed(CriterionType.POLICY_ACCURACY),
+            _unassessed(CriterionType.PRODUCT_KNOWLEDGE),
+            _unassessed(CriterionType.OBJECTION_HANDLING),
+            _unassessed(CriterionType.POLICY_ACCURACY),
         ],
     )
 
     assert result.assessed_criteria_count == 1
-    assert result.overall_score == 4.0
+    assert result.overall_score == 3.0
 
 
 def test_session_result_rejects_llm_supplied_inconsistent_aggregate():
@@ -214,14 +239,14 @@ def test_session_result_rejects_llm_supplied_inconsistent_aggregate():
         SessionEvaluationResult(
             session_id="session-1",
             scenario_id="scenario-1",
-            rubric_version="v2",
+            rubric_version="v3",
             assessed_criteria_count=1,
-            overall_score=5.0,
+            overall_score=2.0,
             evaluations=[
                 CriterionEvaluation(
                     criterion=CriterionType.NEED_DISCOVERY,
                     status=CriterionStatus.ASSESSED,
-                    score=4,
+                    score=3,
                     evidence=[
                         TranscriptEvidence(
                             message_id="turn-1",
@@ -230,10 +255,10 @@ def test_session_result_rejects_llm_supplied_inconsistent_aggregate():
                     ],
                     reason="The advisor asked about intended use.",
                 ),
-                _not_observed(CriterionType.PRODUCT_KNOWLEDGE),
-                _not_observed(CriterionType.OBJECTION_HANDLING),
-                _not_observed(CriterionType.POLICY_ACCURACY),
-                _not_observed(CriterionType.CLOSING_NEXT_STEP),
+                _unassessed(CriterionType.PRODUCT_KNOWLEDGE),
+                _unassessed(CriterionType.OBJECTION_HANDLING),
+                _unassessed(CriterionType.POLICY_ACCURACY),
+                _unassessed(CriterionType.CLOSING_NEXT_STEP),
             ],
         )
 

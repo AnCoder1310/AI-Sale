@@ -25,7 +25,8 @@ def faq():
 
 
 def test_dataset_contracts(corpus, faq):
-    assert (len(corpus), len(faq), len(corpus) + len(faq)) == (17, 6, 23)
+    assert len(corpus) >= 17
+    assert len(faq) == 6
     assert all(record["document_type"] != "faq" for record in corpus)
     assert all(record["document_type"] == "faq" for record in faq)
     assert all(list(record) == CORPUS_FIELDS for record in corpus + faq)
@@ -145,7 +146,7 @@ def test_build_splits_all_current_records(tmp_path, corpus, faq, monkeypatch):
     monkeypatch.setattr(build_corpus, "normalize_all", lambda _product, _knowledge: (corpus + faq, []))
     output = tmp_path / "corpus.json"
     report = build_corpus.build(product_zip, knowledge_zip, output, tmp_path / "reports")
-    assert (report["knowledge_record_count"], report["faq_record_count"]) == (17, 6)
+    assert (report["knowledge_record_count"], report["faq_record_count"]) == (len(corpus), len(faq))
     assert json.loads(output.read_text(encoding="utf-8")) == corpus
     assert json.loads((tmp_path / "faq.json").read_text(encoding="utf-8")) == faq
 

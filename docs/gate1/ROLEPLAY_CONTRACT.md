@@ -84,9 +84,9 @@ access to older attempts. Only Manager approval makes a specific attempt officia
 
 Duy owns the complete practice lifecycle and role-play graph semantics. Chương
 supplies checkpoint, persistence, knowledge and platform integrations. An consumes
-public scenario/session DTOs only. Evaluation uses the shared five criteria and 1–5
-scale from `src/models/evaluation.py`, supports `ASSESSED`, `NOT_OBSERVED`, and
-`INSUFFICIENT_EVIDENCE`, and requires verified transcript evidence for every assessed
+public scenario/session DTOs only. Evaluation uses the shared five criteria and 1–3
+scale from `src/models/evaluation.py`, supports `ASSESSED` and `UNASSESSED`
+(with a reason for no opportunity or insufficient evidence), and requires verified transcript evidence for every assessed
 score.
 
 The practice service requires an evaluator and a knowledge-evidence provider. The

@@ -39,17 +39,19 @@ class StubPracticeService:
         self.message_error = None
         self.finish_error = None
         self.start_calls = []
+        self.turn_limit_calls = []
         self.message_calls = []
         self.finish_calls = []
 
     def list_scenarios(self):
         return self.scenarios
 
-    async def start_session(self, scenario_id):
+    async def start_session(self, scenario_id, max_turns=None):
         self.start_calls.append(scenario_id)
+        self.turn_limit_calls.append(max_turns)
         if self.start_error:
             raise self.start_error
-        return session_view()
+        return session_view().model_copy(update={"max_turns": max_turns or 10})
 
     async def send_message(self, session_id, message):
         self.message_calls.append((session_id, message))
@@ -109,6 +111,25 @@ async def test_start_session_returns_created_session(client, service):
     assert response.status_code == 201
     assert response.json()["session_id"] == "session-1"
     assert service.start_calls == ["SCENARIO_01_VF5_TAXI"]
+
+
+@pytest.mark.asyncio
+async def test_start_session_accepts_only_eight_to_fifteen_turns(client, service):
+    for invalid in (7, 16):
+        response = await client.post(
+            "/api/v1/practice/sessions",
+            json={"scenario_id": "SCENARIO_01_VF5_TAXI", "max_turns": invalid},
+        )
+        assert response.status_code == 422
+    assert service.start_calls == []
+
+    response = await client.post(
+        "/api/v1/practice/sessions",
+        json={"scenario_id": "SCENARIO_01_VF5_TAXI", "max_turns": 15},
+    )
+    assert response.status_code == 201
+    assert response.json()["max_turns"] == 15
+    assert service.turn_limit_calls == [15]
 
 
 @pytest.mark.asyncio

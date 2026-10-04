@@ -1,14 +1,9 @@
-"""Auth-gated Practice/Review routes; not mounted until auth is integrated.
-
-The supplied identity dependency must verify the request (cookie/token) and
-return a trusted user ID and role. Never construct it from request JSON.
-"""
+"""Auth-gated Practice history and manager-review routes."""
 
 from collections.abc import Awaitable, Callable
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
-from pydantic import BaseModel, ConfigDict, Field
 
 from src.agents.roleplay.customer_agent import CustomerResponseError
 from src.agents.roleplay.graph import (
@@ -20,6 +15,7 @@ from src.agents.roleplay.scenario_loader import ScenarioSummary
 from src.agents.roleplay.state_reducer import StateTransitionError
 from src.agents.roleplay.turn_analyzer import TurnAnalysisError
 from src.api.practice import AdvisorMessageRequest, CreatePracticeSessionRequest
+from src.models.auth import AuthenticatedUser
 from src.services.practice import PracticeEvaluationUnavailableError, PracticeResultView, PracticeSessionView
 from src.services.practice_records import (
     AttemptNotFoundError,
@@ -27,20 +23,11 @@ from src.services.practice_records import (
     ManagerReviewDecision,
     ManagerReviewRecord,
     ReviewConflictError,
+    TeamOverview,
 )
 from src.services.recorded_practice import RecordedAttemptDetail, RecordedPracticeService
 
-
-class PracticeIdentity(BaseModel):
-    """Trusted output contract for Chương's future auth dependency."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    user_id: str = Field(min_length=1)
-    role: Literal["advisor", "manager"]
-
-
-IdentityDependency = Callable[..., Awaitable[PracticeIdentity]]
+IdentityDependency = Callable[..., Awaitable[AuthenticatedUser]]
 SessionId = Annotated[str, Path(min_length=1, max_length=120)]
 
 
@@ -54,9 +41,9 @@ def create_recorded_practice_routers(
     """
     practice = APIRouter(prefix="/practice", tags=["practice"])
     manager = APIRouter(prefix="/manager", tags=["manager-review"])
-    actor = Annotated[PracticeIdentity, Depends(get_identity)]
+    actor = Annotated[AuthenticatedUser, Depends(get_identity)]
 
-    def require_role(identity: PracticeIdentity, role: str) -> None:
+    def require_role(identity: AuthenticatedUser, role: str) -> None:
         if identity.role != role:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This role cannot access this operation.")
 
@@ -69,7 +56,7 @@ def create_recorded_practice_routers(
     async def start_session(request: CreatePracticeSessionRequest, identity: actor) -> PracticeSessionView:
         require_role(identity, "advisor")
         try:
-            return await service.start_session(request.scenario_id, identity.user_id)
+            return await service.start_session(request.scenario_id, identity.user_id, max_turns=request.max_turns)
         except RoleplayScenarioNotFoundError as exc:
             raise HTTPException(status_code=404, detail="Practice scenario was not found.") from exc
 
@@ -134,6 +121,22 @@ def create_recorded_practice_routers(
     async def review_queue(identity: actor) -> list[AttemptSummary]:
         require_role(identity, "manager")
         return await service.review_queue()
+
+    @manager.get("/attempts", response_model=list[AttemptSummary])
+    async def manager_history(
+        identity: actor,
+        advisor_id: str | None = Query(None, min_length=1, max_length=120),
+        scenario_id: str | None = Query(None, min_length=1, max_length=120),
+        limit: int = Query(50, ge=1, le=100),
+        offset: int = Query(0, ge=0),
+    ) -> list[AttemptSummary]:
+        require_role(identity, "manager")
+        return await service.manager_history(advisor_id, scenario_id, limit, offset)
+
+    @manager.get("/overview", response_model=TeamOverview)
+    async def team_overview(identity: actor) -> TeamOverview:
+        require_role(identity, "manager")
+        return await service.team_overview()
 
     @manager.get("/reviews/{session_id}", response_model=RecordedAttemptDetail)
     async def manager_detail(session_id: SessionId, identity: actor) -> RecordedAttemptDetail:

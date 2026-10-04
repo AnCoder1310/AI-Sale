@@ -21,6 +21,7 @@ from src.services.practice_records import (
     ManagerReviewDecision,
     ManagerReviewRecord,
     PracticeRecordsRepository,
+    TeamOverview,
 )
 
 
@@ -41,8 +42,14 @@ class RecordedPracticeService:
     def list_scenarios(self) -> list[ScenarioSummary]:
         return self._practice.list_scenarios()
 
-    async def start_session(self, scenario_id: str, advisor_id: str) -> PracticeSessionView:
-        session = await self._practice.start_session(scenario_id)
+    async def start_session(
+        self, scenario_id: str, advisor_id: str, max_turns: int | None = None
+    ) -> PracticeSessionView:
+        session = (
+            await self._practice.start_session(scenario_id, max_turns=max_turns)
+            if max_turns is not None
+            else await self._practice.start_session(scenario_id)
+        )
         await self._records.register(session.session_id, session.scenario_id, advisor_id)
         return session
 
@@ -86,6 +93,14 @@ class RecordedPracticeService:
 
     async def review_queue(self) -> list[AttemptSummary]:
         return await self._records.review_queue()
+
+    async def manager_history(
+        self, advisor_id: str | None = None, scenario_id: str | None = None, limit: int = 50, offset: int = 0
+    ) -> list[AttemptSummary]:
+        return await self._records.manager_history(advisor_id, scenario_id, limit, offset)
+
+    async def team_overview(self) -> TeamOverview:
+        return await self._records.team_overview()
 
     async def manager_detail(self, session_id: str) -> RecordedAttemptDetail:
         attempt = await self._records.manager_attempt(session_id)

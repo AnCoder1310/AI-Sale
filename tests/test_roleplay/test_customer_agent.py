@@ -47,6 +47,7 @@ async def test_customer_agent_uses_versioned_prompt_and_returns_customer_message
 @pytest.mark.asyncio
 async def test_customer_context_only_contains_revealed_facts_and_active_objections(scenario, state):
     state.revealed_facts = ["daily_distance"]
+    state.spoken_fact_message_ids = {"daily_distance": "customer-2"}
     state.active_objections = ["OBJ_VF5_BATTERY_VS_GAS"]
     model = CapturingCustomerModel({"reply": "Vậy em thử tính theo quãng đường của anh xem."})
     agent = CustomerAgent(model)

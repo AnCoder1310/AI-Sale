@@ -32,7 +32,8 @@ export function EvaluationScorecard({
   }
 
   const evalData = result.result;
-  const overallScore5 = evalData.overall_score;
+  const overallScore3 = evalData.overall_score;
+  const approved = evalData.review_status === 'manager_approved';
 
   const criteriaLabels = {
     need_discovery: 'Need Discovery (Khai thác Nhu cầu)',
@@ -58,17 +59,18 @@ export function EvaluationScorecard({
             </h1>
             <p style={{ fontSize: '0.85rem', color: '#A3A3A3', marginTop: 4 }}>
               Phiên ID: <code style={{ color: '#E0E0E0' }}>{result.session_id}</code> • Trạng thái:{' '}
-              <span style={{ color: '#FFFFFF', fontWeight: 600 }}>Bản nháp AI (Chờ Quản lý duyệt)</span>
+              <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{approved ? 'Quản lý đã duyệt' : 'Bản nháp AI (Chờ Quản lý duyệt)'}</span>
+              {' '}• Đã chấm {evalData.assessed_criteria_count}/5 kỹ năng
             </p>
           </div>
 
           <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-              <span style={{ fontSize: '2.4rem', fontWeight: 800, color: '#FFFFFF' }}>{overallScore5 ?? '—'}</span>
-              <span style={{ fontSize: '1rem', color: '#888888' }}>/ 5</span>
+              <span style={{ fontSize: '2.4rem', fontWeight: 800, color: '#FFFFFF' }}>{overallScore3 ?? '—'}</span>
+              <span style={{ fontSize: '1rem', color: '#888888' }}>/ 3</span>
             </div>
             <Badge variant="default" style={{ backgroundColor: '#555555', color: '#FFFFFF', border: 'none', padding: '6px 12px', fontSize: '0.82rem' }}>
-              BẢN NHÁP AI • CHƯA DUYỆT
+              {approved ? 'KẾT QUẢ ĐÃ DUYỆT' : 'BẢN NHÁP AI • CHƯA DUYỆT'}
             </Badge>
           </div>
         </div>
@@ -130,14 +132,14 @@ export function EvaluationScorecard({
                         {criteriaLabels[crit.criterion] || crit.criterion}
                       </h3>
                       <span style={{ fontSize: '0.75rem', color: '#737373' }}>
-                        Trạng thái: {crit.status === 'assessed' ? 'Đã đánh giá qua hội thoại' : 'Chưa quan sát'}
+                        Trạng thái: {crit.status === 'assessed' ? 'Đã đánh giá qua hội thoại' : 'Chưa chấm — xem lý do'}
                       </span>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#111111' }}>
-                      {score ?? '—'} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#737373' }}>/ 5</span>
+                      {score ?? '—'} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#737373' }}>/ 3</span>
                     </span>
                   </div>
                 </div>
@@ -166,7 +168,7 @@ export function EvaluationScorecard({
                           borderRadius: '0 6px 6px 0',
                         }}
                       >
-                        "{ev.quote}"
+                        {ev.message_id ? <a href={`#message-${ev.message_id}`} style={{ color: 'inherit' }}>"{ev.quote}" ↗</a> : `"${ev.quote}"`}
                       </div>
                     ))}
                   </div>
@@ -222,6 +224,13 @@ export function EvaluationScorecard({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {evalData.recommended_next_practice && (
+        <div className="card-white">
+          <h3>Gợi ý luyện tập tiếp</h3>
+          <p>{evalData.recommended_next_practice.reason}</p>
         </div>
       )}
 

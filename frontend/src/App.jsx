@@ -7,11 +7,16 @@ import { RoleplayView } from './components/roleplay/RoleplayView';
 import { KnowledgeView } from './components/knowledge/KnowledgeView';
 import { ChargingView } from './components/charging/ChargingView';
 import { ErrorState } from './components/common/ErrorState';
+import { LoginView } from './components/auth/LoginView';
+import { ManagerReviewView } from './components/manager/ManagerReviewView';
 
 import { ADVISOR_PROFILE } from './data/competencyData';
+import { authApi } from './api/authApi';
 import { practiceApi } from './api/practiceApi';
 
 export function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authStatus, setAuthStatus] = useState('loading');
   const [currentTab, setCurrentTab] = useState('home');
   const [scenarios, setScenarios] = useState([]);
   const [scenarioStatus, setScenarioStatus] = useState('loading');
@@ -21,8 +26,22 @@ export function App() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [copilotQuery, setCopilotQuery] = useState('');
 
-  // Fetch real scenarios from backend on load
   useEffect(() => {
+    async function restoreSession() {
+      try {
+        setCurrentUser(await authApi.me());
+        setAuthStatus('authenticated');
+      } catch {
+        setCurrentUser(null);
+        setAuthStatus('anonymous');
+      }
+    }
+    restoreSession();
+  }, []);
+
+  // Fetch real scenarios only after an advisor is authenticated.
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || currentUser?.role !== 'advisor') return;
     async function loadBackendScenarios() {
       try {
         const backendList = await practiceApi.getScenarios();
@@ -43,7 +62,26 @@ export function App() {
       }
     }
     loadBackendScenarios();
-  }, [scenarioReloadToken]);
+  }, [authStatus, currentUser?.role, scenarioReloadToken]);
+
+  const handleLogin = async (username, password) => {
+    const user = await authApi.login(username, password);
+    setCurrentUser(user);
+    setAuthStatus('authenticated');
+    setCurrentTab(user.role === 'advisor' ? 'home' : 'manager');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } finally {
+      setCurrentUser(null);
+      setAuthStatus('anonymous');
+      setCurrentTab('home');
+      setScenarios([]);
+      setScenarioStatus('loading');
+    }
+  };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -69,6 +107,24 @@ export function App() {
     setCurrentTab('copilot');
   };
 
+  if (authStatus === 'loading') {
+    return <div className="auth-loading" role="status">Đang kiểm tra phiên đăng nhập…</div>;
+  }
+
+  if (authStatus === 'anonymous') {
+    return <LoginView onLogin={handleLogin} />;
+  }
+
+  if (currentUser?.role === 'manager') {
+    return <ManagerReviewView currentUser={currentUser} onLogout={handleLogout} />;
+  }
+
+  const advisorProfile = {
+    ...ADVISOR_PROFILE,
+    name: currentUser.display_name,
+    role: 'Tư vấn viên',
+  };
+
   return (
     <div className="app-container">
       {/* GLOBAL TOP HEADER */}
@@ -80,14 +136,15 @@ export function App() {
         }}
         unreadCount={unreadCount}
         onOpenNotifications={() => setIsNotifOpen(true)}
-        advisorProfile={ADVISOR_PROFILE}
+        advisorProfile={advisorProfile}
+        onLogout={handleLogout}
       />
 
       {/* MAIN CONTENT AREA */}
       <main className="main-content">
         {currentTab === 'home' && (
           <HomeView
-            advisorProfile={ADVISOR_PROFILE}
+            advisorProfile={advisorProfile}
             scenarios={scenarios}
             onNavigate={(tab) => setCurrentTab(tab)}
             onStartScenario={handleStartScenarioFromHome}

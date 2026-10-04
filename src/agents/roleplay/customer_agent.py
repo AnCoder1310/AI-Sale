@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -19,6 +20,8 @@ class CustomerModelOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     reply: str = Field(min_length=1, max_length=800)
+    raised_objection_id: str | None = None
+    accepted_next_step: bool = False
 
     @field_validator("reply")
     @classmethod
@@ -44,6 +47,13 @@ class CustomerResponseError(ValueError):
     """Raised when a safe customer response cannot be produced."""
 
 
+@dataclass(frozen=True)
+class CustomerTurn:
+    message: RoleplayMessage
+    raised_objection_id: str | None = None
+    accepted_next_step: bool = False
+
+
 class CustomerAgent:
     """Build an allowlisted prompt context and validate the generated reply."""
 
@@ -57,10 +67,41 @@ class CustomerAgent:
         *,
         mode: CustomerTurnMode,
     ) -> RoleplayMessage:
+        return (await self.generate_turn(scenario, state, mode=mode)).message
+
+    async def generate_turn(
+        self,
+        scenario: ScenarioContract,
+        state: RoleplayState,
+        *,
+        mode: CustomerTurnMode,
+        consider_next_step: bool = False,
+    ) -> CustomerTurn:
         if state.scenario_id != scenario.scenario_id:
             raise CustomerResponseError("state and scenario identifiers do not match")
 
+        pending = self.pending_disclosures(scenario, state) if mode == "response" else []
+        if pending:
+            reply = " ".join(rule.revealed_statement for rule in pending)
+            return CustomerTurn(message=RoleplayMessage(role="customer", content=reply))
+
+        if (
+            mode == "response"
+            and state.active_objections
+            and self.focus_objection_id(state) is None
+            and not consider_next_step
+        ):
+            return CustomerTurn(
+                message=RoleplayMessage(
+                    role="customer",
+                    content="Anh vẫn chưa yên tâm về điểm này. Mình tạm dừng ở đây; em gửi thông tin phù hợp với trường hợp của anh sau nhé.",
+                )
+            )
+
         context = self._build_context(scenario, state, mode=mode)
+        context["consider_next_step"] = consider_next_step
+        if consider_next_step and self.focus_objection_id(state) is None:
+            context["active_objections"] = []
         try:
             raw_output = await self._model.generate(
                 system_prompt=CUSTOMER_SYSTEM_PROMPT,
@@ -71,7 +112,31 @@ class CustomerAgent:
             raise CustomerResponseError(f"invalid customer response: {exc}") from exc
 
         self._reject_private_fact_leak(output.reply, scenario, state)
-        return RoleplayMessage(role="customer", content=output.reply)
+        known_ids = {item.objection_id for item in scenario.objections}
+        raised_id = output.raised_objection_id if output.raised_objection_id in known_ids else None
+        if raised_id and state.concern_prompt_counts.get(raised_id, 0) >= 2:
+            raise CustomerResponseError("customer repeated a concern after its follow-up limit")
+        return CustomerTurn(
+            message=RoleplayMessage(role="customer", content=output.reply),
+            raised_objection_id=raised_id,
+            accepted_next_step=output.accepted_next_step,
+        )
+
+    @staticmethod
+    def pending_disclosures(scenario: ScenarioContract, state: RoleplayState):
+        """Facts permitted by discovery but not yet said in a customer message."""
+        return [
+            rule
+            for rule in scenario.disclosure_rules
+            if rule.fact_key in state.revealed_facts and rule.fact_key not in state.spoken_fact_message_ids
+        ]
+
+    @staticmethod
+    def focus_objection_id(state: RoleplayState) -> str | None:
+        return next(
+            (item for item in state.active_objections if state.concern_prompt_counts.get(item, 0) < 2),
+            None,
+        )
 
     @staticmethod
     def _build_context(
@@ -81,11 +146,14 @@ class CustomerAgent:
         mode: CustomerTurnMode,
     ) -> dict[str, Any]:
         context = state.customer_prompt_context()
-        active_ids = set(state.active_objections)
+        active_ids = {item for item in state.active_objections if state.concern_prompt_counts.get(item, 0) < 2}
+        focus_id = CustomerAgent.focus_objection_id(state)
         context.update(
             {
                 "prompt_version": CUSTOMER_PROMPT_VERSION,
                 "turn_mode": mode,
+                "focus_objection_id": focus_id,
+                "focus_objection_prompt_number": state.concern_prompt_counts.get(focus_id, 0) + 1 if focus_id else None,
                 "sales_channel": state.sales_channel,
                 "active_objections": [
                     {
@@ -101,7 +169,7 @@ class CustomerAgent:
                         "statement": rule.revealed_statement,
                     }
                     for rule in scenario.disclosure_rules
-                    if rule.fact_key in state.revealed_facts
+                    if rule.fact_key in state.spoken_fact_message_ids
                 ],
             }
         )
