@@ -71,6 +71,33 @@ async def test_manager_queue_shows_latest_unreviewed_per_advisor_scenario(tmp_pa
 
 
 @pytest.mark.asyncio
+async def test_manager_history_and_overview_include_older_attempts_without_mixing_draft_scores(tmp_path):
+    records = SQLPracticeRecordsRepository(f"sqlite:///{tmp_path / 'records.db'}")
+    for session_id in ("attempt-1", "attempt-2"):
+        await records.register(session_id, "scenario-1", "advisor-a")
+        await records.complete(session_id, draft(session_id))
+    await records.register("failed", "scenario-2", "advisor-b")
+    await records.mark_evaluation_failed("failed")
+    await records.approve(
+        "attempt-1",
+        "manager-1",
+        ManagerReviewDecision(score_overrides={CriterionType.NEED_DISCOVERY: 2}, change_reason="Checked evidence."),
+    )
+
+    assert [item.session_id for item in await records.review_queue()] == ["attempt-2"]
+    history = await records.manager_history(advisor_id="advisor-a", scenario_id="scenario-1")
+    assert [item.session_id for item in history] == ["attempt-2", "attempt-1"]
+    assert [item.session_id for item in await records.manager_history(limit=1, offset=1)] == ["attempt-2"]
+    overview = await records.team_overview()
+    assert (overview.completed_attempts, overview.approved_attempts, overview.pending_attempts) == (3, 1, 1)
+    assert (overview.failed_evaluations, overview.active_advisors) == (1, 2)
+    assert len(overview.skill_summaries) == 1
+    assert overview.skill_summaries[0].criterion is CriterionType.NEED_DISCOVERY
+    assert overview.skill_summaries[0].average_score == 2
+    assert overview.skill_summaries[0].assessed_count == 1
+
+
+@pytest.mark.asyncio
 async def test_manager_review_preserves_ai_draft_and_audits_score_change(tmp_path):
     records = SQLPracticeRecordsRepository(f"sqlite:///{tmp_path / 'records.db'}")
     await records.register("attempt-1", "scenario-1", "advisor-a")

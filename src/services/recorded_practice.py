@@ -21,6 +21,7 @@ from src.services.practice_records import (
     ManagerReviewDecision,
     ManagerReviewRecord,
     PracticeRecordsRepository,
+    TeamOverview,
 )
 
 
@@ -92,6 +93,14 @@ class RecordedPracticeService:
 
     async def review_queue(self) -> list[AttemptSummary]:
         return await self._records.review_queue()
+
+    async def manager_history(
+        self, advisor_id: str | None = None, scenario_id: str | None = None, limit: int = 50, offset: int = 0
+    ) -> list[AttemptSummary]:
+        return await self._records.manager_history(advisor_id, scenario_id, limit, offset)
+
+    async def team_overview(self) -> TeamOverview:
+        return await self._records.team_overview()
 
     async def manager_detail(self, session_id: str) -> RecordedAttemptDetail:
         attempt = await self._records.manager_attempt(session_id)
