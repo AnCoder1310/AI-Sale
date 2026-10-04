@@ -18,6 +18,7 @@ export function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authStatus, setAuthStatus] = useState('loading');
   const [currentTab, setCurrentTab] = useState('home');
+  const [workspace, setWorkspace] = useState('advisor');
   const [scenarios, setScenarios] = useState([]);
   const [scenarioStatus, setScenarioStatus] = useState('loading');
   const [scenarioReloadToken, setScenarioReloadToken] = useState(0);
@@ -67,6 +68,7 @@ export function App() {
   const handleLogin = async (username, password) => {
     const user = await authApi.login(username, password);
     setCurrentUser(user);
+    setWorkspace(user.role === 'manager' ? 'manager' : 'advisor');
     setAuthStatus('authenticated');
     setCurrentTab(user.role === 'advisor' ? 'home' : 'manager');
   };
@@ -115,8 +117,14 @@ export function App() {
     return <LoginView onLogin={handleLogin} />;
   }
 
-  if (currentUser?.role === 'manager') {
-    return <ManagerReviewView currentUser={currentUser} onLogout={handleLogout} />;
+  if (workspace === 'manager' || (currentUser?.role === 'manager' && workspace !== 'advisor')) {
+    return (
+      <ManagerReviewView
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onSwitchWorkspace={(ws) => setWorkspace(ws)}
+      />
+    );
   }
 
   const advisorProfile = {

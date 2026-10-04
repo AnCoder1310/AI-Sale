@@ -54,8 +54,8 @@ class AuthService:
         normalized_username = username.strip().casefold()
         if not all(value.strip() for value in (user_id, normalized_username, display_name)):
             raise ValueError("user identity fields must not be blank")
-        if len(password) < 12:
-            raise ValueError("demo passwords must contain at least 12 characters")
+        if len(password) < 6:
+            raise ValueError("demo passwords must contain at least 6 characters")
         salt = secrets.token_bytes(16)
         password_hash = self._derive_password(password, salt, PBKDF2_ITERATIONS)
         user = StoredUser(

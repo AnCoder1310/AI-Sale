@@ -31,11 +31,11 @@ export function Header({
         {/* BRAND LOGO */}
         <div className="brand-section" onClick={() => onTabChange('home')} role="button" tabIndex={0}>
           <div className="brand-logo-badge">
-            <VinFastLogo style={{ width: 22, height: 22 }} />
+            <VinFastLogo style={{ width: 26, height: 26 }} />
           </div>
           <div className="brand-info">
-            <span className="brand-title">AI Sales Coach</span>
-            <span className="brand-subtitle">{advisorProfile.branch}</span>
+            <span className="brand-title">VINFAST</span>
+            <span className="brand-subtitle">AI Sales Coach</span>
           </div>
         </div>
 

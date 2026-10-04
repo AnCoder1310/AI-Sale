@@ -18,7 +18,11 @@ from src.api.practice import AdvisorMessageRequest, CreatePracticeSessionRequest
 from src.models.auth import AuthenticatedUser
 from src.services.practice import PracticeEvaluationUnavailableError, PracticeResultView, PracticeSessionView
 from src.services.practice_records import (
+    AdvisorPerformanceView,
+    AssignmentRecord,
     AttemptNotFoundError,
+    CreateAssignmentInput,
+    TeamOverview,
     AttemptSummary,
     ManagerReviewDecision,
     ManagerReviewRecord,
@@ -42,13 +46,13 @@ def create_recorded_practice_routers(
     manager = APIRouter(prefix="/manager", tags=["manager-review"])
     actor = Annotated[AuthenticatedUser, Depends(get_identity)]
 
-    def require_role(identity: AuthenticatedUser, role: str) -> None:
-        if identity.role != role:
+    def require_role(identity: AuthenticatedUser, *roles: str) -> None:
+        if identity.role not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This role cannot access this operation.")
 
     @practice.get("/scenarios", response_model=list[ScenarioSummary])
     async def list_scenarios(identity: actor) -> list[ScenarioSummary]:
-        require_role(identity, "advisor")
+        require_role(identity, "advisor", "manager")
         return service.list_scenarios()
 
     @practice.post("/sessions", response_model=PracticeSessionView, status_code=status.HTTP_201_CREATED)
@@ -127,6 +131,39 @@ def create_recorded_practice_routers(
             return await service.advisor_session(session_id, identity.user_id)
         except (AttemptNotFoundError, RoleplaySessionNotFoundError) as exc:
             raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+
+    @manager.get("/overview", response_model=TeamOverview)
+    async def team_overview(identity: actor) -> TeamOverview:
+        require_role(identity, "manager")
+        return await service.team_overview()
+
+    @manager.get("/history", response_model=list[AttemptSummary])
+    async def manager_history(
+        identity: actor,
+        advisor_id: str | None = Query(None, max_length=120),
+        scenario_id: str | None = Query(None, max_length=120),
+        limit: int = Query(50, ge=1, le=100),
+        offset: int = Query(0, ge=0),
+    ) -> list[AttemptSummary]:
+        require_role(identity, "manager")
+        return await service.manager_history(advisor_id, scenario_id, limit, offset)
+
+    @manager.get("/advisors", response_model=list[AdvisorPerformanceView])
+    async def list_advisors(identity: actor) -> list[AdvisorPerformanceView]:
+        require_role(identity, "manager")
+        return await service.list_advisors()
+
+    @manager.get("/assignments", response_model=list[AssignmentRecord])
+    async def list_assignments(identity: actor) -> list[AssignmentRecord]:
+        require_role(identity, "manager")
+        return await service.list_assignments()
+
+    @manager.post("/assignments", response_model=AssignmentRecord, status_code=status.HTTP_201_CREATED)
+    async def create_assignment(
+        request: CreateAssignmentInput, identity: actor
+    ) -> AssignmentRecord:
+        require_role(identity, "manager")
+        return await service.create_assignment(identity.user_id, request)
 
     @manager.get("/reviews", response_model=list[AttemptSummary])
     async def review_queue(identity: actor) -> list[AttemptSummary]:

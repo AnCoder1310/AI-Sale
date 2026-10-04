@@ -17,7 +17,11 @@ from src.services.practice import (
     PracticeSessionView,
 )
 from src.services.practice_records import (
+    AdvisorPerformanceView,
+    AssignmentRecord,
     AttemptSummary,
+    CreateAssignmentInput,
+    TeamOverview,
     ManagerReviewDecision,
     ManagerReviewRecord,
     PracticeRecordsRepository,
@@ -93,6 +97,29 @@ class RecordedPracticeService:
 
     async def history(self, advisor_id: str, scenario_id: str | None = None) -> list[AttemptSummary]:
         return await self._records.history(advisor_id, scenario_id)
+
+    async def manager_history(
+        self, advisor_id: str | None = None, scenario_id: str | None = None, limit: int = 50, offset: int = 0
+    ) -> list[AttemptSummary]:
+        return await self._records.manager_history(advisor_id, scenario_id, limit, offset)
+
+    async def team_overview(self) -> TeamOverview:
+        return await self._records.team_overview()
+
+    async def list_assignments(self, advisor_id: str | None = None) -> list[AssignmentRecord]:
+        return await self._records.list_assignments(advisor_id)
+
+    async def create_assignment(
+        self, manager_id: str, payload: CreateAssignmentInput
+    ) -> AssignmentRecord:
+        scenarios = self._practice.list_scenarios()
+        scenario_match = next((s for s in scenarios if s.scenario_id == payload.scenario_id), None)
+        scenario_title = scenario_match.title if scenario_match else payload.scenario_id
+        advisor_name = payload.advisor_id
+        return await self._records.create_assignment(manager_id, payload, scenario_title, advisor_name)
+
+    async def list_advisors(self) -> list[AdvisorPerformanceView]:
+        return await self._records.list_advisors()
 
     async def review_queue(self) -> list[AttemptSummary]:
         return await self._records.review_queue()

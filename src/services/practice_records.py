@@ -43,6 +43,53 @@ class AttemptSummary(BaseModel):
     approved_score: float | None = None
 
 
+
+class SkillSummary(BaseModel):
+    criterion: CriterionType
+    average_score: float
+    assessed_count: int
+
+
+class TeamOverview(BaseModel):
+    completed_attempts: int
+    approved_attempts: int
+    pending_attempts: int
+    failed_evaluations: int
+    active_advisors: int
+    skill_summaries: list[SkillSummary]
+
+
+class AssignmentRecord(BaseModel):
+    assignment_id: str
+    title: str
+    scenario_id: str
+    scenario_title: str
+    target_vehicle: str
+    advisor_id: str
+    advisor_name: str
+    manager_id: str
+    due_date: str
+    status: str  # "pending" | "completed"
+    created_at: str
+
+
+class CreateAssignmentInput(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    scenario_id: str = Field(min_length=1, max_length=120)
+    target_vehicle: str = Field(min_length=1, max_length=120)
+    advisor_id: str = Field(min_length=1, max_length=120)
+    due_date: str = Field(min_length=1, max_length=50)
+
+
+class AdvisorPerformanceView(BaseModel):
+    advisor_id: str
+    advisor_name: str
+    completed_sessions: int
+    approved_sessions: int
+    average_score: float | None = None
+    latest_activity: str | None = None
+    status: str  # "top" | "on_track" | "needs_attention" | "inactive"
+
 class ManagerReviewDecision(BaseModel):
     """Manager corrections; missing scores retain their AI-draft values."""
 
@@ -88,6 +135,20 @@ class PracticeRecordsRepository(Protocol):
     async def review_details(self, session_id: str) -> ManagerReviewRecord | None: ...
 
     async def review_queue(self) -> list[AttemptSummary]: ...
+
+    async def manager_history(
+        self, advisor_id: str | None = None, scenario_id: str | None = None, limit: int = 50, offset: int = 0
+    ) -> list[AttemptSummary]: ...
+
+    async def team_overview(self) -> TeamOverview: ...
+
+    async def list_assignments(self, advisor_id: str | None = None) -> list[AssignmentRecord]: ...
+
+    async def create_assignment(
+        self, manager_id: str, payload: CreateAssignmentInput, scenario_title: str, advisor_name: str
+    ) -> AssignmentRecord: ...
+
+    async def list_advisors(self) -> list[AdvisorPerformanceView]: ...
 
     async def approve(
         self, session_id: str, manager_id: str, decision: ManagerReviewDecision

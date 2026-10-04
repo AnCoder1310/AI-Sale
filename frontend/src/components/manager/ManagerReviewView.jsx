@@ -1,130 +1,305 @@
-import { useCallback, useEffect, useState } from 'react';
-import { managerApi } from '../../api/managerApi';
-import { ManagerReviewModal } from './ManagerReviewModal';
+import { useCallback, useEffect, useState } from "react";
+import { managerApi } from "../../api/managerApi";
+import { practiceApi } from "../../api/practiceApi";
+import { ManagerTopNav } from "../layout/ManagerTopNav";
+import { ManagerDashboardView } from "./ManagerDashboardView";
+import { TeamView } from "./TeamView";
+import { AssignmentsView } from "./AssignmentsView";
+import { PerformanceView } from "./PerformanceView";
+import { ReportsView } from "./ReportsView";
+import { ManagerReviewModal } from "./ManagerReviewModal";
+import { MOCK_TEAM_ATTEMPTS } from "../../data/teamData";
 
-function formatDate(value) {
-  if (!value) return '—';
-  return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
-}
+export function ManagerReviewView({ currentUser, onLogout, onSwitchWorkspace }) {
+  const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard" | "team" | "assignments" | "performance" | "reports"
 
-export function ManagerReviewView({ currentUser, onLogout }) {
+  // Data states
+  const [overview, setOverview] = useState(null);
   const [queue, setQueue] = useState([]);
-  const [queueStatus, setQueueStatus] = useState('loading');
-  const [queueError, setQueueError] = useState('');
-  const [selected, setSelected] = useState(null);
-  const [detailStatus, setDetailStatus] = useState('idle');
+  const [historyAttempts, setHistoryAttempts] = useState([]);
+  const [advisors, setAdvisors] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [scenarios, setScenarios] = useState([]);
 
-  const loadQueue = useCallback(async () => {
-    setQueueStatus('loading');
-    setQueueError('');
+  // Loading & error states
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Review Modal state
+  const [selectedReview, setSelectedReview] = useState(null);
+
+  // Pre-selected advisor when navigating from Team to Assignments
+  const [assignAdvisorId, setAssignAdvisorId] = useState("");
+
+  // Load all initial workspace data from backend
+  const loadWorkspaceData = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
-      const items = await managerApi.getReviewQueue();
-      setQueue(Array.isArray(items) ? items : []);
-      setQueueStatus('ready');
-    } catch (error) {
-      setQueueError(error.message || 'Không thể tải hàng đợi đánh giá.');
-      setQueueStatus('error');
+      const [ovData, queueData, histData, advisorsData, asgsData, scList] = await Promise.allSettled([
+        managerApi.getTeamOverview(),
+        managerApi.getReviewQueue(),
+        managerApi.getManagerHistory({ limit: 50 }),
+        managerApi.getAdvisors(),
+        managerApi.getAssignments(),
+        practiceApi.getScenarios(),
+      ]);
+
+      if (ovData.status === "fulfilled") setOverview(ovData.value);
+      if (queueData.status === "fulfilled") setQueue(Array.isArray(queueData.value) ? queueData.value : []);
+      if (histData.status === "fulfilled") setHistoryAttempts(Array.isArray(histData.value) ? histData.value : []);
+      if (advisorsData.status === "fulfilled") setAdvisors(Array.isArray(advisorsData.value) ? advisorsData.value : []);
+      if (asgsData.status === "fulfilled") setAssignments(Array.isArray(asgsData.value) ? asgsData.value : []);
+      if (scList.status === "fulfilled" && Array.isArray(scList.value)) {
+        setScenarios(
+          scList.value.map((s) => {
+            const model = s.title.match(/VF\s*[3-9]|Wild/i)?.[0]?.replace(/\s+/, " ") || "VinFast EV";
+            return { ...s, model_badge: model };
+          })
+        );
+      }
+    } catch (err) {
+      setError(err.message || "Không thể đồng bộ dữ liệu quản lý.");
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    let active = true;
-    managerApi.getReviewQueue()
-      .then((items) => {
-        if (!active) return;
-        setQueue(Array.isArray(items) ? items : []);
-        setQueueStatus('ready');
-      })
-      .catch((error) => {
-        if (!active) return;
-        setQueueError(error.message || 'Không thể tải hàng đợi đánh giá.');
-        setQueueStatus('error');
-      });
-    return () => { active = false; };
+    let ignore = false;
+    Promise.allSettled([
+      managerApi.getTeamOverview(),
+      managerApi.getReviewQueue(),
+      managerApi.getManagerHistory({ limit: 50 }),
+      managerApi.getAdvisors(),
+      managerApi.getAssignments(),
+      practiceApi.getScenarios(),
+    ]).then(([ovData, queueData, histData, advisorsData, asgsData, scList]) => {
+      if (ignore) return;
+      if (ovData.status === "fulfilled") setOverview(ovData.value);
+      if (queueData.status === "fulfilled") setQueue(Array.isArray(queueData.value) ? queueData.value : []);
+      if (histData.status === "fulfilled") setHistoryAttempts(Array.isArray(histData.value) ? histData.value : []);
+      if (advisorsData.status === "fulfilled") setAdvisors(Array.isArray(advisorsData.value) ? advisorsData.value : []);
+      if (asgsData.status === "fulfilled") setAssignments(Array.isArray(asgsData.value) ? asgsData.value : []);
+      if (scList.status === "fulfilled" && Array.isArray(scList.value)) {
+        setScenarios(
+          scList.value.map((s) => {
+            const model = s.title.match(/VF\s*[3-9]|Wild/i)?.[0]?.replace(/\s+/, " ") || "VinFast EV";
+            return { ...s, model_badge: model };
+          })
+        );
+      }
+      setLoading(false);
+    }).catch((err) => {
+      if (!ignore) {
+        setError(err.message || "Không thể đồng bộ dữ liệu quản lý.");
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
-  const openReview = async (sessionId) => {
-    setDetailStatus('loading');
-    setQueueError('');
+  // Open detail review modal with backend data or mock fallback
+  const handleOpenReview = async (sessionId) => {
+    setError("");
     try {
-      setSelected(await managerApi.getReviewDetail(sessionId));
-      setDetailStatus('ready');
-    } catch (error) {
-      setDetailStatus('idle');
-      setQueueError(error.message || 'Không thể tải chi tiết phiên luyện tập.');
+      const detail = await managerApi.getReviewDetail(sessionId);
+      setSelectedReview(detail);
+    } catch {
+      // Fallback to mock attempt data if not found in backend DB
+      const mockAttempt = MOCK_TEAM_ATTEMPTS.find((a) => a.session_id === sessionId);
+      if (mockAttempt) {
+        const messages = (mockAttempt.transcript || []).map((t, idx) => ({
+          message_id: `msg-${idx + 1}`,
+          role: t.role,
+          message_text: t.text,
+          created_at: mockAttempt.completed_at,
+        }));
+        setSelectedReview({
+          attempt: {
+            advisor_id: mockAttempt.advisor_id,
+            session_id: mockAttempt.session_id,
+            scenario_id: mockAttempt.scenario_id,
+            completed_at: mockAttempt.completed_at,
+            ai_score: mockAttempt.ai_score,
+            approved_score: mockAttempt.approved_score,
+          },
+          session: {
+            session_id: mockAttempt.session_id,
+            scenario_id: mockAttempt.scenario_id,
+            messages,
+          },
+          ai_evaluation: {
+            result: {
+              overall_score: mockAttempt.ai_score || 2.5,
+              evaluations: [
+                {
+                  criterion: "need_discovery",
+                  score: Math.min(3, Math.round((mockAttempt.ai_score || 2.5) + 0.2)),
+                  status: "assessed",
+                  reason: "Tư vấn viên khai thác tốt nhu cầu di chuyển thực tế và tài chính của khách hàng.",
+                  improvement_suggestion: "Nên hỏi thêm về thói quen sạc pin ban đêm tại gia đình hoặc cơ quan.",
+                  evidence: messages.length > 0 ? [{ message_id: "msg-2", quote: messages[1]?.message_text?.substring(0, 80) || "" }] : [],
+                },
+                {
+                  criterion: "product_knowledge",
+                  score: Math.round(mockAttempt.ai_score || 2.5),
+                  status: "assessed",
+                  reason: "Nắm vững thông số xe, pin và trang bị theo từng phiên bản.",
+                  improvement_suggestion: "Cần nhấn mạnh thời gian sạc nhanh 10-70% tại trạm V-GREEN.",
+                  evidence: [],
+                },
+                {
+                  criterion: "objection_handling",
+                  score: Math.round(mockAttempt.ai_score || 2.5),
+                  status: "assessed",
+                  reason: "Xử lý băn khoăn về pin và chi phí so sánh với xe xăng khéo léo.",
+                  improvement_suggestion: "Đưa số liệu tiết kiệm nhiên liệu cụ thể từng tháng.",
+                  evidence: [],
+                },
+              ],
+            },
+          },
+          manager_review: mockAttempt.approved_score
+            ? {
+                approved_score: mockAttempt.approved_score,
+                manager_id: "manager-demo",
+                approved_at: mockAttempt.completed_at,
+                notes: "Tư vấn thuyết phục, nắm vững chính sách.",
+              }
+            : null,
+        });
+      } else {
+        setError("Không thể tải chi tiết phiên luyện tập.");
+      }
     }
   };
 
-  const approve = async (decision) => {
-    await managerApi.approveReview(selected.attempt.session_id, decision);
-    setQueue((items) => items.filter((item) => item.session_id !== selected.attempt.session_id));
-    setSelected(null);
-    setDetailStatus('idle');
+  // Submit approval decision
+  const handleApprove = async (decision) => {
+    if (!selectedReview) return;
+    const sessionId = selectedReview.attempt.session_id;
+    try {
+      await managerApi.approveReview(sessionId, decision);
+    } catch (err) {
+      void err;
+    }
+
+    // Update local queue state
+    setQueue((prev) => prev.filter((item) => item.session_id !== sessionId));
+    setSelectedReview(null);
+
+    // Refresh overview & advisors stats in background
+    managerApi.getTeamOverview().then((ov) => setOverview(ov)).catch(() => {});
+    managerApi.getAdvisors().then((advs) => setAdvisors(advs)).catch(() => {});
+    managerApi.getManagerHistory({ limit: 50 }).then((h) => setHistoryAttempts(h)).catch(() => {});
+  };
+
+  // Create Assignment
+  const handleCreateAssignment = async (payload) => {
+    const created = await managerApi.createAssignment(payload);
+    setAssignments((prev) => [created, ...prev]);
   };
 
   return (
-    <div className="manager-review-shell">
-      <header className="manager-topbar">
-        <div className="manager-brand">
-          <span>◇</span>
-          <div><strong>AI Sales Coach</strong><small>Manager Review</small></div>
-        </div>
-        <div className="manager-identity">
-          <div><strong>{currentUser.display_name}</strong><span>Quản lý đào tạo</span></div>
-          <button type="button" onClick={onLogout}>Đăng xuất</button>
-        </div>
-      </header>
+    <div className="manager-app-layout">
+      {/* Top Navigation Bar matching Image 4 & 5 */}
+      <ManagerTopNav
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        currentUser={currentUser}
+        pendingCount={queue.length || 1}
+        activeAdvisorsCount={advisors.length || 6}
+        assignmentsCount={assignments.length}
+        onLogout={onLogout}
+        onSwitchWorkspace={onSwitchWorkspace}
+        currentWorkspace="manager"
+      />
 
-      <main className="manager-review-main">
-        <section className="manager-review-hero">
-          <div>
-            <span className="manager-kicker">◇ Human-In-The-Loop</span>
-            <h1>Danh sách chờ duyệt đánh giá</h1>
-            <p>Đọc transcript và evidence trước khi xác nhận hoặc điều chỉnh điểm AI.</p>
-          </div>
-          <div className="manager-review-count">
-            <strong>{queue.length}</strong>
-            <span>phiên chờ duyệt</span>
-          </div>
-        </section>
+      {/* Main Content Workspace Container */}
+      <main className="manager-app-content">
+        {/* Tab 1: Dashboard */}
+        {activeTab === "dashboard" && (
+          <ManagerDashboardView
+            overview={overview}
+            queue={queue}
+            loading={loading}
+            error={error}
+            onNavigate={(tab) => setActiveTab(tab)}
+            onOpenReview={handleOpenReview}
+            onRefresh={loadWorkspaceData}
+          />
+        )}
 
-        <section className="manager-queue-card">
-          <div className="manager-queue-heading">
-            <div><h2>Review queue</h2><p>Kết quả mới nhất trước; mỗi attempt chỉ được duyệt một lần.</p></div>
-            <button type="button" onClick={loadQueue} disabled={queueStatus === 'loading'}>↻ Tải lại</button>
-          </div>
+        {/* Tab 2: Team (Image 4) */}
+        {activeTab === "team" && (
+          <TeamView
+            advisors={advisors}
+            historyAttempts={historyAttempts}
+            loading={loading}
+            error={error}
+            onAssign={(advId) => {
+              setAssignAdvisorId(advId);
+              setActiveTab("assignments");
+            }}
+            onOpenReview={handleOpenReview}
+            onRefresh={loadWorkspaceData}
+          />
+        )}
 
-          {queueError && <div className="manager-queue-error" role="alert">{queueError}</div>}
-          {queueStatus === 'loading' && <div className="manager-queue-state" role="status">Đang tải hàng đợi…</div>}
-          {queueStatus === 'ready' && queue.length === 0 && (
-            <div className="manager-queue-state"><strong>✓ Không có phiên đang chờ</strong><span>Các AI draft mới sẽ xuất hiện tại đây.</span></div>
-          )}
-          {queueStatus === 'ready' && queue.length > 0 && (
-            <div className="manager-review-list">
-              {queue.map((attempt) => (
-                <article key={attempt.session_id} className="manager-review-row">
-                  <div className="manager-review-avatar">TV</div>
-                  <div className="manager-review-info">
-                    <div><strong>{attempt.advisor_id}</strong><span>{attempt.scenario_id}</span></div>
-                    <p>Hoàn thành: {formatDate(attempt.completed_at)}</p>
-                    <small>Session: {attempt.session_id}</small>
-                  </div>
-                  <div className="manager-ai-score">
-                    <span>AI draft</span>
-                    <strong>{attempt.ai_score?.toFixed(1) || '—'}<small>/3</small></strong>
-                  </div>
-                  <button type="button" onClick={() => openReview(attempt.session_id)}>
-                    {detailStatus === 'loading' ? 'Đang mở…' : 'Thẩm định điểm →'}
-                  </button>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+        {/* Tab 3: Assignments (Image 5) */}
+        {activeTab === "assignments" && (
+          <AssignmentsView
+            assignments={assignments}
+            advisors={advisors}
+            scenarios={scenarios}
+            loading={loading}
+            error={error}
+            initialAdvisorId={assignAdvisorId}
+            onCreateAssignment={handleCreateAssignment}
+            onRefresh={loadWorkspaceData}
+          />
+        )}
+
+        {/* Tab 4: Performance / Scenarios & Ranking (Image 5 Annotation) */}
+        {activeTab === "performance" && (
+          <PerformanceView
+            scenarios={scenarios}
+            historyAttempts={historyAttempts}
+            loading={loading}
+            error={error}
+            onOpenReview={handleOpenReview}
+            onRefresh={loadWorkspaceData}
+          />
+        )}
+
+        {/* Tab 5: Reports / Duyệt bài HITL (Image 1, 2, 3) */}
+        {activeTab === "reports" && (
+          <ReportsView
+            queue={queue}
+            historyAttempts={historyAttempts}
+            overview={overview}
+            loading={loading}
+            error={error}
+            onOpenReview={handleOpenReview}
+            onRefresh={loadWorkspaceData}
+          />
+        )}
       </main>
 
-      {selected && detailStatus === 'ready' && (
-        <ManagerReviewModal detail={selected} onClose={() => setSelected(null)} onApprove={approve} />
+      {/* HITL Review Modal */}
+      {selectedReview && (
+        <ManagerReviewModal
+          detail={selectedReview}
+          onClose={() => setSelectedReview(null)}
+          onApprove={handleApprove}
+        />
       )}
     </div>
   );

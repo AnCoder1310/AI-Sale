@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, SendIcon } from '../common/Icons';
 import { Badge } from '../common/Badge';
+import { getVehicleImage } from '../../data/vehicleData';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { practiceApi } from '../../api/practiceApi';
@@ -127,6 +128,26 @@ export function PracticeRoom({
           </button>
 
           <div style={{ height: 20, width: 1, backgroundColor: '#E5E5E5' }} />
+
+          {getVehicleImage(scenario?.model_badge || scenario?.model || scenario?.title) && (
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 8,
+                overflow: 'hidden',
+                flexShrink: 0,
+                backgroundColor: '#141722',
+                border: '1px solid #E5E7EB',
+              }}
+            >
+              <img
+                src={getVehicleImage(scenario?.model_badge || scenario?.model || scenario?.title)}
+                alt={scenario?.model_badge || scenario?.model}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+          )}
 
           <div>
             <h2 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#111111' }}>

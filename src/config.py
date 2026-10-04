@@ -72,6 +72,14 @@ class Settings(BaseSettings):
     auth_cookie_name: str = Field(default="p043_session", min_length=1, max_length=100)
     auth_session_ttl_hours: int = Field(default=8, ge=1, le=168)
     auth_cookie_secure: bool = False
+    demo_advisor_password: str = Field(
+        default="123456",
+        validation_alias=AliasChoices("demo_advisor_password", "DEMO_ADVISOR_PASSWORD"),
+    )
+    demo_manager_password: str = Field(
+        default="123456",
+        validation_alias=AliasChoices("demo_manager_password", "DEMO_MANAGER_PASSWORD"),
+    )
 
     # Vector Store
     vector_store_type: Literal["chroma", "memory"] = "chroma"
