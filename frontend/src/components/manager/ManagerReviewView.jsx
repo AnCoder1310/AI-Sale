@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { managerApi } from '../../api/managerApi';
 import { ManagerReviewModal } from './ManagerReviewModal';
+import { ManagerHistoryView } from './ManagerHistoryView';
+import { TeamOverviewView } from './TeamOverviewView';
 
 function formatDate(value) {
   if (!value) return '—';
@@ -8,6 +10,7 @@ function formatDate(value) {
 }
 
 export function ManagerReviewView({ currentUser, onLogout }) {
+  const [activeTab, setActiveTab] = useState('reviews');
   const [queue, setQueue] = useState([]);
   const [queueStatus, setQueueStatus] = useState('loading');
   const [queueError, setQueueError] = useState('');
@@ -79,8 +82,8 @@ export function ManagerReviewView({ currentUser, onLogout }) {
         <section className="manager-review-hero">
           <div>
             <span className="manager-kicker">◇ Human-In-The-Loop</span>
-            <h1>Danh sách chờ duyệt đánh giá</h1>
-            <p>Đọc transcript và evidence trước khi xác nhận hoặc điều chỉnh điểm AI.</p>
+            <h1>Quản lý đào tạo</h1>
+            <p>Duyệt đánh giá, xem lịch sử luyện tập và theo dõi năng lực từ dữ liệu đã lưu.</p>
           </div>
           <div className="manager-review-count">
             <strong>{queue.length}</strong>
@@ -88,7 +91,13 @@ export function ManagerReviewView({ currentUser, onLogout }) {
           </div>
         </section>
 
-        <section className="manager-queue-card">
+        <nav className="manager-tabs" aria-label="Quản lý đào tạo">
+          <button type="button" className={activeTab === 'reviews' ? 'active' : ''} onClick={() => { setActiveTab('reviews'); loadQueue(); }}>Chờ duyệt</button>
+          <button type="button" className={activeTab === 'history' ? 'active' : ''} onClick={() => setActiveTab('history')}>Lịch sử attempt</button>
+          <button type="button" className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>Tổng quan đội ngũ</button>
+        </nav>
+
+        {activeTab === 'reviews' && <section className="manager-queue-card">
           <div className="manager-queue-heading">
             <div><h2>Review queue</h2><p>Kết quả mới nhất trước; mỗi attempt chỉ được duyệt một lần.</p></div>
             <button type="button" onClick={loadQueue} disabled={queueStatus === 'loading'}>↻ Tải lại</button>
@@ -120,10 +129,12 @@ export function ManagerReviewView({ currentUser, onLogout }) {
               ))}
             </div>
           )}
-        </section>
+        </section>}
+        {activeTab === 'history' && <ManagerHistoryView />}
+        {activeTab === 'overview' && <TeamOverviewView />}
       </main>
 
-      {selected && detailStatus === 'ready' && (
+      {activeTab === 'reviews' && selected && detailStatus === 'ready' && (
         <ManagerReviewModal detail={selected} onClose={() => setSelected(null)} onApprove={approve} />
       )}
     </div>
