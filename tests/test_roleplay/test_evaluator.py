@@ -148,6 +148,25 @@ async def test_evaluator_rejects_non_exact_transcript_quote(scenario, completed_
     with pytest.raises(EvaluationError, match="quote is not exact"):
         await evaluator.evaluate(scenario, completed_state, approved_evidence())
 
+    assert len(evaluator._model.calls) == 2
+    assert "correction_required" in evaluator._model.calls[1]["context"]
+
+
+@pytest.mark.asyncio
+async def test_evaluator_accepts_corrected_exact_quote(scenario, completed_state):
+    invalid = evaluation_output()
+    invalid["evaluations"][0]["evidence"][0]["quote"] = "A paraphrase"
+
+    class CorrectingModel(CapturingEvaluationModel):
+        async def evaluate(self, *, system_prompt, context):
+            self.calls.append({"system_prompt": system_prompt, "context": context.copy()})
+            return invalid if len(self.calls) == 1 else evaluation_output()
+
+    model = CorrectingModel(None)
+    result = await RoleplayEvaluator(model).evaluate(scenario, completed_state, approved_evidence())
+    assert result.overall_score == 2
+    assert len(model.calls) == 2
+
 
 @pytest.mark.asyncio
 async def test_evaluator_rejects_out_of_range_v3_score(scenario, completed_state):
@@ -201,6 +220,54 @@ async def test_evaluator_rejects_missing_recorded_factual_claim(scenario, comple
 
     with pytest.raises(EvaluationError, match="omitted recorded factual claims"):
         await evaluator.evaluate(scenario, completed_state, approved_evidence())
+
+
+@pytest.mark.asyncio
+async def test_evaluator_repairs_only_missing_claims_in_bounded_batches(scenario, completed_state):
+    completed_state.factual_claims = [
+        AdvisorFactualClaim(message_id="advisor-2", text=f"Chính sách {index}", category="policy")
+        for index in range(1, 10)
+    ]
+    completed_state.messages[-1].content = " ".join(claim.text for claim in completed_state.factual_claims)
+    output = evaluation_output()
+    output["factual_findings"] = []
+
+    class RepairingModel(CapturingEvaluationModel):
+        def __init__(self):
+            super().__init__(output)
+            self.batches = []
+
+        async def evaluate_factual_claims(self, *, system_prompt, context):
+            self.batches.append(context["factual_claims"])
+            return {
+                "factual_findings": [
+                    {
+                        "message_id": claim["message_id"],
+                        "claim": claim["text"],
+                        "status": "unverifiable",
+                        "reason": "Nguồn hiện có không đủ xác minh.",
+                    }
+                    for claim in context["factual_claims"]
+                ]
+            }
+
+    model = RepairingModel()
+    result = await RoleplayEvaluator(model).evaluate(scenario, completed_state, approved_evidence())
+    assert len(result.factual_findings) == 9
+    assert [len(batch) for batch in model.batches] == [4, 4, 1]
+
+
+@pytest.mark.asyncio
+async def test_evaluator_rejects_incomplete_factual_repair(scenario, completed_state):
+    output = evaluation_output()
+    output["factual_findings"] = []
+
+    class IncompleteModel(CapturingEvaluationModel):
+        async def evaluate_factual_claims(self, *, system_prompt, context):
+            return {"factual_findings": []}
+
+    with pytest.raises(EvaluationError, match="exactly the requested claims"):
+        await RoleplayEvaluator(IncompleteModel(output)).evaluate(scenario, completed_state, approved_evidence())
 
 
 @pytest.mark.asyncio

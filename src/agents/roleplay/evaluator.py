@@ -19,6 +19,7 @@ from src.models.evaluation import (
 
 from .contracts import ScenarioContract
 from .prompts import EVALUATOR_PROMPT_VERSION, EVALUATOR_SYSTEM_PROMPT
+from .prompts.evaluator import FACTUAL_FINDINGS_SYSTEM_PROMPT
 from .state import RoleplayMessage, RoleplayState, TerminationStatus
 
 
@@ -44,6 +45,14 @@ class EvaluationDraft(BaseModel):
     recommended_next_practice: RecommendedNextPractice | None = None
 
 
+class FactualFindingsDraft(BaseModel):
+    """A small, separately validated batch of factual findings."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    factual_findings: list[FactualFinding] = Field(default_factory=list)
+
+
 class EvaluationModel(Protocol):
     async def evaluate(
         self,
@@ -51,6 +60,13 @@ class EvaluationModel(Protocol):
         system_prompt: str,
         context: dict[str, Any],
     ) -> EvaluationDraft | dict[str, Any]: ...
+
+    async def evaluate_factual_claims(
+        self,
+        *,
+        system_prompt: str,
+        context: dict[str, Any],
+    ) -> FactualFindingsDraft | dict[str, Any]: ...
 
 
 class EvaluationError(ValueError):
@@ -80,14 +96,28 @@ class RoleplayEvaluator:
             "knowledge_evidence": [item.model_dump(mode="json") for item in knowledge_evidence],
         }
         try:
-            raw_draft = await self._model.evaluate(
-                system_prompt=EVALUATOR_SYSTEM_PROMPT,
-                context=context,
-            )
-            draft = EvaluationDraft.model_validate(raw_draft)
-            self._validate_transcript_evidence(draft, state.messages)
-            self._validate_factual_claim_coverage(draft, state)
-            self._validate_factual_sources(draft, state.messages, knowledge_evidence)
+            for attempt in range(2):
+                raw_draft = await self._model.evaluate(
+                    system_prompt=EVALUATOR_SYSTEM_PROMPT,
+                    context=context,
+                )
+                draft = EvaluationDraft.model_validate(raw_draft)
+                try:
+                    self._validate_transcript_evidence(draft, state.messages)
+                    await self._complete_factual_findings(draft, state, knowledge_evidence)
+                    self._validate_factual_claim_coverage(draft, state)
+                    self._validate_factual_sources(draft, state.messages, knowledge_evidence)
+                    break
+                except EvaluationError as exc:
+                    # A single correction attempt for hallucinated or paraphrased
+                    # quotes. The validator still rejects an invalid second draft.
+                    if attempt or "quote is not exact" not in str(exc):
+                        raise
+                    context["correction_required"] = (
+                        "Your previous draft used a non-exact quote. Copy each "
+                        "transcript and knowledge quote verbatim from the supplied "
+                        "message/source; do not paraphrase it."
+                    )
             assessed_scores = [
                 evaluation.score
                 for evaluation in draft.evaluations
@@ -112,6 +142,43 @@ class RoleplayEvaluator:
             if isinstance(exc, EvaluationError):
                 raise
             raise EvaluationError(f"invalid evaluation output: {exc}") from exc
+
+    async def _complete_factual_findings(
+        self,
+        draft: EvaluationDraft,
+        state: RoleplayState,
+        knowledge_evidence: list[KnowledgeEvidence],
+    ) -> None:
+        expected = {(claim.message_id, claim.text) for claim in state.factual_claims}
+        actual = {(finding.message_id, finding.claim) for finding in draft.factual_findings}
+        missing = [claim for claim in state.factual_claims if (claim.message_id, claim.text) in expected - actual]
+        if not missing:
+            return
+        repair = getattr(self._model, "evaluate_factual_claims", None)
+        if repair is None:
+            raise EvaluationError("evaluation omitted recorded factual claims")
+
+        # Small batches keep the output bounded even when turn analysis recorded
+        # many claims. A failed or incomplete batch is never filled with guesses.
+        for offset in range(0, len(missing), 4):
+            batch = missing[offset : offset + 4]
+            batch_ids = {(claim.message_id, claim.text) for claim in batch}
+            messages = {claim.message_id for claim in batch}
+            raw = await repair(
+                system_prompt=FACTUAL_FINDINGS_SYSTEM_PROMPT,
+                context={
+                    "factual_claims": [claim.model_dump(mode="json") for claim in batch],
+                    "advisor_messages": [
+                        message.model_dump(mode="json") for message in state.messages if message.message_id in messages
+                    ],
+                    "knowledge_evidence": [item.model_dump(mode="json") for item in knowledge_evidence],
+                },
+            )
+            findings = FactualFindingsDraft.model_validate(raw).factual_findings
+            returned_ids = {(finding.message_id, finding.claim) for finding in findings}
+            if len(returned_ids) != len(findings) or returned_ids != batch_ids:
+                raise EvaluationError("factual repair did not cover exactly the requested claims")
+            draft.factual_findings.extend(findings)
 
     @staticmethod
     def _validate_transcript_evidence(

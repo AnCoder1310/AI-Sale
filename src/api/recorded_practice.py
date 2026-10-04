@@ -23,6 +23,7 @@ from src.services.practice_records import (
     ManagerReviewDecision,
     ManagerReviewRecord,
     ReviewConflictError,
+    TeamOverview,
 )
 from src.services.recorded_practice import RecordedAttemptDetail, RecordedPracticeService
 
@@ -120,6 +121,22 @@ def create_recorded_practice_routers(
     async def review_queue(identity: actor) -> list[AttemptSummary]:
         require_role(identity, "manager")
         return await service.review_queue()
+
+    @manager.get("/attempts", response_model=list[AttemptSummary])
+    async def manager_history(
+        identity: actor,
+        advisor_id: str | None = Query(None, min_length=1, max_length=120),
+        scenario_id: str | None = Query(None, min_length=1, max_length=120),
+        limit: int = Query(50, ge=1, le=100),
+        offset: int = Query(0, ge=0),
+    ) -> list[AttemptSummary]:
+        require_role(identity, "manager")
+        return await service.manager_history(advisor_id, scenario_id, limit, offset)
+
+    @manager.get("/overview", response_model=TeamOverview)
+    async def team_overview(identity: actor) -> TeamOverview:
+        require_role(identity, "manager")
+        return await service.team_overview()
 
     @manager.get("/reviews/{session_id}", response_model=RecordedAttemptDetail)
     async def manager_detail(session_id: SessionId, identity: actor) -> RecordedAttemptDetail:

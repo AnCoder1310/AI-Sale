@@ -43,6 +43,21 @@ class AttemptSummary(BaseModel):
     approved_score: float | None = None
 
 
+class SkillSummary(BaseModel):
+    criterion: CriterionType
+    average_score: float
+    assessed_count: int
+
+
+class TeamOverview(BaseModel):
+    completed_attempts: int
+    approved_attempts: int
+    pending_attempts: int
+    failed_evaluations: int
+    active_advisors: int
+    skill_summaries: list[SkillSummary]
+
+
 class ManagerReviewDecision(BaseModel):
     """Manager corrections; missing scores retain their AI-draft values."""
 
@@ -88,6 +103,12 @@ class PracticeRecordsRepository(Protocol):
     async def review_details(self, session_id: str) -> ManagerReviewRecord | None: ...
 
     async def review_queue(self) -> list[AttemptSummary]: ...
+
+    async def manager_history(
+        self, advisor_id: str | None = None, scenario_id: str | None = None, limit: int = 50, offset: int = 0
+    ) -> list[AttemptSummary]: ...
+
+    async def team_overview(self) -> TeamOverview: ...
 
     async def approve(
         self, session_id: str, manager_id: str, decision: ManagerReviewDecision

@@ -8,7 +8,7 @@ const CRITERION_LABELS = {
   closing_next_step: 'Chốt bước tiếp theo',
 };
 
-function ScoreEditor({ evaluation, value, onChange }) {
+function ScoreEditor({ evaluation, value, onChange, readOnly = false }) {
   const assessed = evaluation.status === 'assessed';
   return (
     <article className="review-criterion">
@@ -17,7 +17,8 @@ function ScoreEditor({ evaluation, value, onChange }) {
           <strong>{CRITERION_LABELS[evaluation.criterion] || evaluation.criterion}</strong>
           <span>{assessed ? 'Đã đánh giá' : 'Chưa chấm — xem lý do'}</span>
         </div>
-        {assessed && (
+        {assessed && readOnly && <strong>{value}/3</strong>}
+        {assessed && !readOnly && (
           <label>
             <span className="sr-only">Điểm quản lý</span>
             <select value={value} onChange={(event) => onChange(Number(event.target.value))}>
@@ -43,8 +44,11 @@ function ScoreEditor({ evaluation, value, onChange }) {
 
 export function ManagerReviewModal({ detail, onClose, onApprove }) {
   const draft = detail.ai_evaluation.result;
+  const approvedReview = detail.manager_review;
+  const canReview = Boolean(draft && !approvedReview && detail.attempt.evaluation_status === 'complete');
+  const shownResult = approvedReview?.approved_result || draft;
   const [scores, setScores] = useState(() => Object.fromEntries(
-    (draft?.evaluations || [])
+    (shownResult?.evaluations || [])
       .filter((item) => item.status === 'assessed')
       .map((item) => [item.criterion, item.score]),
   ));
@@ -58,6 +62,7 @@ export function ManagerReviewModal({ detail, onClose, onApprove }) {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (!canReview) return;
     if (!reason.trim()) {
       setError('Vui lòng ghi lý do xác nhận hoặc điều chỉnh đánh giá.');
       return;
@@ -83,7 +88,7 @@ export function ManagerReviewModal({ detail, onClose, onApprove }) {
         <header className="review-modal-header">
           <div>
             <span>◇ Human-in-the-Loop Review</span>
-            <h2 id="review-dialog-title">Thẩm định kết quả AI</h2>
+            <h2 id="review-dialog-title">{approvedReview ? 'Kết quả đã duyệt' : 'Thẩm định kết quả AI'}</h2>
             <p>Advisor: {detail.attempt.advisor_id} · Scenario: {detail.attempt.scenario_id}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Đóng cửa sổ đánh giá">×</button>
@@ -93,14 +98,22 @@ export function ManagerReviewModal({ detail, onClose, onApprove }) {
           <div className="review-detail-column">
             <section className="review-summary-card">
               <div>
-                <span>AI draft score</span>
-                <strong>{draft?.overall_score?.toFixed(1) || '—'}<small>/3</small></strong>
+                <span>{approvedReview ? 'Điểm đã duyệt' : 'AI draft score'}</span>
+                <strong>{shownResult?.overall_score?.toFixed(1) ?? '—'}<small>/3</small></strong>
               </div>
               <div>
                 <span>Rubric version</span>
-                <strong className="review-version">{draft?.rubric_version || '—'}</strong>
+                <strong className="review-version">{shownResult?.rubric_version || '—'}</strong>
               </div>
             </section>
+
+            {approvedReview && (
+              <section className="manager-approved-note">
+                <strong>Quản lý {approvedReview.manager_id} đã duyệt</strong>
+                <p>Lý do: {approvedReview.change_reason}</p>
+                <small>Điểm AI ban đầu: {draft?.overall_score?.toFixed(1) ?? '—'}/3</small>
+              </section>
+            )}
 
             <section>
               <h3>Transcript</h3>
@@ -116,11 +129,11 @@ export function ManagerReviewModal({ detail, onClose, onApprove }) {
               </div>
             </section>
 
-            {draft?.factual_findings?.length > 0 && (
+            {shownResult?.factual_findings?.length > 0 && (
               <section>
                 <h3>Đối chiếu thông tin thực tế</h3>
                 <div className="review-findings">
-                  {draft.factual_findings.map((finding) => (
+                  {shownResult.factual_findings.map((finding) => (
                     <article key={`${finding.message_id}-${finding.claim}`}>
                       <strong>{finding.status}</strong>
                       <p>“{finding.claim}”</p>
@@ -142,17 +155,19 @@ export function ManagerReviewModal({ detail, onClose, onApprove }) {
               <span>{Object.values(scores).length} tiêu chí</span>
             </div>
             <div className="review-criteria-list">
-              {draft?.evaluations.map((evaluation) => (
+              {shownResult?.evaluations.map((evaluation) => (
                 <ScoreEditor
                   key={evaluation.criterion}
                   evaluation={evaluation}
                   value={scores[evaluation.criterion] ?? evaluation.score ?? ''}
                   onChange={(score) => setScores((current) => ({ ...current, [evaluation.criterion]: score }))}
+                  readOnly={Boolean(approvedReview)}
                 />
               ))}
             </div>
 
-            <label className="review-reason-field">
+            {!canReview && !approvedReview && <p className="manager-queue-error">Attempt này chưa có AI draft hợp lệ để manager duyệt.</p>}
+            {canReview && <label className="review-reason-field">
               <span>Lý do xác nhận/điều chỉnh <strong>*</strong></span>
               <textarea
                 rows="4"
@@ -162,14 +177,14 @@ export function ManagerReviewModal({ detail, onClose, onApprove }) {
                 placeholder="Ví dụ: Điểm phù hợp với transcript và evidence; xác nhận AI draft."
                 disabled={status === 'saving' || status === 'saved'}
               />
-            </label>
+            </label>}
             {error && <div className="review-error" role="alert">{error}</div>}
 
             <footer className="review-modal-actions">
               <button type="button" className="review-secondary" onClick={onClose}>Hủy</button>
-              <button type="submit" className="review-approve" disabled={status !== 'idle'}>
+              {canReview && <button type="submit" className="review-approve" disabled={status !== 'idle'}>
                 {status === 'saving' ? 'Đang lưu…' : '✓ Phê duyệt & lưu'}
-              </button>
+              </button>}
             </footer>
           </div>
         </form>

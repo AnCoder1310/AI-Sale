@@ -27,13 +27,15 @@ from sqlalchemy.exc import IntegrityError
 
 from src.agents.roleplay.state import EvaluationStatus
 from src.integrations.practice_persistence import normalize_database_url
-from src.models.evaluation import ReviewStatus, SessionEvaluationResult
+from src.models.evaluation import CriterionStatus, CriterionType, ReviewStatus, SessionEvaluationResult
 from src.services.practice_records import (
     AttemptNotFoundError,
     AttemptSummary,
     ManagerReviewDecision,
     ManagerReviewRecord,
     ReviewConflictError,
+    SkillSummary,
+    TeamOverview,
     approved_evaluation,
 )
 
@@ -210,6 +212,53 @@ class SQLPracticeRecordsRepository:
         for row in rows:
             latest.setdefault((row.advisor_id, row.scenario_id), row)
         return list(latest.values())
+
+    async def manager_history(
+        self, advisor_id: str | None = None, scenario_id: str | None = None, limit: int = 50, offset: int = 0
+    ) -> list[AttemptSummary]:
+        """Completed attempts, including older attempts hidden by the grouped review queue."""
+        self._ensure_schema()
+        query = self._summary_query().where(self._attempts.c.completed_at.is_not(None))
+        if advisor_id:
+            query = query.where(self._attempts.c.advisor_id == advisor_id)
+        if scenario_id:
+            query = query.where(self._attempts.c.scenario_id == scenario_id)
+        query = query.order_by(self._attempts.c.completed_at.desc(), self._attempts.c.session_id.desc())
+        with self._engine.connect() as connection:
+            rows = connection.execute(query.limit(limit).offset(offset)).mappings()
+            return [self._to_summary(row) for row in rows]
+
+    async def team_overview(self) -> TeamOverview:
+        """Summarize persisted results; skill scores use manager-approved evaluations only."""
+        self._ensure_schema()
+        query = self._summary_query().where(self._attempts.c.completed_at.is_not(None))
+        with self._engine.connect() as connection:
+            rows = list(connection.execute(query).mappings())
+        approved = [row for row in rows if row.approved_result_json]
+        pending = [row for row in rows if row.ai_draft_json and not row.approved_result_json]
+        failed = [row for row in rows if row.evaluation_status == EvaluationStatus.FAILED.value]
+        scores: dict[CriterionType, list[int]] = {criterion: [] for criterion in CriterionType}
+        for row in approved:
+            result = SessionEvaluationResult.model_validate_json(row.approved_result_json)
+            for item in result.evaluations:
+                if item.status is CriterionStatus.ASSESSED and item.score is not None:
+                    scores[item.criterion].append(item.score)
+        return TeamOverview(
+            completed_attempts=len(rows),
+            approved_attempts=len(approved),
+            pending_attempts=len(pending),
+            failed_evaluations=len(failed),
+            active_advisors=len({row.advisor_id for row in rows}),
+            skill_summaries=[
+                SkillSummary(
+                    criterion=criterion,
+                    average_score=sum(values) / len(values),
+                    assessed_count=len(values),
+                )
+                for criterion, values in scores.items()
+                if values
+            ],
+        )
 
     async def approve(self, session_id: str, manager_id: str, decision: ManagerReviewDecision) -> ManagerReviewRecord:
         if not manager_id.strip():

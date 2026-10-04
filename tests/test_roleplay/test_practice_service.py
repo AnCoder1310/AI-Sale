@@ -182,13 +182,18 @@ async def test_finish_persists_one_result_and_reuses_it_on_retry():
 
 
 @pytest.mark.asyncio
-async def test_evaluator_failure_keeps_frozen_transcript_and_allows_retry():
+async def test_evaluator_failure_keeps_frozen_transcript_and_allows_retry(caplog):
     service, checkpoint, evaluator = build_lifecycle_service()
     await service.start_session("SCENARIO_01_VF5_TAXI")
     evaluator.fail_next = True
 
     with pytest.raises(PracticeEvaluationUnavailableError):
         await service.finish_session("session-1")
+
+    assert "stage=judge_or_validation" in caplog.text
+    assert "error_type=TimeoutError" in caplog.text
+    assert "claim_count=0" in caplog.text
+    assert "provider timed out" not in caplog.text
 
     failed = RoleplayState.model_validate(await checkpoint.load("session-1"))
     assert failed.evaluation_status is EvaluationStatus.FAILED

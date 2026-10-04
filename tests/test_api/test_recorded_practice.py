@@ -99,6 +99,17 @@ async def test_history_and_review_routes_enforce_identity_and_ownership(tmp_path
         ).status_code == 403
         manager_queue = await client.get("/api/v1/manager/reviews", headers={"X-Test-Identity": "manager-a:manager"})
         assert [item["session_id"] for item in manager_queue.json()] == [session_id]
+        assert (
+            await client.get("/api/v1/manager/attempts", headers={"X-Test-Identity": "advisor-a:advisor"})
+        ).status_code == 403
+        assert (
+            await client.get("/api/v1/manager/overview", headers={"X-Test-Identity": "advisor-a:advisor"})
+        ).status_code == 403
+        manager_history = await client.get("/api/v1/manager/attempts", headers={"X-Test-Identity": "manager-a:manager"})
+        assert [item["session_id"] for item in manager_history.json()] == [session_id]
+        overview = await client.get("/api/v1/manager/overview", headers={"X-Test-Identity": "manager-a:manager"})
+        assert overview.json()["completed_attempts"] == 1
+        assert overview.json()["pending_attempts"] == 1
 
 
 @pytest.mark.asyncio
