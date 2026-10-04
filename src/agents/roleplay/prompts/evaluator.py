@@ -46,8 +46,8 @@ improvement_suggestion. Examples are behavioral anchors, not wording templates.
   with source ID, version, and an exact source quote.
 - Within each factual finding, cite each source ID at most once. Use only the
   smallest exact quote needed to support or contradict the claim.
-- Return exactly one factual finding for every claim listed in final_state.factual_claims;
-  use unverifiable with no invented source when approved evidence is insufficient.
+- Return factual_findings as an empty list in this rubric-scoring call. The
+  application checks recorded factual claims separately in small batches.
 - Unverifiable does not automatically mean the advisor was wrong.
 - Return at most one concrete strength and at most two useful corrections.
 - Recommend at most one next scenario or document based on the main weakness.

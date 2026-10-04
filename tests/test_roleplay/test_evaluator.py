@@ -137,6 +137,9 @@ async def test_evaluator_validates_evidence_and_computes_aggregate(scenario, com
     assert result.factual_findings[0].source_ids == ["policy-a"]
     assert model.calls[0]["system_prompt"] == EVALUATOR_SYSTEM_PROMPT
     assert model.calls[0]["context"]["prompt_version"] == EVALUATOR_PROMPT_VERSION
+    assert "factual_claims" not in model.calls[0]["context"]["final_state"]
+    assert "messages" not in model.calls[0]["context"]["final_state"]
+    assert "hidden_facts" not in model.calls[0]["context"]["scenario"]
 
 
 @pytest.mark.asyncio
@@ -166,6 +169,18 @@ async def test_evaluator_accepts_corrected_exact_quote(scenario, completed_state
     result = await RoleplayEvaluator(model).evaluate(scenario, completed_state, approved_evidence())
     assert result.overall_score == 2
     assert len(model.calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_evaluator_cites_real_message_when_model_quote_has_small_edit(scenario, completed_state):
+    output = evaluation_output()
+    output["evaluations"][0]["evidence"][0]["quote"] = "Mỗi ngày anh thường chạy bao nhiêu km?"
+    model = CapturingEvaluationModel(output)
+
+    result = await RoleplayEvaluator(model).evaluate(scenario, completed_state, approved_evidence())
+
+    assert result.evaluations[0].evidence[0].quote == "Mỗi ngày anh thường chạy khoảng bao nhiêu km?"
+    assert len(model.calls) == 1
 
 
 @pytest.mark.asyncio
@@ -226,7 +241,7 @@ async def test_evaluator_rejects_missing_recorded_factual_claim(scenario, comple
 async def test_evaluator_repairs_only_missing_claims_in_bounded_batches(scenario, completed_state):
     completed_state.factual_claims = [
         AdvisorFactualClaim(message_id="advisor-2", text=f"Chính sách {index}", category="policy")
-        for index in range(1, 10)
+        for index in range(1, 26)
     ]
     completed_state.messages[-1].content = " ".join(claim.text for claim in completed_state.factual_claims)
     output = evaluation_output()
@@ -253,8 +268,8 @@ async def test_evaluator_repairs_only_missing_claims_in_bounded_batches(scenario
 
     model = RepairingModel()
     result = await RoleplayEvaluator(model).evaluate(scenario, completed_state, approved_evidence())
-    assert len(result.factual_findings) == 9
-    assert [len(batch) for batch in model.batches] == [4, 4, 1]
+    assert len(result.factual_findings) == 25
+    assert [len(batch) for batch in model.batches] == [4, 4, 4, 4, 4, 4, 1]
 
 
 @pytest.mark.asyncio

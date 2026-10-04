@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from difflib import SequenceMatcher
 from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -90,8 +91,10 @@ class RoleplayEvaluator:
 
         context = {
             "prompt_version": EVALUATOR_PROMPT_VERSION,
-            "scenario": scenario.model_dump(mode="json"),
-            "final_state": state.model_dump(mode="json", exclude={"hidden_facts"}),
+            "scenario": scenario.model_dump(mode="json", exclude={"hidden_facts", "disclosure_rules"}),
+            "final_state": state.model_dump(
+                mode="json", exclude={"hidden_facts", "messages", "factual_claims", "evaluation_result"}
+            ),
             "transcript": [message.model_dump(mode="json") for message in state.messages],
             "knowledge_evidence": [item.model_dump(mode="json") for item in knowledge_evidence],
         }
@@ -197,7 +200,22 @@ class RoleplayEvaluator:
             if message is None:
                 raise EvaluationError(f"evidence references unknown message_id: {evidence.message_id}")
             if evidence.quote not in message:
-                raise EvaluationError(f"evidence quote is not exact for message_id: {evidence.message_id}")
+                quote = evidence.quote.strip()
+                folded_message = message.casefold()
+                folded_quote = quote.casefold()
+                if folded_quote in folded_message:
+                    start = folded_message.index(folded_quote)
+                    evidence.quote = message[start : start + len(quote)]
+                elif (
+                    len(quote) >= 20
+                    and len(folded_message) <= len(folded_quote) * 1.5
+                    and SequenceMatcher(None, folded_quote, folded_message, autojunk=False).ratio() >= 0.85
+                ):
+                    # The model picked the right message but altered a word or
+                    # punctuation. Cite the actual message, never its paraphrase.
+                    evidence.quote = message
+                else:
+                    raise EvaluationError(f"evidence quote is not exact for message_id: {evidence.message_id}")
 
         roles = {message.message_id: message.role for message in messages}
         for evaluation in draft.evaluations:
