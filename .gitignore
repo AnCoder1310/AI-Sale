@@ -59,4 +59,9 @@ out/
 .ai-log/*.jsonl
 .ai-log/archive/
 
+# Local agent/build-phase instructions kept in the checkout, not the team repo.
+AGENTS.md
+BUILD_PHASE_RULE.md
+
 sales-research.zip
+docs/guide/
