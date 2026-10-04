@@ -172,15 +172,67 @@ async def test_evaluator_accepts_corrected_exact_quote(scenario, completed_state
 
 
 @pytest.mark.asyncio
-async def test_evaluator_cites_real_message_when_model_quote_has_small_edit(scenario, completed_state):
+async def test_evaluator_repairs_unknown_id_only_when_quote_identifies_one_message(scenario, completed_state):
     output = evaluation_output()
-    output["evaluations"][0]["evidence"][0]["quote"] = "Mỗi ngày anh thường chạy bao nhiêu km?"
+    output["evaluations"][0]["evidence"][0]["message_id"] = "made-up-id"
     model = CapturingEvaluationModel(output)
 
     result = await RoleplayEvaluator(model).evaluate(scenario, completed_state, approved_evidence())
 
-    assert result.evaluations[0].evidence[0].quote == "Mỗi ngày anh thường chạy khoảng bao nhiêu km?"
+    assert result.evaluations[0].evidence[0].message_id == "advisor-1"
     assert len(model.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_evaluator_retries_unidentifiable_message_id_once(scenario, completed_state):
+    output = evaluation_output()
+    output["evaluations"][0]["evidence"][0].update(message_id="made-up-id", quote="Not in the transcript")
+    model = CapturingEvaluationModel(output)
+
+    with pytest.raises(EvaluationError, match="unknown message_id"):
+        await RoleplayEvaluator(model).evaluate(scenario, completed_state, approved_evidence())
+
+    assert len(model.calls) == 2
+    assert "correction_required" in model.calls[1]["context"]
+
+
+@pytest.mark.asyncio
+async def test_evaluator_rejects_unknown_id_when_exact_quote_is_ambiguous(scenario, completed_state):
+    completed_state.messages[0].content = "Dạ. Anh lo chi phí sử dụng."
+    completed_state.messages[2].content = "Dạ. Khoảng 180 km mỗi ngày."
+    output = evaluation_output()
+    output["evaluations"][0]["evidence"][0].update(message_id="made-up-id", quote="Dạ.")
+    model = CapturingEvaluationModel(output)
+
+    with pytest.raises(EvaluationError, match="unknown message_id"):
+        await RoleplayEvaluator(model).evaluate(scenario, completed_state, approved_evidence())
+
+    assert len(model.calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_evaluator_retries_when_model_quote_changes_a_word(scenario, completed_state):
+    output = evaluation_output()
+    output["evaluations"][0]["evidence"][0]["quote"] = "Mỗi ngày anh thường chạy bao nhiêu km?"
+    model = CapturingEvaluationModel(output)
+
+    with pytest.raises(EvaluationError, match="quote is not exact"):
+        await RoleplayEvaluator(model).evaluate(scenario, completed_state, approved_evidence())
+
+    assert len(model.calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_evaluator_accepts_legacy_claim_with_only_casing_difference(scenario, completed_state):
+    completed_state.factual_claims[0].text = "Chính sách A đang áp dụng"
+    completed_state.messages[-1].content = "chính sách A đang áp dụng cho trường hợp này."
+    output = evaluation_output()
+
+    result = await RoleplayEvaluator(CapturingEvaluationModel(output)).evaluate(
+        scenario, completed_state, approved_evidence()
+    )
+
+    assert result.factual_findings[0].status.value == "supported"
 
 
 @pytest.mark.asyncio
@@ -283,6 +335,49 @@ async def test_evaluator_rejects_incomplete_factual_repair(scenario, completed_s
 
     with pytest.raises(EvaluationError, match="exactly the requested claims"):
         await RoleplayEvaluator(IncompleteModel(output)).evaluate(scenario, completed_state, approved_evidence())
+
+
+@pytest.mark.asyncio
+async def test_evaluator_retries_factual_batch_with_exact_pair(scenario, completed_state):
+    output = evaluation_output()
+    output["factual_findings"] = []
+
+    class CorrectingModel(CapturingEvaluationModel):
+        def __init__(self):
+            super().__init__(output)
+            self.repair_contexts = []
+
+        async def evaluate_factual_claims(self, *, system_prompt, context):
+            self.repair_contexts.append(context.copy())
+            claim = context["factual_claims"][0]
+            if len(self.repair_contexts) == 1:
+                return {
+                    "factual_findings": [
+                        {
+                            "message_id": claim["message_id"],
+                            "claim": "paraphrase",
+                            "status": "unverifiable",
+                            "reason": "Chưa đủ nguồn.",
+                        }
+                    ]
+                }
+            return {
+                "factual_findings": [
+                    {
+                        "message_id": claim["message_id"],
+                        "claim": claim["text"],
+                        "status": "unverifiable",
+                        "reason": "Chưa đủ nguồn.",
+                    }
+                ]
+            }
+
+    model = CorrectingModel()
+    result = await RoleplayEvaluator(model).evaluate(scenario, completed_state, approved_evidence())
+
+    assert result.factual_findings[0].claim == completed_state.factual_claims[0].text
+    assert len(model.repair_contexts) == 2
+    assert "correction_required" in model.repair_contexts[1]
 
 
 @pytest.mark.asyncio
