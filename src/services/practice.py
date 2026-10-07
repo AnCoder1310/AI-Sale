@@ -35,10 +35,24 @@ def _evaluation_error_code(exc: Exception) -> str:
         return "missing_factual_findings"
     if message.startswith("evidence quote is not exact"):
         return "transcript_quote_mismatch"
+    if message.startswith("evidence references unknown message_id"):
+        return "unknown_transcript_message"
     if message.startswith("factual source quote is not exact"):
         return "source_quote_mismatch"
+    if message.startswith("factual finding references unknown source_id"):
+        return "unknown_factual_source"
     if message.startswith("factual finding references"):
         return "invalid_factual_reference"
+    if message.startswith("factual claim is not exact"):
+        return "factual_claim_quote_mismatch"
+    if message.startswith("factual repair did not cover exactly"):
+        return "factual_repair_mismatch"
+    if message.startswith("factual findings must not contain duplicate"):
+        return "duplicate_factual_findings"
+    if message.startswith("factual source version mismatch"):
+        return "factual_source_version_mismatch"
+    if message.startswith("supported or contradicted findings require"):
+        return "missing_factual_source"
     if message.startswith("scores 2-3 require") or message.startswith("score 3 requires"):
         return "score_evidence_mismatch"
     return "other_validation_error"
