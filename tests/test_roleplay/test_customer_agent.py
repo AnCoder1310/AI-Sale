@@ -95,3 +95,37 @@ async def test_customer_agent_rejects_unrevealed_private_fact_in_output(scenario
 
     with pytest.raises(CustomerResponseError, match="unrevealed private facts"):
         await agent.generate_reply(scenario, state, mode="response")
+
+
+@pytest.mark.asyncio
+async def test_customer_retries_a_mixed_language_reply_once(scenario, state):
+    class MixedLanguageModel(CapturingCustomerModel):
+        async def generate(self, *, system_prompt, context):
+            self.calls.append({"system_prompt": system_prompt, "context": context})
+            if len(self.calls) == 1:
+                return {
+                    "reply": "Mức góp đó là bình quân hay cố định? Could you show monthly installment separately from charging costs?"
+                }
+            return {
+                "reply": "Mức góp đó là bình quân hay tháng nào cũng vậy? Em tách tiền góp và tiền sạc giúp anh nhé."
+            }
+
+    model = MixedLanguageModel(None)
+    message = await CustomerAgent(model).generate_reply(scenario, state, mode="opening")
+
+    assert (
+        message.content == "Mức góp đó là bình quân hay tháng nào cũng vậy? Em tách tiền góp và tiền sạc giúp anh nhé."
+    )
+    assert len(model.calls) == 2
+    assert "previous_mixed_language_reply" in model.calls[1]["context"]
+    assert "# Correction" in model.calls[1]["system_prompt"]
+
+
+@pytest.mark.asyncio
+async def test_customer_does_not_publish_english_when_retry_still_fails(scenario, state):
+    model = CapturingCustomerModel({"reply": "Could you show the monthly installment separately?"})
+
+    with pytest.raises(CustomerResponseError, match="English prose"):
+        await CustomerAgent(model).generate_reply(scenario, state, mode="opening")
+
+    assert len(model.calls) == 2

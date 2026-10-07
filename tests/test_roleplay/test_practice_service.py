@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from src.agents.roleplay.customer_agent import CustomerAgent
+from src.agents.roleplay.evaluator import EvaluationError
 from src.agents.roleplay.graph import RoleplayGraph, RoleplaySessionConflictError
 from src.agents.roleplay.scenario_loader import ScenarioRepository
 from src.agents.roleplay.state import EvaluationStatus, RoleplayState, TerminationStatus
@@ -15,9 +16,21 @@ from src.models.evaluation import (
     CriterionType,
     SessionEvaluationResult,
 )
-from src.services.practice import PracticeEvaluationUnavailableError, PracticeService
+from src.services.practice import PracticeEvaluationUnavailableError, PracticeService, _evaluation_error_code
 
 SCENARIOS = Path("data/scenarios/scenarios.json")
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("factual repair did not cover exactly the requested claims", "factual_repair_mismatch"),
+        ("factual finding references unknown source_id: private", "unknown_factual_source"),
+        ("evidence references unknown message_id: private", "unknown_transcript_message"),
+    ],
+)
+def test_evaluation_error_codes_do_not_log_private_values(message, expected):
+    assert _evaluation_error_code(EvaluationError(message)) == expected
 
 
 class RecordingGraph:

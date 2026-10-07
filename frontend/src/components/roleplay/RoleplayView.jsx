@@ -13,6 +13,8 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
   const [evaluationResult, setEvaluationResult] = useState(null);
   const [attemptDetail, setAttemptDetail] = useState(null);
   const [detailStatus, setDetailStatus] = useState('idle');
+  const [retryingEvaluation, setRetryingEvaluation] = useState(false);
+  const [retryEvaluationError, setRetryEvaluationError] = useState('');
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyStatus, setHistoryStatus] = useState('loading');
@@ -92,6 +94,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
   };
 
   const openAttempt = async (sessionId) => {
+    setRetryEvaluationError('');
     setHistoryScenarioId(null);
     setSelectedSessionId(sessionId);
     setDetailStatus('loading');
@@ -104,6 +107,21 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
     } catch (error) {
       setStartError(error.message || 'Không tải được phiên luyện tập.');
       setDetailStatus('error');
+    }
+  };
+
+  const retryFailedEvaluation = async () => {
+    if (!attemptDetail || retryingEvaluation) return;
+    setRetryingEvaluation(true);
+    setRetryEvaluationError('');
+    try {
+      await practiceApi.finishSession(attemptDetail.attempt.session_id);
+      setAttemptDetail(await practiceApi.getAttempt(attemptDetail.attempt.session_id));
+      await loadHistory();
+    } catch (error) {
+      setRetryEvaluationError(error.message || 'Chưa thể chấm điểm lại. Hãy thử lại sau.');
+    } finally {
+      setRetryingEvaluation(false);
     }
   };
 
@@ -149,7 +167,13 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
                 ))}
               </section>
               {attemptDetail.attempt.evaluation_status === 'failed' ? (
-                <div role="alert" className="card-white">Phiên này đã lưu nhưng chấm điểm thất bại.</div>
+                <div role="alert" className="card-white">
+                  <p>Phiên này đã lưu nhưng chấm điểm thất bại.</p>
+                  <button className="btn-primary" onClick={retryFailedEvaluation} disabled={retryingEvaluation}>
+                    {retryingEvaluation ? 'Đang chấm điểm lại...' : 'Thử chấm điểm lại'}
+                  </button>
+                  {retryEvaluationError && <p role="alert">{retryEvaluationError}</p>}
+                </div>
               ) : (
                 <EvaluationScorecard
                   result={{ ...attemptDetail.ai_evaluation, result: attemptDetail.manager_review?.approved_result || attemptDetail.ai_evaluation.result }}

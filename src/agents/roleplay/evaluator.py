@@ -90,8 +90,10 @@ class RoleplayEvaluator:
 
         context = {
             "prompt_version": EVALUATOR_PROMPT_VERSION,
-            "scenario": scenario.model_dump(mode="json"),
-            "final_state": state.model_dump(mode="json", exclude={"hidden_facts"}),
+            "scenario": scenario.model_dump(mode="json", exclude={"hidden_facts", "disclosure_rules"}),
+            "final_state": state.model_dump(
+                mode="json", exclude={"hidden_facts", "messages", "factual_claims", "evaluation_result"}
+            ),
             "transcript": [message.model_dump(mode="json") for message in state.messages],
             "knowledge_evidence": [item.model_dump(mode="json") for item in knowledge_evidence],
         }
@@ -109,14 +111,17 @@ class RoleplayEvaluator:
                     self._validate_factual_sources(draft, state.messages, knowledge_evidence)
                     break
                 except EvaluationError as exc:
-                    # A single correction attempt for hallucinated or paraphrased
-                    # quotes. The validator still rejects an invalid second draft.
-                    if attempt or "quote is not exact" not in str(exc):
+                    # A single correction attempt for invalid transcript references.
+                    # The validator still rejects an invalid second draft.
+                    if attempt or not (
+                        str(exc).startswith("evidence quote is not exact")
+                        or str(exc).startswith("evidence references unknown message_id")
+                    ):
                         raise
                     context["correction_required"] = (
-                        "Your previous draft used a non-exact quote. Copy each "
-                        "transcript and knowledge quote verbatim from the supplied "
-                        "message/source; do not paraphrase it."
+                        "Your previous draft used an invalid transcript quote or message_id. "
+                        "Copy each message_id and quote verbatim from the supplied transcript. "
+                        "Do not invent or paraphrase either field."
                     )
             assessed_scores = [
                 evaluation.score
@@ -164,21 +169,26 @@ class RoleplayEvaluator:
             batch = missing[offset : offset + 4]
             batch_ids = {(claim.message_id, claim.text) for claim in batch}
             messages = {claim.message_id for claim in batch}
-            raw = await repair(
-                system_prompt=FACTUAL_FINDINGS_SYSTEM_PROMPT,
-                context={
-                    "factual_claims": [claim.model_dump(mode="json") for claim in batch],
-                    "advisor_messages": [
-                        message.model_dump(mode="json") for message in state.messages if message.message_id in messages
-                    ],
-                    "knowledge_evidence": [item.model_dump(mode="json") for item in knowledge_evidence],
-                },
-            )
-            findings = FactualFindingsDraft.model_validate(raw).factual_findings
-            returned_ids = {(finding.message_id, finding.claim) for finding in findings}
-            if len(returned_ids) != len(findings) or returned_ids != batch_ids:
-                raise EvaluationError("factual repair did not cover exactly the requested claims")
-            draft.factual_findings.extend(findings)
+            context = {
+                "factual_claims": [claim.model_dump(mode="json") for claim in batch],
+                "advisor_messages": [
+                    message.model_dump(mode="json") for message in state.messages if message.message_id in messages
+                ],
+                "knowledge_evidence": [item.model_dump(mode="json") for item in knowledge_evidence],
+            }
+            for attempt in range(2):
+                raw = await repair(system_prompt=FACTUAL_FINDINGS_SYSTEM_PROMPT, context=context)
+                findings = FactualFindingsDraft.model_validate(raw).factual_findings
+                returned_ids = {(finding.message_id, finding.claim) for finding in findings}
+                if len(returned_ids) == len(findings) and returned_ids == batch_ids:
+                    draft.factual_findings.extend(findings)
+                    break
+                if attempt:
+                    raise EvaluationError("factual repair did not cover exactly the requested claims")
+                context["correction_required"] = (
+                    "Return one finding for each requested (message_id, claim) pair, copying both "
+                    "fields exactly. Do not add, combine, or omit findings."
+                )
 
     @staticmethod
     def _validate_transcript_evidence(
@@ -195,9 +205,20 @@ class RoleplayEvaluator:
         for evidence in evidence_items:
             message = transcript.get(evidence.message_id)
             if message is None:
-                raise EvaluationError(f"evidence references unknown message_id: {evidence.message_id}")
+                exact_matches = [item for item in messages if evidence.quote in item.content]
+                if len(exact_matches) != 1:
+                    raise EvaluationError(f"evidence references unknown message_id: {evidence.message_id}")
+                evidence.message_id = exact_matches[0].message_id
+                message = exact_matches[0].content
             if evidence.quote not in message:
-                raise EvaluationError(f"evidence quote is not exact for message_id: {evidence.message_id}")
+                quote = evidence.quote.strip()
+                folded_message = message.casefold()
+                folded_quote = quote.casefold()
+                if folded_quote in folded_message:
+                    start = folded_message.index(folded_quote)
+                    evidence.quote = message[start : start + len(quote)]
+                else:
+                    raise EvaluationError(f"evidence quote is not exact for message_id: {evidence.message_id}")
 
         roles = {message.message_id: message.role for message in messages}
         for evaluation in draft.evaluations:
@@ -234,7 +255,7 @@ class RoleplayEvaluator:
             advisor_message = advisor_messages.get(finding.message_id)
             if advisor_message is None:
                 raise EvaluationError(f"factual finding references non-advisor message: {finding.message_id}")
-            if finding.claim not in advisor_message:
+            if finding.claim.casefold() not in advisor_message.casefold():
                 raise EvaluationError(f"factual claim is not exact for message_id: {finding.message_id}")
             if (
                 finding.status
