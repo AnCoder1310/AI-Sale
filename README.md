@@ -4,6 +4,8 @@ MVP gồm **Copilot** tra cứu kiến thức xe/chính sách có trích nguồn
 
 ## Chạy local
 
+**Docker:** `docker compose up --build` chạy frontend, backend và PostgreSQL + pgvector local. Xem [hướng dẫn Docker](docs/local-docker.md) để seed tài khoản và lưu dữ liệu. Mỗi máy có database riêng; muốn chia sẻ dữ liệu cần triển khai backend dùng chung với PostgreSQL hosted.
+
 Cần Python 3.11, Node.js tương thích Vite 8, npm và OpenRouter API key có quyền gọi chat/embedding. Lời gọi thật có thể phát sinh phí.
 
 ```bash
@@ -13,7 +15,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Điền `OPENROUTER_API_KEY` trong `.env`. Mặc định chat dùng `OPENROUTER_MODEL_NAME=openai/gpt-6-luna`, embedding dùng `EMBEDDING_MODEL_NAME=openai/text-embedding-3-small` qua OpenRouter; **hai tác vụ model khác nhau**, không dùng hash cho demo thật. `DATABASE_URL=sqlite:///./data/app.db` lưu user, phiên, transcript và đánh giá. `CHROMA_PERSIST_DIR=./data/chroma` lưu vector index dẫn xuất từ `data/knowledge/corpus.json`. Đổi embedding model thì tạo collection mới và ingest lại. Không commit `.env`, mật khẩu hoặc database local.
+Điền `OPENROUTER_API_KEY` trong `.env`. Mặc định chat dùng `OPENROUTER_MODEL_NAME=openai/gpt-6-luna`, embedding dùng `EMBEDDING_MODEL_NAME=openai/text-embedding-3-small` qua OpenRouter; **hai tác vụ model khác nhau**, không dùng hash cho demo thật. Khi chạy Python trực tiếp, `DATABASE_URL=sqlite:///./data/app.db` lưu user, phiên, transcript và đánh giá; `CHROMA_PERSIST_DIR=./data/chroma` lưu vector index dẫn xuất từ `data/knowledge/corpus.json`. Docker Compose ghi đè hai mặc định này để dùng PostgreSQL + pgvector. Đổi embedding model thì tạo collection mới và ingest lại. Không commit `.env`, mật khẩu hoặc database local.
 
 Trong `.env`, đặt `DEMO_ADVISOR_PASSWORD` và `DEMO_MANAGER_PASSWORD` riêng, rồi seed tài khoản local:
 
@@ -48,7 +50,7 @@ Không biến giá niêm yết thành “giá lăn bánh” hay tự suy ra mọ
 
 ## Kiến trúc, kiểm thử và bằng chứng
 
-Xem [sơ đồ kiến trúc](docs/architecture_diagram.md). React/Vite gọi FastAPI bằng cookie phiên; Copilot dùng LangGraph, hybrid retrieval, Chroma và OpenRouter. Practice dùng LangGraph giữ trạng thái, AI Customer, evaluator rubric có evidence và manager HITL. SQLite/Chroma trên ổ local **không tự bền vững** khi deploy lên filesystem tạm.
+Xem [sơ đồ kiến trúc](docs/architecture_diagram.md). React/Vite gọi FastAPI bằng cookie phiên; Copilot dùng LangGraph, hybrid retrieval, vector index và OpenRouter. Practice dùng LangGraph giữ trạng thái, AI Customer, evaluator rubric có evidence và manager HITL. Docker dùng PostgreSQL + pgvector local; chạy Python trực tiếp mặc định SQLite + Chroma. Dữ liệu trên ổ local **không tự bền vững** khi deploy lên filesystem tạm.
 
 ```bash
 ruff check src tests
