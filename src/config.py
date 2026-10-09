@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     auth_cookie_secure: bool = False
 
     # Vector Store
-    vector_store_type: Literal["chroma", "memory"] = "chroma"
+    vector_store_type: Literal["chroma", "pgvector", "memory"] = "chroma"
     chroma_persist_dir: str = "./data/chroma"
     chroma_collection_name: str = "vinfast_knowledge_openrouter_3_small"
     similarity_top_k: int = 4
