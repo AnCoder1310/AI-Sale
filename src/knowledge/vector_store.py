@@ -272,7 +272,7 @@ _vector_store_instance: BaseVectorStore | None = None
 
 
 def get_vector_store() -> BaseVectorStore:
-    """Use the configured backend; a Chroma failure must not create an empty memory store."""
+    """Use the configured store without silently replacing a failed backend."""
     global _vector_store_instance
     if _vector_store_instance is not None:
         return _vector_store_instance
@@ -280,6 +280,10 @@ def get_vector_store() -> BaseVectorStore:
     settings = get_settings()
     if settings.vector_store_type == "chroma":
         _vector_store_instance = ChromaVectorStore()
+    elif settings.vector_store_type == "pgvector":
+        from src.knowledge.pgvector_store import PgVectorStore
+
+        _vector_store_instance = PgVectorStore(settings.database_url, settings.chroma_collection_name)
     else:
         _vector_store_instance = InMemoryVectorStore()
     return _vector_store_instance
