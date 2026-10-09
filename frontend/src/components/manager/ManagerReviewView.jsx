@@ -3,6 +3,7 @@ import { managerApi } from '../../api/managerApi';
 import { ManagerReviewModal } from './ManagerReviewModal';
 import { ManagerHistoryView } from './ManagerHistoryView';
 import { TeamOverviewView } from './TeamOverviewView';
+import { ManagerAccountsView } from './ManagerAccountsView';
 
 function formatDate(value) {
   if (!value) return '—';
@@ -95,6 +96,7 @@ export function ManagerReviewView({ currentUser, onLogout }) {
           <button type="button" className={activeTab === 'reviews' ? 'active' : ''} onClick={() => { setActiveTab('reviews'); loadQueue(); }}>Chờ duyệt</button>
           <button type="button" className={activeTab === 'history' ? 'active' : ''} onClick={() => setActiveTab('history')}>Lịch sử attempt</button>
           <button type="button" className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>Tổng quan đội ngũ</button>
+          <button type="button" className={activeTab === 'accounts' ? 'active' : ''} onClick={() => setActiveTab('accounts')}>Tài khoản Advisor</button>
         </nav>
 
         {activeTab === 'reviews' && <section className="manager-queue-card">
@@ -132,6 +134,7 @@ export function ManagerReviewView({ currentUser, onLogout }) {
         </section>}
         {activeTab === 'history' && <ManagerHistoryView />}
         {activeTab === 'overview' && <TeamOverviewView />}
+        {activeTab === 'accounts' && <ManagerAccountsView />}
       </main>
 
       {activeTab === 'reviews' && selected && detailStatus === 'ready' && (

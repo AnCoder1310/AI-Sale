@@ -5,8 +5,19 @@ from datetime import timedelta
 from fastapi import APIRouter, HTTPException, Request, Response, status
 
 from src.config import Settings
-from src.models.auth import AuthenticatedUser, LoginRequest
-from src.services.auth import AuthenticationRequiredError, AuthService, InvalidCredentialsError
+from src.models.auth import (
+    AccountAlreadyExistsError,
+    AuthenticatedUser,
+    ChangePasswordRequest,
+    CreateAdvisorRequest,
+    LoginRequest,
+    UserRole,
+)
+from src.services.auth import (
+    AuthenticationRequiredError,
+    AuthService,
+    InvalidCredentialsError,
+)
 
 
 class CurrentUserDependency:
@@ -15,13 +26,19 @@ class CurrentUserDependency:
         self._cookie_name = cookie_name
 
     async def __call__(self, request: Request) -> AuthenticatedUser:
+        return await self.authenticate(request)
+
+    async def authenticate(self, request: Request, *, allow_password_change: bool = False) -> AuthenticatedUser:
         try:
-            return await self._service.current_user(request.cookies.get(self._cookie_name))
+            user = await self._service.current_user(request.cookies.get(self._cookie_name))
         except AuthenticationRequiredError as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required.",
             ) from exc
+        if user.must_change_password and not allow_password_change:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Password change required.")
+        return user
 
 
 def build_auth_service(settings: Settings) -> AuthService:
@@ -59,7 +76,44 @@ def create_auth_router(service: AuthService, settings: Settings) -> APIRouter:
 
     @router.get("/me", response_model=AuthenticatedUser)
     async def me(request: Request) -> AuthenticatedUser:
-        return await current_user(request)
+        return await current_user.authenticate(request, allow_password_change=True)
+
+    @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+    async def change_password(payload: ChangePasswordRequest, request: Request, response: Response) -> None:
+        user = await current_user.authenticate(request, allow_password_change=True)
+        try:
+            await service.change_password(
+                user,
+                payload.current_password.get_secret_value(),
+                payload.new_password.get_secret_value(),
+            )
+        except InvalidCredentialsError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid current password.") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+        response.delete_cookie(
+            key=settings.auth_cookie_name,
+            path="/",
+            secure=settings.auth_cookie_secure,
+            httponly=True,
+            samesite="lax",
+        )
+
+    @router.post("/advisors", response_model=AuthenticatedUser, status_code=status.HTTP_201_CREATED)
+    async def create_advisor(payload: CreateAdvisorRequest, request: Request) -> AuthenticatedUser:
+        actor = await current_user(request)
+        if actor.role is not UserRole.MANAGER:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Manager access required.")
+        if not 12 <= len(payload.password) <= 1024:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid password length.")
+        try:
+            return await service.create_advisor(
+                username=payload.username,
+                display_name=payload.display_name,
+                password=payload.password,
+            )
+        except AccountAlreadyExistsError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already exists.") from exc
 
     @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
     async def logout(request: Request, response: Response) -> None:

@@ -8,6 +8,7 @@ import { KnowledgeView } from './components/knowledge/KnowledgeView';
 import { ChargingView } from './components/charging/ChargingView';
 import { ErrorState } from './components/common/ErrorState';
 import { LoginView } from './components/auth/LoginView';
+import { ChangePasswordView } from './components/auth/ChangePasswordView';
 import { ManagerReviewView } from './components/manager/ManagerReviewView';
 
 import { ADVISOR_PROFILE } from './data/competencyData';
@@ -83,6 +84,12 @@ export function App() {
     }
   };
 
+  const handleChangePassword = async (currentPassword, newPassword) => {
+    await authApi.changePassword(currentPassword, newPassword);
+    setCurrentUser(null);
+    setAuthStatus('anonymous');
+  };
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleMarkAllRead = () => {
@@ -113,6 +120,11 @@ export function App() {
 
   if (authStatus === 'anonymous') {
     return <LoginView onLogin={handleLogin} />;
+  }
+
+  if (currentUser?.must_change_password) {
+    return <ChangePasswordView username={currentUser.username}
+      onChangePassword={handleChangePassword} onLogout={handleLogout} />;
   }
 
   if (currentUser?.role === 'manager') {

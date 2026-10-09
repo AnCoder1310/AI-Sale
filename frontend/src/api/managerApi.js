@@ -1,6 +1,13 @@
 import { request } from './client';
 
 export const managerApi = {
+  createAdvisor({ username, displayName, password }) {
+    return request('/auth/advisors', {
+      method: 'POST',
+      body: JSON.stringify({ username, display_name: displayName, password }),
+    });
+  },
+
   getReviewQueue() {
     return request('/manager/reviews');
   },
