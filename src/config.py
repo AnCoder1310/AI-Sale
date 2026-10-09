@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite:///./data/app.db"
 
+    # Optional server-side voice providers. Prices are list-price estimates, not invoices.
+    groq_api_key: str = ""
+    google_tts_service_account_json: str = ""
+    voice_stt_usd_per_hour: float = Field(default=0.04, ge=0)
+    voice_tts_usd_per_million_characters: float = Field(default=16.0, ge=0)
+
     # Local authentication
     auth_cookie_name: str = Field(default="p043_session", min_length=1, max_length=100)
     auth_session_ttl_hours: int = Field(default=8, ge=1, le=168)
