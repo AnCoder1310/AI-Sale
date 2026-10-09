@@ -42,6 +42,8 @@ Mở <http://localhost:3000>. Vite proxy `/api` và `/health` sang cổng 8000; 
 
 ## Luồng demo và câu hỏi mẫu
 
+Practice Room có **Chế độ nói** tùy chọn: giữ micro để nói tiếng Việt, sửa bản chép rồi gửi, nghe phản hồi của AI Customer bằng giọng WaveNet. Xem [cấu hình Voice Mode](docs/voice-mode.md); Text Mode vẫn chạy khi chưa có key giọng nói.
+
 1. Đăng nhập Advisor. Hỏi Copilot: **“Giá niêm yết VF 8 Thế hệ mới theo bảng giá VinFast là bao nhiêu?”** Mở citation. Câu ngoài kho: **“Giá bảo hiểm chính xác của đại lý X ngày mai là bao nhiêu?”** phải không tự bịa.
 2. Vào Practice Room, chọn **VF 5 Plus — khách chạy dịch vụ**. Hỏi quãng đường/ngày, tiền xăng Vios thực tế và giờ nghỉ/sạc; xử lý lo ngại chi phí, tránh cam kết tiết kiệm khi chưa đủ dữ liệu. Kết thúc để xem điểm AI dự thảo, transcript evidence và lịch sử.
 3. Đăng xuất, đăng nhập Manager. Xem hàng đợi và transcript, nhập lý do nếu chỉnh điểm, duyệt; đăng nhập lại Advisor để xem kết quả đã duyệt.
