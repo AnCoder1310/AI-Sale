@@ -1,5 +1,17 @@
 # AI20K Agent Template
 
+## Run the complete app with Docker
+
+```bash
+docker compose up --build -d
+```
+
+Open <http://localhost:3000>. For AI calls and demo login, fill your untracked
+`.env` with `OPENROUTER_API_KEY` and demo passwords, then run the one-time seed
+command in [Local Docker and Vercel + Render deployment](docs/deployment.md). The
+Compose flow runs the frontend and backend together; SQLite and Chroma data
+are kept in named volumes.
+
 Template chính thức cho học viên VinUni AI20K Build Phase: cấu trúc dự án, code
 mẫu và hướng dẫn kỹ thuật để xây dựng một AI Agent hoàn chỉnh — từ kiến trúc,
 code, test cho đến deploy và nộp bài Demo Day.
