@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Báo cáo tiến độ MVP VFO2O-20 — AI Sales Enablement." />
+    <title>VFO2O-20 | Báo cáo tiến độ MVP</title>
+    <style>
+      :root {
+        --ink: #172036;
+        --muted: #5d6880;
+        --line: #dce3ee;
+        --paper: #f6f8fc;
+        --surface: #ffffff;
+        --navy: #0d2345;
+        --blue: #1769e0;
+        --blue-soft: #eaf2ff;
+        --orange: #e86016;
+        --orange-soft: #fff0e6;
+        --green: #167456;
+        --green-soft: #e8f6ef;
+        --amber: #a65b00;
+        --amber-soft: #fff5df;
+        --red: #b42318;
+        --red-soft: #fff0ee;
+        --radius: 18px;
+        --shadow: 0 12px 30px rgba(24, 39, 75, 0.08);
+      }
+
+      * { box-sizing: border-box; }
+      html { background: var(--paper); }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+
+      .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+        padding: 18px 0;
+        color: #d9e5f6;
+      }
+      .topbar-wrap { background: var(--navy); }
+      .brand { display: flex; align-items: center; gap: 11px; font-size: 0.88rem; font-weight: 700; letter-spacing: 0.02em; }
+      .brand-mark { width: 13px; height: 13px; border: 3px solid #9dc2ff; border-radius: 50%; box-shadow: 8px 0 0 -3px #f4904b; }
+      .date { font-size: 0.82rem; color: #adc0dd; }
+      .print-button {
+        border: 1px solid #4b668d;
+        background: transparent;
+        color: white;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font: inherit;
+        font-size: 0.82rem;
+        font-weight: 650;
+        cursor: pointer;
+      }
+      .print-button:hover { background: rgba(255,255,255,.1); }
+      .print-button:focus-visible { outline: 3px solid #ffcf65; outline-offset: 3px; }
+
+      header {
+        padding: 48px 0 35px;
+        background: linear-gradient(117deg, #eef5ff 0%, #fff 55%, #fff3ea 100%);
+        border-bottom: 1px solid var(--line);
+      }
+      .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) 315px; gap: 42px; align-items: end; }
+      .eyebrow { margin: 0 0 12px; color: var(--blue); font-size: 0.78rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+      h1 { max-width: 800px; margin: 0; color: var(--navy); font-size: clamp(2rem, 5vw, 3.65rem); line-height: 1.04; letter-spacing: -.045em; }
+      .lede { max-width: 760px; margin: 18px 0 0; color: #3e4b63; font-size: 1.06rem; }
+      .status-card { padding: 22px; border: 1px solid #cddcf1; border-radius: var(--radius); background: rgba(255,255,255,.9); box-shadow: var(--shadow); }
+      .status-label { margin: 0 0 6px; color: var(--muted); font-size: .78rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+      .status-value { margin: 0; color: var(--navy); font-size: 1.15rem; font-weight: 800; line-height: 1.25; }
+      .status-note { margin: 10px 0 0; color: var(--muted); font-size: .88rem; }
+
+      main { padding: 32px 0 44px; }
+      .section-title { margin: 0 0 6px; color: var(--navy); font-size: 1.25rem; letter-spacing: -.015em; }
+      .section-copy { margin: 0 0 18px; color: var(--muted); font-size: .94rem; }
+      .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 32px; }
+      .metric { min-height: 128px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 5px 14px rgba(24,39,75,.04); }
+      .metric-value { display: block; color: var(--navy); font-size: 1.9rem; font-weight: 800; letter-spacing: -.04em; }
+      .metric-label { display: block; margin-top: 6px; color: var(--muted); font-size: .87rem; line-height: 1.35; }
+      .metric.warning .metric-value { color: var(--amber); }
+
+      .grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 22px; margin-bottom: 30px; }
+      .card { padding: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+      .journey { display: grid; grid-template-columns: repeat(7, minmax(80px, 1fr)); gap: 0; align-items: center; margin-top: 20px; }
+      .stage { position: relative; min-height: 102px; padding: 14px 10px; border: 1px solid #cbd8eb; border-radius: 12px; background: #f8fbff; text-align: center; }
+      .stage strong { display: block; color: var(--navy); font-size: .82rem; line-height: 1.25; }
+      .stage span { display: block; margin-top: 4px; color: var(--muted); font-size: .72rem; line-height: 1.28; }
+      .stage.done { border-color: #b7e2cf; background: var(--green-soft); }
+      .stage.ready { border-color: #bfd6ff; background: var(--blue-soft); }
+      .stage.pending { border-color: #f0d39b; background: var(--amber-soft); }
+      .connector { height: 2px; background: #bbcae0; }
+      .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 18px; color: var(--muted); font-size: .78rem; }
+      .legend i, .tag::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; vertical-align: baseline; }
+      .legend .done i, .tag.done::before { background: var(--green); }
+      .legend .ready i, .tag.ready::before { background: var(--blue); }
+      .legend .pending i, .tag.pending::before { background: var(--amber); }
+
+      .team-list { display: grid; gap: 10px; margin: 18px 0 0; }
+      .team-row { display: grid; grid-template-columns: 95px 1fr; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+      .team-row:first-child { border-top: 0; padding-top: 0; }
+      .person { color: var(--navy); font-size: .88rem; font-weight: 780; }
+      .responsibility { color: var(--muted); font-size: .87rem; }
+      .tag { display: inline-block; margin-top: 4px; color: #394862; font-size: .76rem; font-weight: 650; }
+
+      .work-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+      .work-item { min-height: 194px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+      .work-item h3 { margin: 0 0 10px; color: var(--navy); font-size: 1rem; }
+      .work-item p { margin: 0; color: var(--muted); font-size: .88rem; }
+      .work-item ul { margin: 12px 0 0; padding-left: 18px; color: #415069; font-size: .83rem; }
+      .work-item li + li { margin-top: 6px; }
+
+      .risk-grid { display: grid; grid-template-columns: .95fr 1.05fr; gap: 22px; margin-top: 30px; }
+      .truth { border-left: 5px solid var(--orange); background: #fffaf6; }
+      .truth p { margin: 12px 0 0; color: #4c5361; }
+      .next-list { display: grid; gap: 12px; margin: 15px 0 0; padding: 0; list-style: none; counter-reset: next; }
+      .next-list li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; color: #3f4e67; font-size: .9rem; }
+      .next-list li::before { counter-increment: next; content: counter(next); display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; background: var(--blue-soft); color: var(--blue); font-size: .78rem; font-weight: 800; }
+      .next-list strong { color: var(--navy); }
+
+      footer { padding: 18px 0 38px; color: var(--muted); font-size: .75rem; }
+      footer p { margin: 0; }
+      .source-list { margin-top: 5px; }
+
+      @media (max-width: 900px) {
+        .hero-grid, .grid, .risk-grid { grid-template-columns: 1fr; }
+        .metrics { grid-template-columns: repeat(2, 1fr); }
+        .journey { grid-template-columns: repeat(4, 1fr); gap: 9px; }
+        .connector { display: none; }
+      }
+      @media (max-width: 650px) {
+        .shell { width: min(100% - 28px, 1180px); }
+        .topbar { align-items: flex-start; }
+        .date { display: none; }
+        .hero-grid { gap: 24px; }
+        header { padding: 33px 0 27px; }
+        .metrics, .work-grid { grid-template-columns: 1fr; }
+        .journey { grid-template-columns: repeat(2, 1fr); }
+        .team-row { grid-template-columns: 1fr; gap: 2px; }
+      }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+      @media print {
+        @page { size: A4 landscape; margin: 10mm; }
+        body { background: white; font-size: 11px; }
+        .shell { width: 100%; }
+        .topbar { padding: 7px 0; }
+        .print-button { display: none; }
+        header { padding: 18px 0 16px; }
+        main { padding: 16px 0; }
+        h1 { font-size: 30px; }
+        .lede { margin-top: 8px; font-size: 12px; }
+        .status-card, .card, .metric { box-shadow: none; }
+        .metrics { margin-bottom: 16px; }
+        .grid, .risk-grid { gap: 12px; margin-bottom: 16px; }
+        .card { padding: 14px; }
+        .work-item { min-height: 0; padding: 12px; }
+        footer { padding: 8px 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar-wrap">
+      <div class="shell topbar">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span>VFO2O-20 · AI Sales Enablement</div>
+        <div class="date">Báo cáo nội bộ · 30.09.2026</div>
+        <button class="print-button" type="button" onclick="window.print()" aria-label="In hoặc lưu báo cáo thành PDF">In / lưu PDF</button>
+      </div>
+    </div>
+
+    <header>
+      <div class="shell hero-grid">
+        <div>
+          <p class="eyebrow">MVP progress showcase · supervisor update</p>
+          <h1>Huấn luyện tư vấn viên bán xe, có căn cứ và có kiểm soát.</h1>
+          <p class="lede">Sản phẩm kết hợp tra cứu chính sách có trích nguồn với phòng luyện role-play. Trọng tâm MVP: tư vấn viên có thể luyện an toàn, nhận đánh giá có dẫn chứng và chuyển một bài làm đã chọn cho quản lý duyệt.</p>
+        </div>
+        <aside class="status-card" aria-label="Trạng thái hiện tại">
+          <p class="status-label">Trạng thái hiện tại</p>
+          <p class="status-value">Role-play core đã sẵn sàng để tích hợp</p>
+          <p class="status-note">Chưa đủ bằng chứng để gọi là MVP triển khai hoàn chỉnh: còn phụ thuộc shared services, UI và kiểm thử end-to-end.</p>
+        </aside>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section aria-labelledby="evidence-title">
+        <h2 class="section-title" id="evidence-title">Bằng chứng kỹ thuật hiện có</h2>
+        <p class="section-copy">Các con số dưới đây là kết quả đã được ghi nhận trong báo cáo kiểm tra ngày 29.09; không thay thế cho xác nhận CI/deployment hiện tại.</p>
+        <div class="metrics">
+          <article class="metric"><span class="metric-value">72</span><span class="metric-label">scoped tests role-play/API đã pass</span></article>
+          <article class="metric"><span class="metric-value">5</span><span class="metric-label">chiều đánh giá kết quả luyện tập</span></article>
+          <article class="metric"><span class="metric-value">2</span><span class="metric-label">vai trò sản phẩm: tư vấn viên và quản lý đào tạo</span></article>
+          <article class="metric warning"><span class="metric-value">6</span><span class="metric-label">tệp còn cần format theo Ruff; full suite/E2E chưa xác nhận</span></article>
+        </div>
+      </section>
+
+      <section class="grid" aria-label="Luồng giá trị và phân công">
+        <article class="card">
+          <h2 class="section-title">Luồng giá trị MVP đang xây</h2>
+          <p class="section-copy">LLM tạo hành vi có cấu trúc; mã nguồn giữ quyền kiểm soát state, disclosure, dừng phiên và kiểm tra evidence.</p>
+          <div class="journey" aria-label="Luồng chọn tình huống đến quản lý duyệt">
+            <div class="stage done"><strong>Chọn tình huống</strong><span>persona, mục tiêu, công khai/ẩn</span></div><div class="connector" aria-hidden="true"></div>
+            <div class="stage done"><strong>Role-play nhiều lượt</strong><span>AI customer + state reducer</span></div><div class="connector" aria-hidden="true"></div>
+            <div class="stage done"><strong>Finish an toàn</strong><span>đóng phiên, khóa transcript</span></div><div class="connector" aria-hidden="true"></div>
+            <div class="stage ready"><strong>AI draft feedback</strong><span>evidence + factual/skill riêng</span></div>
+            <div class="stage pending"><strong>Chọn bài gửi duyệt</strong><span>HITL manager review</span></div>
+          </div>
+          <div class="legend" aria-label="Chú thích trạng thái"><span class="done"><i></i>Đã xây ở role-play core</span><span class="ready"><i></i>Sẵn sàng nối shared service</span><span class="pending"><i></i>Chưa hoàn tất MVP end-to-end</span></div>
+        </article>
+
+        <aside class="card">
+          <h2 class="section-title">Phân công theo nhánh hiện tại</h2>
+          <div class="team-list">
+            <div class="team-row"><div class="person">Duy<br><span class="tag done">Đã xây</span></div><div class="responsibility">Role-play state machine, finish/result API, kiểm tra evidence và test nền tảng.</div></div>
+            <div class="team-row"><div class="person">Đạt<br><span class="tag ready">Contract</span></div><div class="responsibility">Chuẩn hóa corpus/scenario theo contract facts, disclosure, objection và metadata nguồn.</div></div>
+            <div class="team-row"><div class="person">Chương<br><span class="tag pending">Cần tích hợp</span></div><div class="responsibility">Copilot/RAG baseline và các shared runtime interfaces cho knowledge, LLM, persistence.</div></div>
+            <div class="team-row"><div class="person">An<br><span class="tag ready">Đang tích hợp</span></div><div class="responsibility">Practice UI/auth branch; cần nối API thật, loading/error/recovery và quyền theo vai trò.</div></div>
+          </div>
+        </aside>
+      </section>
+
+      <section aria-labelledby="delivered-title">
+        <h2 class="section-title" id="delivered-title">Những phần có giá trị thực đã hoàn thành</h2>
+        <p class="section-copy">Ưu tiên là hành vi sản phẩm, không chỉ là giao diện hoặc prompt.</p>
+        <div class="work-grid">
+          <article class="work-item">
+            <h3>1. Role-play có hợp đồng rõ ràng</h3>
+            <p>Scenario định nghĩa persona, thông tin public/hidden, disclosure rule, objection, điều kiện kết thúc và kỹ năng mục tiêu.</p>
+            <ul><li>Không đưa hidden facts sang advisor context.</li><li>State chỉ được cập nhật qua reducer có validation.</li></ul>
+          </article>
+          <article class="work-item">
+            <h3>2. Đánh giá có thể kiểm tra lại</h3>
+            <p>Feedback AI được lưu là bản nháp, tách factual correctness khỏi sales skill và yêu cầu evidence trỏ về transcript.</p>
+            <ul><li>Điểm tổng hợp được tính trong code.</li><li>Knowledge quote/source được xác thực trước khi hiển thị.</li></ul>
+          </article>
+          <article class="work-item">
+            <h3>3. Hướng tích hợp không làm sai MVP</h3>
+            <p>Không đưa RAG hoặc manager approval vào prompt rồi coi là xong. Các năng lực dùng chung phải là service/repository có contract rõ ràng.</p>
+            <ul><li>Chống duplicate/retry ở ranh giới API.</li><li>Chỉ gửi bài advisor chọn sang hàng đợi manager.</li></ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="risk-grid" aria-label="Trạng thái trung thực và bước tiếp theo">
+        <article class="card truth">
+          <h2 class="section-title">Đánh giá trung thực</h2>
+          <p><strong>Không nên demo như một hệ thống đã triển khai hoàn chỉnh.</strong> Role-play core đã có luồng và test riêng, nhưng knowledge search thật, lưu trữ bền vững, manager review, xác thực người dùng và đường đi UI → API → provider vẫn chưa được xác minh end-to-end.</p>
+          <p>Rủi ro lớn nhất lúc này là nối các nhánh bằng mock/fallback rồi trình bày như tính năng thật. Bước tiếp theo phải ưu tiên một vertical slice chạy được.</p>
+        </article>
+        <article class="card">
+          <h2 class="section-title">Đường hoàn thành MVP</h2>
+          <ol class="next-list">
+            <li><span><strong>Chốt shared interfaces</strong><br>LLM structured output, knowledge search, session/checkpoint, evaluation và selected-attempt review.</span></li>
+            <li><span><strong>Nối một luồng thật</strong><br>Đăng nhập → chọn scenario → chat → finish → result → advisor submit → manager review.</span></li>
+            <li><span><strong>Chuẩn hóa dữ liệu & benchmark</strong><br>50 ca copilot; 3 scenario × 6 test paths cho simulator; calibration judge trước khi công bố score.</span></li>
+            <li><span><strong>Release evidence</strong><br>Format/lint/test, deploy URL, health check và demo lỗi/retry có kiểm soát.</span></li>
+          </ol>
+        </article>
+      </section>
+    </main>
+
+    <footer class="shell">
+      <p><strong>Nguồn nội bộ đã đối chiếu:</strong> contracts và implementation role-play trong <code>backend/roleplay</code>, API practice, roadmap và <code>eval/results/report.md</code>.</p>
+      <p class="source-list">Trạng thái GitHub/CI/deployment không được suy diễn từ trang này; cần kiểm tra lại tại thời điểm merge/release.</p>
+    </footer>
+  </body>
+</html>
