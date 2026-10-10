@@ -5,6 +5,7 @@ import {
 } from '../common/Icons';
 import { Badge } from '../common/Badge';
 import { SKILL_LABELS } from '../../data/scenarioData';
+import { getVehicleImage } from '../../data/vehicleData';
 
 export function ScenarioCatalog({
   scenarios,
@@ -25,6 +26,7 @@ export function ScenarioCatalog({
     { id: 'VF 7', label: 'VF 7' },
     { id: 'VF 8', label: 'VF 8' },
     { id: 'VF 9', label: 'VF 9' },
+    { id: 'VF Wild', label: 'VF Wild' },
   ];
 
   const difficultyOptions = [
@@ -139,13 +141,34 @@ export function ScenarioCatalog({
                       : 'Chờ duyệt'}
                 </p>
               )}
-              {/* Badges */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                <Badge variant="highlight">{s.model_badge || s.model}</Badge>
-                <Badge variant="default">Độ khó: {s.difficulty}</Badge>
-                <span style={{ fontSize: '0.78rem', color: '#737373', display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 2 }}>
-                  Tối đa {maxTurns} lượt
-                </span>
+              {/* Badges & Vehicle Thumbnail */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <Badge variant="highlight">{s.model_badge || s.model}</Badge>
+                  <Badge variant="default">Độ khó: {s.difficulty}</Badge>
+                  <span style={{ fontSize: '0.78rem', color: '#737373', display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 2 }}>
+                    Tối đa {maxTurns} lượt
+                  </span>
+                </div>
+                {getVehicleImage(s.model_badge || s.model || s.title) && (
+                  <div
+                    style={{
+                      width: 58,
+                      height: 36,
+                      borderRadius: 6,
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      backgroundColor: '#141722',
+                      border: '1px solid #E5E7EB',
+                    }}
+                  >
+                    <img
+                      src={getVehicleImage(s.model_badge || s.model || s.title)}
+                      alt={s.model_badge || s.model}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Title */}

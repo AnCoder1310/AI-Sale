@@ -4,6 +4,7 @@ Run from the repository root. This uses the configured chat provider, writes no
 real customer data, and does not call the evaluator or the product API.
 """
 
+import argparse
 import asyncio
 import json
 import re
@@ -76,6 +77,7 @@ async def run_one(name: str, advisor_turns: list[str]) -> dict:
                 "termination": state.termination_status.value,
                 "concern_prompt_counts": state.concern_prompt_counts,
                 "spoken_fact_message_ids": state.spoken_fact_message_ids,
+                "customer_decisions": [event.model_dump() for event in state.customer_decisions],
                 "false_mileage_memory_detected": false_mileage_memory,
                 "transcript": transcript,
             }
@@ -84,8 +86,12 @@ async def run_one(name: str, advisor_turns: list[str]) -> dict:
 
 
 async def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, help="JSON result path; defaults to a timestamped file")
+    args = parser.parse_args()
     results = [await run_one(name, turns) for name, turns in RUNS.items()]
-    output = Path("eval/results/roleplay_realism_smoke_2026-10-04.json")
+    output = args.output or Path(f"eval/results/roleplay_realism_smoke_{datetime.now(UTC):%Y-%m-%dT%H-%M-%SZ}.json")
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps({"date_utc": datetime.now(UTC).isoformat(), "runs": results}, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",

@@ -21,6 +21,12 @@ export const practiceApi = {
     });
   },
 
+  async retryCustomerReply(sessionId) {
+    return request(`/practice/${encodeURIComponent(sessionId)}/retry-reply`, {
+      method: 'POST',
+    });
+  },
+
   async finishSession(sessionId) {
     return request(`/practice/${encodeURIComponent(sessionId)}/finish`, {
       method: 'POST',
