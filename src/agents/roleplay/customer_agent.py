@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
@@ -12,7 +13,38 @@ from .prompts import CUSTOMER_PROMPT_VERSION, CUSTOMER_SYSTEM_PROMPT
 from .state import RoleplayMessage, RoleplayState
 
 CustomerTurnMode = Literal["opening", "response"]
-CustomerDecision = Literal["reply", "acknowledge", "accept_step", "defer", "decline"]
+
+ENGLISH_PROSE_MARKERS = {
+    "could",
+    "would",
+    "should",
+    "you",
+    "your",
+    "please",
+    "show",
+    "monthly",
+    "installment",
+    "installments",
+    "charging",
+    "costs",
+    "payment",
+    "payments",
+    "the",
+    "from",
+    "with",
+    "about",
+    "what",
+    "when",
+    "where",
+    "how",
+    "why",
+}
+
+
+def _contains_english_prose(reply: str) -> bool:
+    """Catch English clauses while allowing car names and common abbreviations."""
+    words = re.findall(r"[a-zA-Z]+", reply.casefold())
+    return sum(word in ENGLISH_PROSE_MARKERS for word in words) >= 2
 
 
 class CustomerModelOutput(BaseModel):
@@ -21,8 +53,8 @@ class CustomerModelOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     reply: str = Field(min_length=1, max_length=800)
-    raised_objection_id: str | None
-    decision: CustomerDecision
+    raised_objection_id: str | None = None
+    accepted_next_step: bool = False
 
     @field_validator("reply")
     @classmethod
@@ -52,8 +84,7 @@ class CustomerResponseError(ValueError):
 class CustomerTurn:
     message: RoleplayMessage
     raised_objection_id: str | None = None
-    decision: CustomerDecision = "reply"
-    source: Literal["model", "scenario_disclosure", "follow_up_guard"] = "model"
+    accepted_next_step: bool = False
 
 
 class CustomerAgent:
@@ -84,44 +115,58 @@ class CustomerAgent:
 
         pending = self.pending_disclosures(scenario, state) if mode == "response" else []
         if pending:
-            reply = pending[0].revealed_statement
-            return CustomerTurn(message=RoleplayMessage(role="customer", content=reply), source="scenario_disclosure")
+            reply = " ".join(rule.revealed_statement for rule in pending)
+            return CustomerTurn(message=RoleplayMessage(role="customer", content=reply))
+
+        if (
+            mode == "response"
+            and state.active_objections
+            and self.focus_objection_id(state) is None
+            and not consider_next_step
+        ):
+            return CustomerTurn(
+                message=RoleplayMessage(
+                    role="customer",
+                    content="Anh vẫn chưa yên tâm về điểm này. Mình tạm dừng ở đây; em gửi thông tin phù hợp với trường hợp của anh sau nhé.",
+                )
+            )
 
         context = self._build_context(scenario, state, mode=mode)
         context["consider_next_step"] = consider_next_step
         if consider_next_step and self.focus_objection_id(state) is None:
             context["active_objections"] = []
-        try:
-            raw_output = await self._model.generate(
-                system_prompt=CUSTOMER_SYSTEM_PROMPT,
-                context=context,
-            )
-            output = CustomerModelOutput.model_validate(raw_output)
-        except (ValidationError, TypeError, ValueError) as exc:
-            raise CustomerResponseError(f"invalid customer response: {exc}") from exc
+        for attempt in range(2):
+            try:
+                raw_output = await self._model.generate(
+                    system_prompt=(
+                        CUSTOMER_SYSTEM_PROMPT
+                        if attempt == 0
+                        else CUSTOMER_SYSTEM_PROMPT + "\n# Correction\nYour previous response contained English prose. "
+                        "Respond entirely in Vietnamese while preserving the customer's intent."
+                    ),
+                    context=context,
+                )
+                output = CustomerModelOutput.model_validate(raw_output)
+            except (ValidationError, TypeError, ValueError) as exc:
+                raise CustomerResponseError(f"invalid customer response: {exc}") from exc
 
-        self._reject_private_fact_leak(output.reply, scenario, state)
+            self._reject_private_fact_leak(output.reply, scenario, state)
+            if not _contains_english_prose(output.reply):
+                break
+            if attempt:
+                raise CustomerResponseError("customer response contains English prose")
+            context = {
+                **context,
+                "previous_mixed_language_reply": output.reply,
+            }
         known_ids = {item.objection_id for item in scenario.objections}
-        raised_id = output.raised_objection_id
-        if raised_id is not None and raised_id not in known_ids:
-            raise CustomerResponseError("customer response references an unknown concern")
-        if output.decision != "reply" and raised_id is not None:
-            raise CustomerResponseError("a decision cannot also raise a concern")
-        if output.decision == "accept_step" and not consider_next_step:
-            raise CustomerResponseError("customer accepted a next step that was not proposed")
+        raised_id = output.raised_objection_id if output.raised_objection_id in known_ids else None
         if raised_id and state.concern_prompt_counts.get(raised_id, 0) >= 2:
-            return CustomerTurn(
-                message=RoleplayMessage(
-                    role="customer",
-                    content="Anh vẫn chưa yên tâm về việc này. Để anh cân nhắc thêm rồi liên hệ lại em sau nhé.",
-                ),
-                decision="defer",
-                source="follow_up_guard",
-            )
+            raise CustomerResponseError("customer repeated a concern after its follow-up limit")
         return CustomerTurn(
             message=RoleplayMessage(role="customer", content=output.reply),
             raised_objection_id=raised_id,
-            decision=output.decision,
+            accepted_next_step=output.accepted_next_step,
         )
 
     @staticmethod
@@ -130,7 +175,7 @@ class CustomerAgent:
         return [
             rule
             for rule in scenario.disclosure_rules
-            if rule.fact_key in state.pending_disclosure_fact_ids and rule.fact_key not in state.spoken_fact_message_ids
+            if rule.fact_key in state.revealed_facts and rule.fact_key not in state.spoken_fact_message_ids
         ]
 
     @staticmethod
@@ -165,19 +210,6 @@ class CustomerAgent:
                     for objection in scenario.objections
                     if objection.objection_id in active_ids
                 ],
-                "available_objections": [
-                    {"objection_id": item.objection_id, "objection_text": item.objection_text}
-                    for item in scenario.objections
-                    if item.objection_id in state.unresolved_objections
-                    and state.concern_prompt_counts.get(item.objection_id, 0) < 2
-                ],
-                "drop_out_trigger": scenario.termination_conditions.drop_out_trigger,
-                "exhausted_objection_ids": [
-                    item for item in state.active_objections if state.concern_prompt_counts.get(item, 0) >= 2
-                ],
-                "buyer_decision_policy": (
-                    scenario.buyer_decision_policy.model_dump() if scenario.buyer_decision_policy else None
-                ),
                 "revealed_statements": [
                     {
                         "fact_key": rule.fact_key,

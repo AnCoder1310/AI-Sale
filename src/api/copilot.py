@@ -68,12 +68,6 @@ async def get_source_document(document_id: str) -> dict[str, Any]:
         for item in items:
             if item.get("document_id") == document_id:
                 return item
-        faq_path = Path("data/knowledge/faq.json")
-        if faq_path.exists():
-            faq_items = json.loads(await asyncio.to_thread(faq_path.read_text, encoding="utf-8"))
-            for item in faq_items:
-                if item.get("document_id") == document_id:
-                    return item
     except Exception as exc:
         logger.warning("Source lookup failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=500, detail="Không thể đọc tài liệu lúc này.") from None

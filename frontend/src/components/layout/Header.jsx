@@ -3,8 +3,6 @@ import {
   RobotIcon,
   RoleplayIcon,
   BookIcon,
-  BoltIcon,
-  ProgressIcon,
   BellIcon,
 } from '../common/Icons';
 
@@ -21,8 +19,6 @@ export function Header({
     { id: 'copilot', label: 'AI Copilot', icon: <RobotIcon style={{ width: 15, height: 15 }} /> },
     { id: 'roleplay', label: 'Role-play', icon: <RoleplayIcon style={{ width: 15, height: 15 }} /> },
     { id: 'knowledge', label: 'Knowledge', icon: <BookIcon style={{ width: 15, height: 15 }} /> },
-    { id: 'charging', label: 'Charging Stations', icon: <BoltIcon style={{ width: 15, height: 15 }} /> },
-    { id: 'progress', label: 'Progress', icon: <ProgressIcon style={{ width: 15, height: 15 }} /> },
   ];
 
   return (

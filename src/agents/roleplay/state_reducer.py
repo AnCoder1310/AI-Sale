@@ -70,14 +70,38 @@ def apply_turn_analysis(
     if analysis.factual_claims:
         next_stage = ConversationStage.PRESENTATION
 
+    newly_resolved: list[str] = []
+    addressed_objections = set(analysis.addressed_objection_ids)
+    for objection_id in analysis.resolved_objection_ids:
+        if objection_id not in addressed_objections:
+            continue
+        if objection_id not in updated.active_objections:
+            continue
+        updated.active_objections.remove(objection_id)
+        if objection_id in updated.unresolved_objections:
+            updated.unresolved_objections.remove(objection_id)
+        newly_resolved.append(objection_id)
+    _append_unique(updated.resolved_objections, newly_resolved)
+
     if analysis.next_step_attempted and not updated.active_objections:
         next_stage = ConversationStage.CLOSING
 
+    for objection in scenario.objections:
+        if objection.trigger_stage != next_stage.value:
+            continue
+        if objection.objection_id not in updated.unresolved_objections:
+            continue
+        _append_unique(updated.active_objections, [objection.objection_id])
+
     if updated.active_objections:
         next_stage = ConversationStage.OBJECTION_HANDLING
+    elif newly_resolved and next_stage is ConversationStage.OBJECTION_HANDLING:
+        next_stage = ConversationStage.PRESENTATION
 
-    trust_delta = min(new_discovery_count, 1)
-    interest_delta = 0
+    trust_delta = min(new_discovery_count, 1) + min(len(newly_resolved), 1)
+    interest_delta = min(len(newly_resolved), 1)
+    if analysis.next_step_attempted and not analysis.premature_closing:
+        interest_delta += 1
     if analysis.premature_closing:
         trust_delta -= 1
         interest_delta -= 1
@@ -91,6 +115,10 @@ def apply_turn_analysis(
     if analysis.advisor_requested_finish:
         updated.termination_status = TerminationStatus.ADVISOR_ENDED
         updated.termination_reason = "Advisor explicitly ended the practice session."
+    elif updated.turn_count >= updated.max_turns:
+        updated.termination_status = TerminationStatus.MAX_TURNS
+        updated.termination_reason = "Scenario turn limit reached."
+
     if updated.termination_status is not TerminationStatus.ACTIVE:
         updated.conversation_stage = ConversationStage.FINISHED
 

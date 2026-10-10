@@ -12,7 +12,7 @@ from src.models.evaluation import SessionEvaluationResult
 from .contracts import CheckpointContract, ScenarioContract
 from .customer_agent import CustomerAgent
 from .scenario_loader import ScenarioNotFoundError, ScenarioRepository
-from .state import ConversationStage, CustomerDecisionEvent, EvaluationStatus, RoleplayState, TerminationStatus
+from .state import ConversationStage, EvaluationStatus, RoleplayState, TerminationStatus
 from .state_reducer import apply_turn_analysis
 from .turn_analyzer import TurnAnalysis, TurnAnalyzer
 
@@ -65,24 +65,7 @@ def build_roleplay_turn_graph(
             state["advisor_message"],
             state["analysis"],
         )
-        if updated.termination_status is TerminationStatus.ACTIVE:
-            updated.pending_customer_reply = True
-            updated.pending_next_step_attempted = state["analysis"].next_step_attempted
-            updated.pending_addressed_objection_ids = [
-                item for item in state["analysis"].addressed_objection_ids if item in updated.active_objections
-            ]
-            updated.pending_disclosure_fact_ids = [
-                item
-                for item in state["analysis"].discovered_fact_ids
-                if item in updated.revealed_facts and item not in updated.spoken_fact_message_ids
-            ]
         return {"roleplay_state": updated}
-
-    async def route_pending_turn(state: RoleplayRuntimeState) -> RoleplayRuntimeState:
-        return {}
-
-    async def route_after_pending_check(state: RoleplayRuntimeState) -> str:
-        return "customer_turn" if state["roleplay_state"].pending_customer_reply else "analyze_advisor_turn"
 
     async def persist_advisor_turn(state: RoleplayRuntimeState) -> RoleplayRuntimeState:
         await _save_state(checkpoint, state["roleplay_state"])
@@ -96,64 +79,42 @@ def build_roleplay_turn_graph(
     async def customer_turn(state: RoleplayRuntimeState) -> RoleplayRuntimeState:
         prior = state["roleplay_state"]
         pending = customer_agent.pending_disclosures(state["scenario"], prior)
+        focus_id = customer_agent.focus_objection_id(prior) if not pending else None
         turn = await customer_agent.generate_turn(
             state["scenario"],
             prior,
             mode="response",
-            consider_next_step=prior.pending_next_step_attempted,
+            consider_next_step=state["analysis"].next_step_attempted,
         )
         message = turn.message
         updated = prior.model_copy(deep=True)
         updated.messages.append(message)
-        resolved_id = None
         for rule in pending:
             if rule.revealed_statement in message.content:
                 updated.spoken_fact_message_ids[rule.fact_key] = message.message_id
-        if turn.decision in {"acknowledge", "accept_step"}:
-            resolved_id = next(
-                (item for item in updated.pending_addressed_objection_ids if item in updated.active_objections),
-                None,
-            )
-            if resolved_id is not None:
-                updated.active_objections.remove(resolved_id)
-                updated.unresolved_objections.remove(resolved_id)
-                updated.resolved_objections.append(resolved_id)
-                updated.trust_level = min(5, updated.trust_level + 1)
-            if turn.decision == "accept_step":
-                updated.interest_level = min(5, updated.interest_level + 1)
-                if not updated.active_objections:
-                    updated.termination_status = TerminationStatus.COMPLETED
-                    updated.termination_reason = "Customer accepted a concrete next step."
-        if turn.decision in {"defer", "decline"}:
-            updated.termination_status = TerminationStatus.DROPPED_OUT
-            updated.termination_reason = "Customer deferred or declined the proposed path."
+        if turn.accepted_next_step and state["analysis"].next_step_attempted:
+            accepted_id = focus_id or next(iter(updated.active_objections), None)
+            if accepted_id is not None:
+                objection_id = accepted_id
+                updated.active_objections.remove(objection_id)
+                if objection_id in updated.unresolved_objections:
+                    updated.unresolved_objections.remove(objection_id)
+                if objection_id not in updated.resolved_objections:
+                    updated.resolved_objections.append(objection_id)
         if turn.raised_objection_id and turn.raised_objection_id in updated.unresolved_objections:
             if turn.raised_objection_id not in updated.active_objections:
                 updated.active_objections.append(turn.raised_objection_id)
                 updated.conversation_stage = ConversationStage.OBJECTION_HANDLING
             if turn.raised_objection_id not in updated.spoken_concern_message_ids:
                 updated.spoken_concern_message_ids[turn.raised_objection_id] = message.message_id
-            else:
-                updated.concern_prompt_counts[turn.raised_objection_id] = (
-                    updated.concern_prompt_counts.get(turn.raised_objection_id, 0) + 1
-                )
-        if updated.termination_status is TerminationStatus.ACTIVE and updated.turn_count >= updated.max_turns:
-            updated.termination_status = TerminationStatus.MAX_TURNS
-            updated.termination_reason = "Scenario turn limit reached."
-        updated.customer_decisions.append(
-            CustomerDecisionEvent(
-                message_id=message.message_id,
-                decision=turn.decision,
-                raised_objection_id=turn.raised_objection_id,
-                resolved_objection_id=resolved_id,
-                source=turn.source,
-            )
-        )
-        updated.pending_customer_reply = False
-        updated.pending_next_step_attempted = False
-        updated.pending_addressed_objection_ids = []
-        updated.pending_disclosure_fact_ids = []
-        if updated.termination_status is not TerminationStatus.ACTIVE:
+            elif focus_id == turn.raised_objection_id:
+                updated.concern_prompt_counts[focus_id] = updated.concern_prompt_counts.get(focus_id, 0) + 1
+        elif focus_id and turn.raised_objection_id is None and not turn.accepted_next_step:
+            # Legacy provider fixtures omit the structured concern marker.
+            updated.concern_prompt_counts[focus_id] = updated.concern_prompt_counts.get(focus_id, 0) + 1
+        elif prior.active_objections and not pending and not turn.accepted_next_step:
+            updated.termination_status = TerminationStatus.DROPPED_OUT
+            updated.termination_reason = "Customer deferred unresolved concerns after two prompts each."
             updated.conversation_stage = ConversationStage.FINISHED
         return {
             "roleplay_state": updated,
@@ -170,9 +131,7 @@ def build_roleplay_turn_graph(
     graph.add_node("persist_advisor_turn", persist_advisor_turn)
     graph.add_node("customer_turn", customer_turn)
     graph.add_node("persist_customer_turn", persist_customer_turn)
-    graph.add_node("route_pending_turn", route_pending_turn)
-    graph.set_entry_point("route_pending_turn")
-    graph.add_conditional_edges("route_pending_turn", route_after_pending_check)
+    graph.set_entry_point("analyze_advisor_turn")
     graph.add_edge("analyze_advisor_turn", "update_customer_state")
     graph.add_edge("update_customer_state", "persist_advisor_turn")
     graph.add_conditional_edges("persist_advisor_turn", route_after_advisor_turn)
@@ -230,14 +189,6 @@ class RoleplayGraph:
         )
         opening_message = opening_turn.message
         state.messages.append(opening_message)
-        state.customer_decisions.append(
-            CustomerDecisionEvent(
-                message_id=opening_message.message_id,
-                decision=opening_turn.decision,
-                raised_objection_id=opening_turn.raised_objection_id,
-                source=opening_turn.source,
-            )
-        )
         if opening_turn.raised_objection_id and opening_turn.raised_objection_id in state.unresolved_objections:
             state.spoken_concern_message_ids[opening_turn.raised_objection_id] = opening_message.message_id
             state.active_objections.append(opening_turn.raised_objection_id)
@@ -257,14 +208,12 @@ class RoleplayGraph:
         if state.termination_status is not TerminationStatus.ACTIVE:
             raise RoleplaySessionConflictError("cannot continue a finished practice session")
         try:
-            scenario = state.scenario_snapshot or self._repository.get(state.scenario_id)
+            scenario = self._repository.get(state.scenario_id)
         except ScenarioNotFoundError as exc:
             raise RoleplayScenarioNotFoundError(
                 f"session references an unavailable scenario: {state.scenario_id}"
             ) from exc
 
-        if state.pending_customer_reply and advisor_message.strip() != state.messages[-1].content:
-            raise RoleplaySessionConflictError("a customer reply is pending; retry that turn before sending a new one")
         result = await self._turn_graph.ainvoke(
             {
                 "scenario": scenario,
@@ -285,8 +234,6 @@ class RoleplayGraph:
 
     async def finish_session(self, session_id: str) -> RoleplayState:
         state = await self.get_session_state(session_id)
-        if state.pending_customer_reply:
-            raise RoleplaySessionConflictError("customer reply is pending")
         if state.termination_status is TerminationStatus.ACTIVE:
             state.termination_status = TerminationStatus.ADVISOR_ENDED
             state.termination_reason = "Advisor ended the practice session."

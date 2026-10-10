@@ -13,13 +13,16 @@
       "current_car": "Toyota Vios 2017",
       "communication_style": "Thực dụng, nói ngắn gọn, quan tâm thu nhập ròng và thời gian không chạy khách; hỏi ước lượng trước, chỉ muốn bảng tính chi tiết khi thấy đáng cân nhắc"
     },
-    "buyer_intent": "Muốn tối ưu chi phí chạy xe công nghệ nhưng sợ chi phí pin và sạc điện phát sinh",
-    "customer_goals": "Tìm hiểu xem chi phí nuôi xe điện mỗi tháng có thực sự rẻ hơn xe xăng không",
+    "buyer_intent": "Cân nhắc mua VF 5 Plus kèm pin để chạy dịch vụ, muốn biết tiền sạc, trả góp và thời gian dừng sạc ảnh hưởng thu nhập ra sao",
+    "customer_goals": "So chi phí sử dụng theo quãng đường thực tế với Vios, kiểm tra điều kiện sạc cho xe biển vàng và chọn bước xác minh trước khi đổi xe",
     "visible_context": "Khách nhắn tin qua Fanpage hỏi: 'VF 5 Plus lăn bánh bao nhiêu em? Anh đang chạy Vios dịch vụ tính đổi sang xe điện mà sợ không ăn thua.'",
     "hidden_facts": {
       "budget": "Có sẵn 150 triệu, muốn vay trả góp phần còn lại",
       "daily_distance": "Chạy trung bình 180 km/ngày (khoảng 5.000 km/tháng)",
-      "real_concern": "Sợ tiền thuê pin cộng tiền sạc điện đắt hơn tiền xăng và sạc lâu mất cuốc khách buổi trưa"
+      "fuel_cost_month": "Theo ghi chép chi tiêu ba tháng gần đây, tiền xăng Vios khoảng 8,5 triệu đồng mỗi tháng; đây là dữ kiện giả lập của khách, không phải thông số Toyota",
+      "registration_location": "Anh dự định đăng ký xe tại Hà Nội và chạy biển vàng",
+      "work_schedule": "Anh thường chạy từ sáng sớm, nghỉ ngắn khoảng 12 giờ 30 đến 14 giờ rồi tiếp tục chạy tới tối; sợ phải chờ trụ sạc lúc đang có cuốc",
+      "real_concern": "Sợ tiền sạc, khoản trả góp và thời gian dừng sạc làm giảm thu nhập ròng so với chiếc Vios đang dùng"
     },
     "disclosure_rules": [
       {
@@ -35,19 +38,31 @@
         "revealed_statement": "Anh dồn hết vốn liếng trong tay chỉ có tầm 150 triệu thôi, còn lại phải vay ngân hàng thì mới kham nổi."
       },
       {
-        "fact_key": "real_concern",
-        "trigger_intent": "ask_biggest_switching_concern",
-        "trigger_keywords": ["lo nhất", "ngại nhất", "băn khoăn chính"],
-        "revealed_statement": "Anh lo cả tổng tiền pin với tiền sạc, rồi đang chạy khách mà phải dừng lâu thì mất cuốc."
+        "fact_key": "fuel_cost_month",
+        "trigger_intent": "ask_actual_fuel_spend",
+        "trigger_keywords": ["tiền xăng", "chi phí xăng", "đổ xăng mỗi tháng", "hóa đơn xăng"],
+        "revealed_statement": "Anh có ghi lại chi tiêu mấy tháng gần đây, trung bình tiền xăng Vios khoảng 8,5 triệu một tháng."
+      },
+      {
+        "fact_key": "registration_location",
+        "trigger_intent": "ask_registration_location_and_plate",
+        "trigger_keywords": ["đăng ký xe ở đâu", "tỉnh thành", "biển vàng", "biển số"],
+        "revealed_statement": "Anh định đăng ký xe ở Hà Nội và chạy biển vàng để chở khách."
+      },
+      {
+        "fact_key": "work_schedule",
+        "trigger_intent": "ask_work_and_charging_schedule",
+        "trigger_keywords": ["lịch chạy", "giờ nghỉ", "khung giờ sạc", "chạy ca nào"],
+        "revealed_statement": "Anh chạy từ sáng sớm, nghỉ ngắn tầm 12 rưỡi đến 2 giờ chiều rồi chạy tiếp đến tối; nếu phải chờ trụ lúc có cuốc thì tiếc lắm."
       }
     ],
     "objections": [
       {
         "objection_id": "OBJ_VF5_BATTERY_VS_GAS",
         "trigger_stage": "presentation",
-        "objection_text": "Anh nghe nói cộng tiền pin với tiền sạc thì cũng gần bằng tiền xăng. Chạy dịch vụ như anh đổi xe có đáng không em?",
-        "resolve_condition": "Tư vấn viên ghi nhận lo ngại, dùng quãng đường của khách để giải thích ngắn gọn các khoản cần so sánh, chỉ nêu ước lượng khi có dữ liệu đáng tin và điều kiện áp dụng rõ ràng; nếu còn thiếu dữ liệu thì đề nghị gửi bảng tính riêng thay vì hứa mức tiết kiệm chắc chắn.",
-        "ideal_sales_response": "Một phản hồi tốt giúp khách hiểu chi phí nào đã biết, chi phí nào còn phụ thuộc cách sạc và chính sách, rồi đề xuất bước kiểm chứng theo lịch chạy của khách. Không cần ép phép tính chi tiết vào một tin nhắn."
+        "objection_text": "Anh nghe nói sạc ngoài lượt được ưu đãi vẫn tốn tiền, rồi còn trả góp nữa. Chạy nhiều như anh thì đổi từ Vios có đáng không em?",
+        "resolve_condition": "Tư vấn viên ghi nhận lo ngại, dùng quãng đường và tiền xăng thực tế do khách cung cấp để tách so sánh tiền năng lượng khỏi trả góp và thu nhập ròng; nêu đúng đơn giá/điều kiện sạc từ nguồn hiệu lực, chỉ đưa ước lượng có giả định và không hứa mức tiết kiệm chắc chắn.",
+        "ideal_sales_response": "Một phản hồi tốt giải thích phần nào tính được từ thông số xe và đơn giá sạc, phần nào phụ thuộc lượt ưu đãi, cách sạc, lãi vay và thời gian mất cuốc; nếu cần thì hẹn bảng so sánh cá nhân hóa, không ép mọi phép tính vào một tin nhắn."
       },
       {
         "objection_id": "OBJ_VF5_CHARGING_TIME",
@@ -57,17 +72,11 @@
         "ideal_sales_response": "Một phản hồi đạt yêu cầu cần thừa nhận chi phí cơ hội khi dừng sạc, đối chiếu lịch chạy với lựa chọn sạc phù hợp, nêu rằng thời gian thực tế phụ thuộc trụ, mức pin và điều kiện vận hành, rồi đề xuất kiểm tra trạm hoặc trải nghiệm sạc."
       }
     ],
-    "expected_discovery": "Ưu tiên hỏi quãng đường và lịch chạy để hiểu nhu cầu dịch vụ; chỉ hỏi khả năng tài chính trả trước khi khách quan tâm đến vay hoặc giá mua xe.",
-    "success_conditions": "Tư vấn viên khai thác quãng đường và bối cảnh chạy dịch vụ, giải thích chi phí trung thực bằng dữ liệu có nguồn hoặc hẹn bảng tính riêng khi thiếu dữ liệu, xử lý lo ngại thời gian sạc và thống nhất bước tiếp theo phù hợp.",
+    "expected_discovery": "Ưu tiên hỏi quãng đường, tiền xăng Vios thực tế, địa phương/biển số và lịch chạy để so chi phí năng lượng và điều kiện sạc; chỉ hỏi số tiền trả trước khi khách muốn tính phương án vay.",
+    "success_conditions": "Tư vấn viên trả lời giá niêm yết nhưng không gọi đó là giá lăn bánh, khai thác quãng đường và tiền xăng thực tế, phân biệt mua xe kèm pin với thuê pin cũ, giải thích đơn giá và điều kiện ưu đãi sạc từ nguồn, không hứa tiết kiệm hoặc tiền trả góp khi thiếu giả định, xử lý lo ngại mất cuốc và thống nhất bước kiểm chứng phù hợp.",
     "termination_conditions": {
       "max_turns": 10,
       "drop_out_trigger": "Nếu báo giá thiếu căn cứ hoặc sau hai lần khách hỏi cùng một băn khoăn mà tư vấn viên vẫn không giải quyết được, khách tạm hoãn quyết định thay vì hỏi đi hỏi lại."
-    },
-    "buyer_decision_policy": {
-      "primary_motivation": "Giữ thu nhập ròng ổn định khi đổi từ Vios sang xe điện.",
-      "evidence_needed": ["So sánh chi phí theo quãng đường và điều kiện sạc của anh", "Cách kiểm tra thời gian dừng sạc trong ca chạy"],
-      "acceptable_next_steps": ["Nhận bảng so sánh có giả định rõ ràng", "Kiểm tra trạm trên tuyến chạy hoặc trải nghiệm sạc"],
-      "walk_away_signals": ["Khẳng định tiết kiệm chắc chắn mà không có dữ liệu", "Lặp lại quảng cáo và né câu hỏi về chi phí hoặc mất cuốc"]
     }
   },
   {
@@ -76,7 +85,7 @@
     "difficulty": "Hard",
     "sales_channel": "Tin nhắn tư vấn",
     "training_objective": "Khám phá nhu cầu gia đình và người cùng ra quyết định, sau đó so sánh giá trị mà không hạ thấp đối thủ hoặc đưa ra cam kết khấu hao thiếu căn cứ.",
-    "scenario_version": "2.1",
+    "scenario_version": "2.0",
     "target_skills": ["product_knowledge", "objection_handling", "closing_next_step"],
     "persona": {
       "name": "Chị Thanh",
@@ -104,12 +113,6 @@
         "trigger_intent": "ask_decision_maker_opinion",
         "trigger_keywords": ["anh nhà", "ông xã", "chồng", "ai quyết định"],
         "revealed_statement": "Chị thì mê kiểu dáng công nghệ của VF 7 rồi, nhưng ông xã chị cứ cản, bảo mua CX-5 cho lành, sợ xe điện sau này bán mất giá."
-      },
-      {
-        "fact_key": "budget",
-        "trigger_intent": "ask_budget_or_value_threshold",
-        "trigger_keywords": ["ngân sách", "tài chính", "chi thêm", "mức giá"],
-        "revealed_statement": "Tài chính nhà chị đủ mua cả hai xe; chị chỉ muốn biết phần chênh lệch có đáng với nhu cầu gia đình không."
       }
     ],
     "objections": [
@@ -133,12 +136,6 @@
     "termination_conditions": {
       "max_turns": 10,
       "drop_out_trigger": "Nếu tư vấn viên chê bai dìm hàng CX-5 thô thiển hoặc không chứng minh được giá trị xe."
-    },
-    "buyer_decision_policy": {
-      "primary_motivation": "Chọn xe phù hợp gia đình và thuyết phục được người cùng quyết định.",
-      "evidence_needed": ["So sánh trung lập những điểm liên quan nhu cầu gia đình", "Nêu rõ điều gì chưa thể dự đoán về giá bán lại"],
-      "acceptable_next_steps": ["Gửi so sánh có nguồn để hai vợ chồng xem", "Mời cả hai cùng xem hoặc lái thử xe"],
-      "walk_away_signals": ["Chê bai CX-5 thiếu công bằng", "Hứa chắc giá bán lại hoặc khoản tiết kiệm tương lai"]
     }
   },
   {
@@ -147,7 +144,7 @@
     "difficulty": "Easy",
     "sales_channel": "Chat trực tuyến",
     "training_objective": "Khai thác quãng đường và khả năng tiếp cận điểm sạc để xử lý lo ngại sạc tại chung cư bằng phương án có thể kiểm chứng.",
-    "scenario_version": "2.1",
+    "scenario_version": "2.0",
     "target_skills": ["need_discovery", "objection_handling"],
     "persona": {
       "name": "Anh Tuấn",
@@ -175,12 +172,6 @@
         "trigger_intent": "ask_living_location",
         "trigger_keywords": ["ở khu nào", "chung cư nào", "địa chỉ", "quận mấy"],
         "revealed_statement": "Anh ở chung cư bên mạn Cầu Giấy, gần ngay cái Vincom Trần Duy Hưng ấy."
-      },
-      {
-        "fact_key": "real_concern",
-        "trigger_intent": "ask_charging_worry",
-        "trigger_keywords": ["lo nhất về sạc", "ngại chuyện sạc", "vì sao sợ sạc"],
-        "revealed_statement": "Anh cứ nghĩ tối nào đi làm về cũng phải lo tìm chỗ sạc như sạc điện thoại, nên thấy mệt trước rồi."
       }
     ],
     "objections": [
@@ -195,14 +186,8 @@
     "expected_discovery": "Nhân viên phải hỏi về khoảng cách đi lại trung bình và vị trí sinh sống để chỉ ra điểm sạc công cộng tiện lợi gần nhà.",
     "success_conditions": "Tư vấn viên khai thác quãng đường và khu vực, giải thích phương án sạc bằng dữ liệu có nguồn, không hứa thời gian hay tần suất cố định và giúp khách xác minh điểm sạc phù hợp.",
     "termination_conditions": {
-      "max_turns": 8,
+      "max_turns": 6,
       "drop_out_trigger": "Nếu tư vấn viên bỏ qua câu hỏi sạc mà chuyển sang ép chốt cọc."
-    },
-    "buyer_decision_policy": {
-      "primary_motivation": "Có cách sạc khả thi khi sống ở chung cư và dùng xe đi làm hằng ngày.",
-      "evidence_needed": ["Ước lượng nhu cầu sạc theo quãng đường thực tế", "Cách tự kiểm tra trạm gần nhà và phương án dự phòng"],
-      "acceptable_next_steps": ["Cùng kiểm tra trạm và lịch sạc phù hợp", "Xem xe sau khi đã rõ phương án sạc"],
-      "walk_away_signals": ["Ép cọc trước khi giải đáp chuyện sạc", "Hứa tần suất hoặc thời gian sạc cố định không có căn cứ"]
     }
   }
 ]

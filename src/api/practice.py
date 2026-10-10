@@ -100,21 +100,8 @@ def create_practice_router(service: PracticeService) -> APIRouter:
         except (CustomerResponseError, TurnAnalysisError) as exc:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=("The AI response could not be completed. Reload the session and retry the pending reply."),
+                detail=("The AI response could not be completed. The advisor turn was saved and can be retried."),
             ) from exc
-
-    @router.post("/{session_id}/retry-reply", response_model=PracticeSessionView)
-    async def retry_customer_reply(
-        session_id: Annotated[str, Path(min_length=1, max_length=120)],
-    ) -> PracticeSessionView:
-        try:
-            return await service.retry_customer_reply(session_id)
-        except RoleplaySessionNotFoundError as exc:
-            raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
-        except RoleplaySessionConflictError as exc:
-            raise HTTPException(status_code=409, detail="No customer reply is pending.") from exc
-        except CustomerResponseError as exc:
-            raise HTTPException(status_code=502, detail="The AI customer reply is still unavailable.") from exc
 
     @router.post("/{session_id}/finish", response_model=PracticeResultView)
     async def finish_session(

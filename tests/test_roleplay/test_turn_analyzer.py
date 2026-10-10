@@ -44,6 +44,30 @@ async def test_semantic_intent_reveals_the_same_fact_for_paraphrases(advisor_mes
 
 
 @pytest.mark.asyncio
+async def test_unique_detected_intent_recovers_omitted_daily_distance_fact():
+    scenario = ScenarioRepository(SCENARIOS).get("SCENARIO_01_VF5_TAXI")
+    state = RoleplayState.from_scenario("session-1", scenario)
+    analyzer = TurnAnalyzer(StaticAnalysisModel({"detected_intents": ["ask_daily_travel_distance"]}))
+
+    analysis = await analyzer.analyze("Anh chạy khoảng bao nhiêu km mỗi ngày ạ?", scenario, state)
+
+    assert analysis.discovered_fact_ids == ["daily_distance"]
+
+
+@pytest.mark.asyncio
+async def test_omitted_fact_is_not_inferred_for_ambiguous_intent():
+    scenario = ScenarioRepository(SCENARIOS).get("SCENARIO_01_VF5_TAXI")
+    duplicate_intent = scenario.disclosure_rules[0].model_copy(update={"fact_key": "fuel_cost_month"})
+    scenario = scenario.model_copy(update={"disclosure_rules": [*scenario.disclosure_rules, duplicate_intent]})
+    state = RoleplayState.from_scenario("session-1", scenario)
+    analyzer = TurnAnalyzer(StaticAnalysisModel({"detected_intents": ["ask_daily_travel_distance"]}))
+
+    analysis = await analyzer.analyze("Anh chạy khoảng bao nhiêu km mỗi ngày ạ?", scenario, state)
+
+    assert analysis.discovered_fact_ids == []
+
+
+@pytest.mark.asyncio
 async def test_fact_is_not_revealed_without_its_matching_intent():
     scenario = ScenarioRepository(SCENARIOS).get("SCENARIO_01_VF5_TAXI")
     state = RoleplayState.from_scenario("session-1", scenario)
@@ -114,3 +138,16 @@ async def test_analyzer_keeps_only_claims_exactly_present_in_advisor_turn():
     result = await analyzer.analyze("VF 5 được bảo hành 7 năm.", scenario, state)
 
     assert [claim.text for claim in result.factual_claims] == ["VF 5 được bảo hành 7 năm"]
+
+
+@pytest.mark.asyncio
+async def test_analyzer_preserves_original_casing_for_recorded_claim():
+    scenario = ScenarioRepository(SCENARIOS).get("SCENARIO_01_VF5_TAXI")
+    state = RoleplayState.from_scenario("session-1", scenario)
+    analyzer = TurnAnalyzer(
+        StaticAnalysisModel({"factual_claims": [{"text": "Với VF 5 Plus chạy biển vàng", "category": "policy"}]})
+    )
+
+    result = await analyzer.analyze("Dạ, với VF 5 Plus chạy biển vàng có ưu đãi.", scenario, state)
+
+    assert [claim.text for claim in result.factual_claims] == ["với VF 5 Plus chạy biển vàng"]

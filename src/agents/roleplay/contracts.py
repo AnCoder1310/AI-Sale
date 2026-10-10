@@ -78,15 +78,6 @@ class TerminationConditions(BaseModel):
     drop_out_trigger: str = Field(min_length=1)
 
 
-class BuyerDecisionPolicy(BaseModel):
-    """Private buyer criteria; no unrevealed personal fact values belong here."""
-
-    primary_motivation: str | None = None
-    evidence_needed: list[str] = Field(default_factory=list)
-    acceptable_next_steps: list[str] = Field(default_factory=list)
-    walk_away_signals: list[str] = Field(default_factory=list)
-
-
 class ScenarioContract(BaseModel):
     scenario_id: str = Field(min_length=1)
     title: str = Field(min_length=1)
@@ -105,7 +96,6 @@ class ScenarioContract(BaseModel):
     expected_discovery: str = Field(min_length=1)
     success_conditions: str = Field(min_length=1)
     termination_conditions: TerminationConditions
-    buyer_decision_policy: BuyerDecisionPolicy = Field(default_factory=BuyerDecisionPolicy)
 
     @model_validator(mode="after")
     def validate_scenario_references(self) -> "ScenarioContract":
