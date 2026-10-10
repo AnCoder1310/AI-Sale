@@ -182,7 +182,7 @@ async def test_invalid_ai_output_returns_retryable_502_without_internal_detail(
     )
 
     assert response.status_code == 502
-    assert "retry the pending reply" in response.json()["detail"]
+    assert "saved" in response.json()["detail"]
     assert "secret detail" not in response.text
 
 

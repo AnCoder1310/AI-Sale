@@ -50,7 +50,7 @@ def scenario_and_state():
 
 @pytest.mark.asyncio
 async def test_customer_adapter_uses_shared_structured_output_boundary():
-    model = FakeChatModel({"reply": "Anh đang quan tâm chi phí sử dụng xe.", "raised_objection_id": None, "decision": "reply"})
+    model = FakeChatModel({"reply": "Anh đang quan tâm chi phí sử dụng xe."})
     adapter = SharedLLMCustomerModel(lambda: model)
 
     result = await adapter.generate(
@@ -58,7 +58,7 @@ async def test_customer_adapter_uses_shared_structured_output_boundary():
         context={"scenario_id": "scenario-1", "messages": []},
     )
 
-    assert result == CustomerModelOutput(reply="Anh đang quan tâm chi phí sử dụng xe.", raised_objection_id=None, decision="reply")
+    assert result == CustomerModelOutput(reply="Anh đang quan tâm chi phí sử dụng xe.")
     assert model.schema is CustomerModelOutput
     assert isinstance(model.messages[0], SystemMessage)
     assert isinstance(model.messages[1], HumanMessage)

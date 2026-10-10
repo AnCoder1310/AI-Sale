@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Protocol
 
 from pydantic import BaseModel, Field, ValidationError
@@ -80,6 +81,13 @@ class TurnAnalyzer:
         discovered_fact_ids = [
             fact_id for fact_id in _unique(analysis.discovered_fact_ids) if fact_id in permitted_fact_ids
         ]
+        # A unique scenario intent already identifies its permitted fact. Recover
+        # an omitted fact ID without revealing anything for ambiguous intents.
+        if not analysis.discovered_fact_ids:
+            for intent in detected_intents:
+                matching_rules = [rule for rule in scenario.disclosure_rules if rule.trigger_intent == intent]
+                if len(matching_rules) == 1 and matching_rules[0].fact_key not in discovered_fact_ids:
+                    discovered_fact_ids.append(matching_rules[0].fact_key)
 
         known_objections = {objection.objection_id for objection in scenario.objections}
         addressed_objection_ids = [
@@ -93,9 +101,11 @@ class TurnAnalyzer:
             for objection_id in _unique(analysis.resolved_objection_ids)
             if objection_id in resolvable_objections
         ]
-        factual_claims = [
-            claim for claim in analysis.factual_claims if claim.text.casefold() in advisor_message.casefold()
-        ]
+        factual_claims = []
+        for claim in analysis.factual_claims:
+            match = re.search(re.escape(claim.text), advisor_message, flags=re.IGNORECASE)
+            if match is not None:
+                factual_claims.append(claim.model_copy(update={"text": match.group(0)}))
 
         return analysis.model_copy(
             update={

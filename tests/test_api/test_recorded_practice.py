@@ -45,11 +45,6 @@ class StubPractice:
     async def get_session(self, session_id):
         return self.sessions[session_id]
 
-    async def retry_customer_reply(self, session_id):
-        session = self.sessions[session_id]
-        session.pending_customer_reply = False
-        return session
-
     async def get_result(self, session_id):
         return PracticeResultView(session_id=session_id, evaluation_status="not_started")
 
@@ -104,30 +99,17 @@ async def test_history_and_review_routes_enforce_identity_and_ownership(tmp_path
         ).status_code == 403
         manager_queue = await client.get("/api/v1/manager/reviews", headers={"X-Test-Identity": "manager-a:manager"})
         assert [item["session_id"] for item in manager_queue.json()] == [session_id]
-
-
-@pytest.mark.asyncio
-async def test_pending_reply_retry_is_owner_only(tmp_path):
-    records = SQLPracticeRecordsRepository(f"sqlite:///{tmp_path / 'records.db'}")
-    stub = StubPractice()
-    service = RecordedPracticeService(stub, records)
-    practice_router, _ = create_recorded_practice_routers(service, fake_identity)
-    app = FastAPI()
-    app.include_router(practice_router, prefix="/api/v1")
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        created = await client.post(
-            "/api/v1/practice/sessions",
-            headers={"X-Test-Identity": "advisor-a:advisor"},
-            json={"scenario_id": "SCENARIO_01_VF5_TAXI"},
-        )
-        session_id = created.json()["session_id"]
-        stub.sessions[session_id].pending_customer_reply = True
-        route = f"/api/v1/practice/{session_id}/retry-reply"
-        assert (await client.post(route, headers={"X-Test-Identity": "advisor-b:advisor"})).status_code == 404
-        assert (await client.post(route, headers={"X-Test-Identity": "manager-a:manager"})).status_code == 403
-        own = await client.post(route, headers={"X-Test-Identity": "advisor-a:advisor"})
-        assert own.status_code == 200
-        assert own.json()["pending_customer_reply"] is False
+        assert (
+            await client.get("/api/v1/manager/attempts", headers={"X-Test-Identity": "advisor-a:advisor"})
+        ).status_code == 403
+        assert (
+            await client.get("/api/v1/manager/overview", headers={"X-Test-Identity": "advisor-a:advisor"})
+        ).status_code == 403
+        manager_history = await client.get("/api/v1/manager/attempts", headers={"X-Test-Identity": "manager-a:manager"})
+        assert [item["session_id"] for item in manager_history.json()] == [session_id]
+        overview = await client.get("/api/v1/manager/overview", headers={"X-Test-Identity": "manager-a:manager"})
+        assert overview.json()["completed_attempts"] == 1
+        assert overview.json()["pending_attempts"] == 1
 
 
 @pytest.mark.asyncio
@@ -284,80 +266,3 @@ async def test_real_auth_cookie_is_used_for_practice_ownership_and_manager_acces
         assert (await manager.get("/api/v1/practice/history")).status_code == 403
         assert [item["session_id"] for item in (await manager.get("/api/v1/manager/reviews")).json()] == [session_id]
         assert (await manager.get(f"/api/v1/manager/reviews/{session_id}")).status_code == 200
-
-@pytest.mark.asyncio
-async def test_manager_overview_history_and_assignments(tmp_path):
-    records = SQLPracticeRecordsRepository(f"sqlite:///{tmp_path / 'records.db'}")
-    service = RecordedPracticeService(StubPractice(), records)
-    practice_router, manager_router = create_recorded_practice_routers(service, fake_identity)
-    app = FastAPI()
-    app.include_router(practice_router, prefix="/api/v1")
-    app.include_router(manager_router, prefix="/api/v1")
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        # Initial empty overview
-        ov = await client.get("/api/v1/manager/overview", headers={"X-Test-Identity": "manager-a:manager"})
-        assert ov.status_code == 200
-        assert ov.json()["completed_attempts"] == 0
-
-        # Advisor cannot access
-        assert (await client.get("/api/v1/manager/overview", headers={"X-Test-Identity": "advisor-a:advisor"})).status_code == 403
-
-        # Assignments workflow
-        asgs = await client.get("/api/v1/manager/assignments", headers={"X-Test-Identity": "manager-a:manager"})
-        assert asgs.status_code == 200
-        assert asgs.json() == []
-
-        created_asg = await client.post(
-            "/api/v1/manager/assignments",
-            headers={"X-Test-Identity": "manager-a:manager"},
-            json={
-                "title": "Luyện tập thắc mắc pin",
-                "scenario_id": "SCENARIO_01_VF5_TAXI",
-                "target_vehicle": "VinFast VF 5 Plus",
-                "advisor_id": "advisor-a",
-                "due_date": "2026-10-15",
-            },
-        )
-        assert created_asg.status_code == 201
-        assert created_asg.json()["status"] == "pending"
-        assert created_asg.json()["advisor_id"] == "advisor-a"
-
-        asgs_after = await client.get("/api/v1/manager/assignments", headers={"X-Test-Identity": "manager-a:manager"})
-        assert len(asgs_after.json()) == 1
-        assert asgs_after.json()[0]["assignment_id"] == created_asg.json()["assignment_id"]
-
-        # History list
-        hist = await client.get("/api/v1/manager/history", headers={"X-Test-Identity": "manager-a:manager"})
-        assert hist.status_code == 200
-        assert hist.json() == []
-
-
-@pytest.mark.asyncio
-async def test_scenarios_accessible_by_advisor_and_manager(tmp_path):
-    records = SQLPracticeRecordsRepository(f"sqlite:///{tmp_path / 'records.db'}")
-    service = RecordedPracticeService(StubPractice(), records)
-    practice_router, manager_router = create_recorded_practice_routers(service, fake_identity)
-    app = FastAPI()
-    app.include_router(practice_router, prefix="/api/v1")
-    app.include_router(manager_router, prefix="/api/v1")
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        # Unauthenticated: 401
-        assert (await client.get("/api/v1/practice/scenarios")).status_code == 401
-
-        # Advisor: 200
-        advisor_res = await client.get("/api/v1/practice/scenarios", headers={"X-Test-Identity": "advisor-a:advisor"})
-        assert advisor_res.status_code == 200
-        assert len(advisor_res.json()) > 0
-
-        # Manager: 200 (was 403 previously)
-        manager_res = await client.get("/api/v1/practice/scenarios", headers={"X-Test-Identity": "manager-a:manager"})
-        assert manager_res.status_code == 200
-        assert len(manager_res.json()) > 0
-
-        # Manager cannot start practice sessions (advisor only: 403)
-        start_res = await client.post(
-            "/api/v1/practice/sessions",
-            headers={"X-Test-Identity": "manager-a:manager"},
-            json={"scenario_id": "SCENARIO_01_VF5_TAXI"},
-        )
-        assert start_res.status_code == 403

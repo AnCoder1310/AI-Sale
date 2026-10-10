@@ -1,217 +1,71 @@
-# AI20K Agent Template
+# P-043 — AI Sales Coach cho tư vấn viên VinFast
 
-Template chính thức cho học viên VinUni AI20K Build Phase: cấu trúc dự án, code
-mẫu và hướng dẫn kỹ thuật để xây dựng một AI Agent hoàn chỉnh — từ kiến trúc,
-code, test cho đến deploy và nộp bài Demo Day.
+MVP gồm **Copilot** tra cứu kiến thức xe/chính sách có trích nguồn và **Practice Room** trò chuyện nhiều lượt với AI Customer, nhận đánh giá có dẫn chứng từ transcript. Advisor xem lịch sử; manager xem hàng đợi, transcript và duyệt/sửa đánh giá. Đây là sản phẩm học tập dùng corpus công khai và khách hàng giả lập, không phải kênh công bố chính sách chính thức của VinFast.
 
-Technical Guidebook: <https://phoenix.note.transformerlabs.ai/technical-book>
+## Chạy local
 
-## Template có sẵn những gì
+**Docker:** `docker compose up --build` chạy frontend, backend và PostgreSQL + pgvector local. Xem [hướng dẫn Docker](docs/local-docker.md) để seed tài khoản và lưu dữ liệu. Mỗi máy có database riêng; muốn chia sẻ dữ liệu cần triển khai backend dùng chung với PostgreSQL hosted.
 
-- **Cấu trúc thư mục tách lớp** — `agents/`, `api/`, `services/`, `models/` đã
-  chia sẵn, không phải bàn lại từ đầu.
-- **Code mẫu chạy được** — LangGraph agent (state, node, tool), FastAPI routes,
-  Pydantic settings, schema.
-- **Docker và CI** — Dockerfile multi-stage, `docker-compose.yml`, workflow
-  GitHub Actions chạy `ruff` + `pytest` khi push lên `main`/`develop` và khi mở
-  pull request vào `main`.
-- **Technical Guidebook 10 chương** trong `docs/guide/`, đồng thời đọc được
-  online.
-- **Checklist 10 deliverables** của Demo Day.
-- **AI usage logging** — hook cài sẵn cho 6 công cụ AI, log tự động gửi lên
-  grading server mỗi lần `git push`.
-
-## Yêu cầu
-
-- Python 3.11 (phiên bản CI đang dùng)
-- Git
-- Docker — tuỳ chọn, chỉ cần nếu chạy `docker compose`
-
-## Bắt đầu
-
-### 1. Clone repo của đội
-
-Khi đội được chốt, hệ thống tự sinh repo cho đội từ template này, nằm trong org
-GitHub của khoá bạn đang học và đặt tên theo mã đội. Copy URL ở trang đội trên
-Phoenix rồi clone về:
-
-```bash
-git clone https://github.com/<ORG-CỦA-KHOÁ>/<MÃ-ĐỘI>.git
-cd <MÃ-ĐỘI>
-```
-
-Không cần `rm -rf .git`, `git init` hay `git remote add`: repo sinh từ template
-đã bắt đầu bằng lịch sử riêng của đội và remote trỏ sẵn đúng chỗ. Chưa thấy repo
-của đội thì báo BTC — repo tự tạo nằm ngoài org sẽ không được chấm.
-
-### 2. Cài môi trường
+Cần Python 3.11, Node.js tương thích Vite 8, npm và OpenRouter API key có quyền gọi chat/embedding. Lời gọi thật có thể phát sinh phí.
 
 ```bash
 python3.11 -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-### 3. Cấu hình biến môi trường
-
-```bash
 cp .env.example .env
 ```
 
-Mở `.env` và điền `OPENROUTER_API_KEY`. Copilot dùng
-`EMBEDDING_MODEL_NAME=openai/text-embedding-3-small` qua OpenRouter; chat và
-role-play dùng `OPENROUTER_MODEL_NAME`. Không có key, ứng dụng sẽ báo lỗi thay
-vì âm thầm dùng hash embeddings. Hash chỉ dành cho test với
-`EMBEDDING_PROVIDER=hash`.
+Điền `OPENROUTER_API_KEY` trong `.env`. Mặc định chat dùng `OPENROUTER_MODEL_NAME=openai/gpt-6-luna`, embedding dùng `EMBEDDING_MODEL_NAME=openai/text-embedding-3-small` qua OpenRouter; **hai tác vụ model khác nhau**, không dùng hash cho demo thật. Khi chạy Python trực tiếp, `DATABASE_URL=sqlite:///./data/app.db` lưu user, phiên, transcript và đánh giá; `CHROMA_PERSIST_DIR=./data/chroma` lưu vector index dẫn xuất từ `data/knowledge/corpus.json`. Docker Compose ghi đè hai mặc định này để dùng PostgreSQL + pgvector. Đổi embedding model thì tạo collection mới và ingest lại. Không commit `.env`, mật khẩu hoặc database local.
 
-Local MVP dùng `DATABASE_URL=sqlite:///./data/app.db` để lưu phiên luyện tập
-và ChromaDB tại `CHROMA_PERSIST_DIR=./data/chroma` để tra cứu kiến thức. Hai
-kho này khác nhau. Khi đổi embedding model, dùng collection Chroma mới và
-nạp lại corpus; không trộn vector từ các model khác nhau. Cấu hình ví dụ đã
-đặt `CHROMA_COLLECTION_NAME=vinfast_knowledge_openrouter_3_small` để tránh
-collection hash cũ. SQLite và Chroma trên ổ đĩa local không tự trở thành kho
-bền vững khi backend deploy trên host có filesystem tạm thời.
-
-Riêng `AI_LOG_API_KEY`, mỗi thành viên tự
-tạo key riêng tại [dashboard Phoenix](https://phoenix.note.transformerlabs.ai/api-keys)
-rồi thay vào chỗ `<get-your-api-key-from-dashboard-phoenix>` — giá trị trong
-`.env.example` chỉ là placeholder, để nguyên thì log không vào được hệ thống chấm.
-
-### 4. Cài hook ghi log AI
+Trong `.env`, đặt `DEMO_ADVISOR_PASSWORD` và `DEMO_MANAGER_PASSWORD` riêng, rồi seed tài khoản local:
 
 ```bash
-bash scripts/setup_hooks.sh                                      # Linux / macOS / Git Bash
-powershell -ExecutionPolicy Bypass -File scripts\setup_hooks.ps1 # Windows PowerShell
+python -c 'import asyncio; from dotenv import load_dotenv; load_dotenv(); from scripts.seed_demo_users import seed; asyncio.run(seed())'
 ```
 
-Chạy một lần sau khi clone. Hook ghi lại prompt khi bạn dùng Claude Code, Cursor,
-Codex CLI, Gemini CLI, Antigravity hoặc GitHub Copilot, và cài pre-push hook để
-đẩy log lên server.
+Đăng nhập bằng `advisor.demo` và `manager.demo`. Seed script cập nhật hai tài khoản demo cố định khi chạy lại; không dùng với tài khoản thật. Tính năng manager tạo Advisor mới đang ở nhánh riêng, **chưa thuộc `develop`**.
 
-### 5. Chạy server
+Chạy hai terminal từ thư mục gốc repo:
 
 ```bash
+source .venv/bin/activate
 uvicorn src.main:app --reload --port 8000
 ```
 
-Swagger UI ở <http://localhost:8000/docs>. Hoặc dùng `make run`, `make test`,
-`make lint` — xem `Makefile`.
-
-## Cấu trúc thư mục
-
-```
-src/
-  agents/            LangGraph agent
-    graph.py         State graph (nodes + edges)
-    state.py         State schema (TypedDict)
-    nodes/           Node functions
-    tools/           Agent tools (@tool)
-  api/routes.py      FastAPI endpoints
-  models/schemas.py  Pydantic schemas
-  services/llm.py    LLM client
-  config.py          Pydantic Settings
-  main.py            App entry point
-tests/               pytest suite
-scripts/             Hook ghi log AI + installer
-docs/
-  guide/             Technical Guidebook (nguồn của bản online)
-  architecture_diagram.md
-eval/                Kết quả evaluation
-presentation/        Slide và video Demo Day
-.claude/ .codex/ .cursor/ .gemini/ .agents/ .github/hooks/
-                     Config hook cho từng công cụ
-.github/workflows/   CI
-Dockerfile           Multi-stage build
-docker-compose.yml   Chạy backend bằng Docker
-README_boilerplate.md  Khung README cho dự án của đội
+```bash
+cd frontend
+npm ci
+npm run dev
 ```
 
-## Technical Guidebook
+Mở <http://localhost:3000>. Vite proxy `/api` và `/health` sang cổng 8000; Swagger ở <http://localhost:8000/docs>. Lần khởi động đầu ingest corpus nếu Chroma rỗng. `/health` trả 200 **không chứng minh** Copilot/provider hoạt động; cần gửi câu hỏi thật. Nếu không dùng Vite proxy, cấu hình `CORS_ORIGINS` tương ứng frontend origin.
 
-| Chương | Nội dung | Thời gian |
-|---|---|---|
-| 1 | Lời mở đầu — mục tiêu, cách sử dụng | 15 phút |
-| 2 | Khởi tạo dự án — clone, setup, git workflow | 4 giờ |
-| 3 | Thiết kế kiến trúc — 3-tier, diagram, ADR | 6 giờ |
-| 4 | LangGraph Agent — state, node, edge, tool, RAG | 8 giờ |
-| 5 | FastAPI — routes, validation, error handling, streaming | 6 giờ |
-| 6 | Giao diện — Next.js và Streamlit | 6 giờ |
-| 7 | DevOps — Docker, CI/CD, deploy, logging | 6 giờ |
-| 8 | Kiểm thử — unit test, integration test, RAGAS | 4 giờ |
-| 9 | Demo Day — 10 deliverables, checklist | 2 giờ |
-| 10 | Tài nguyên — khoá học, tài liệu, BMAD method | tham khảo |
+## Luồng demo và câu hỏi mẫu
 
-Đọc online tại <https://phoenix.note.transformerlabs.ai/technical-book>: đăng
-nhập bằng GitHub (đúng account đã được BTC mời vào org của khoá), chọn tab
-**Technical Book** ở sidebar trái. Bản offline nằm trong `docs/guide/`, mở được
-bằng bất kỳ markdown viewer nào.
+1. Đăng nhập Advisor. Hỏi Copilot: **“Giá niêm yết VF 8 Thế hệ mới theo bảng giá VinFast là bao nhiêu?”** Mở citation. Câu ngoài kho: **“Giá bảo hiểm chính xác của đại lý X ngày mai là bao nhiêu?”** phải không tự bịa.
+2. Vào Practice Room, chọn **VF 5 Plus — khách chạy dịch vụ**. Hỏi quãng đường/ngày, tiền xăng Vios thực tế và giờ nghỉ/sạc; xử lý lo ngại chi phí, tránh cam kết tiết kiệm khi chưa đủ dữ liệu. Kết thúc để xem điểm AI dự thảo, transcript evidence và lịch sử.
+3. Đăng xuất, đăng nhập Manager. Xem hàng đợi và transcript, nhập lý do nếu chỉnh điểm, duyệt; đăng nhập lại Advisor để xem kết quả đã duyệt.
 
-## 10 deliverables cho Demo Day
+Không biến giá niêm yết thành “giá lăn bánh” hay tự suy ra mọi VF 5 phải thuê pin. Nếu provider lỗi, UI cần cho retry; không mô tả sai là “không có tài liệu”.
 
-| # | Deliverable | Vị trí | Template lo tới đâu |
-|---|---|---|---|
-| 1 | Source code | `src/` | Khung sẵn |
-| 2 | README | copy `README_boilerplate.md` thành `README.md` | Khung sẵn |
-| 3 | Architecture diagram | `docs/architecture_diagram.md` | Khung sẵn |
-| 4 | AI logs | LangSmith (3 biến môi trường) + auto AI usage logging | Cấu hình sẵn |
-| 5 | Live URL | deploy lên Render/Vercel | CI/CD sẵn |
-| 6 | Video demo | `presentation/` | Đội tự làm |
-| 7 | Pitch deck | `presentation/` | Đội tự làm |
-| 8 | Development journal | `JOURNAL.md` | Khung sẵn |
-| 9 | Worklog | `WORKLOG.md` | Khung sẵn |
-| 10 | Evaluation evidence | `eval/` | Đội tự làm |
+## Kiến trúc, kiểm thử và bằng chứng
 
-## Tech stack
-
-| Lớp | Công nghệ |
-|---|---|
-| Agent | LangGraph + LangChain 0.3 |
-| Backend | FastAPI 0.115 + Uvicorn |
-| LLM | OpenAI, mặc định `gpt-4o-mini` (đổi trong `src/config.py`) |
-| Giao diện | Next.js hoặc Streamlit (đội tự chọn, hướng dẫn ở chương 6) |
-| Lint / test | ruff + pytest 8 |
-| DevOps | Docker + GitHub Actions |
-
-## AI usage logging
-
-Mọi prompt được ghi vào `.ai-log/session.jsonl` và tự động gửi lên grading server
-ở bước pre-push.
-
-| Công cụ | Cấu hình | Thời điểm ghi |
-|---|---|---|
-| Claude Code | `.claude/settings.json` | mỗi prompt (`UserPromptSubmit`) |
-| Cursor | `.cursor/hooks.json` | mỗi prompt và khi dừng |
-| OpenAI Codex CLI | `.codex/hooks.json` | mỗi prompt và khi dừng |
-| Gemini CLI | `.gemini/settings.json` | mỗi lượt agent chạy |
-| GitHub Copilot | `.github/hooks/hooks.json` | mỗi prompt và cuối session |
-| Antigravity IDE | `.agents/hooks.json` | mỗi prompt, kèm lần quét lại lúc `git push` |
-
-Dùng ChatGPT hay công cụ web khác thì log thủ công:
+Xem [sơ đồ kiến trúc](docs/architecture_diagram.md). React/Vite gọi FastAPI bằng cookie phiên; Copilot dùng LangGraph, hybrid retrieval, vector index và OpenRouter. Practice dùng LangGraph giữ trạng thái, AI Customer, evaluator rubric có evidence và manager HITL. Docker dùng PostgreSQL + pgvector local; chạy Python trực tiếp mặc định SQLite + Chroma. Dữ liệu trên ổ local **không tự bền vững** khi deploy lên filesystem tạm.
 
 ```bash
-bash scripts/_pyrun.sh scripts/log_manual.py --tool chatgpt --prompt "What you asked"
+ruff check src tests
+ruff format --check src tests
+pytest tests -q
+cd frontend && npm run lint && npm run build
 ```
 
-## Đóng góp
+Kiểm thử phần mềm khác đánh giá AI. [Báo cáo Gate 2](eval/results/gate2_manual_cases_2026-10-04.md) ghi 5 ca thủ công với input, output quan sát, expected và giới hạn. [Benchmark Copilot 50 case](eval/datasets/copilot_benchmark.json) là tập rộng hơn, **không tự chứng minh 50 lời gọi thật đã chạy**. Các smoke trước nằm trong `eval/results/`. Trạng thái GitHub Actions phải xem trên PR; job không bắt đầu không phải CI pass.
 
-Repo này là open source. Đọc [CONTRIBUTING.md](CONTRIBUTING.md) trước khi mở PR.
+Feature branch → PR `develop` → kiểm tra/review → PR `develop` → `main` khi đủ điều kiện. Không push trực tiếp vào `main`. [Kịch bản video Gate 2](presentation/GATE2_DEMO.md) mô tả 3 phút cần quay. AI usage log, Git worklog và eval evidence là các bằng chứng riêng; không trộn với file chứa key.
 
-Nội dung trong `docs/guide/` là nguồn của Technical Book và được đồng bộ lên bản
-online, nên mọi thay đổi ở đó cần review của
-[@AI20K-Build-Phase/book-maintainers](https://github.com/orgs/AI20K-Build-Phase/teams/book-maintainers)
-— xem [.github/CODEOWNERS](.github/CODEOWNERS).
-
-Báo lỗ hổng bảo mật theo [SECURITY.md](SECURITY.md), đừng mở public issue.
-
-## Thành viên
-
-| Họ và tên | Mã sinh viên |
-|---|---|
+| Thành viên | MSSV |
+| --- | --- |
 | Phạm Đình Duy | 2A202602913 |
 | Phạm Quốc Đạt | 2A202602384 |
 | Võ Trường An | 2A20262656 |
 | Nguyễn Hữu Chương | 2A202602601 |
-
-## License
-
-[MIT](LICENSE) — dùng tự do cho mục đích giáo dục.

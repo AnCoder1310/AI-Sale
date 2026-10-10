@@ -1,11 +1,7 @@
 import {
   VinFastLogo,
   DashboardIcon,
-  UsersIcon,
-  ClipboardIcon,
   CheckCircleIcon,
-  TrophyIcon,
-  BellIcon,
   LogoutIcon,
 } from "../common/Icons";
 
@@ -14,17 +10,10 @@ export function ManagerTopNav({
   onTabChange,
   currentUser,
   pendingCount = 0,
-  activeAdvisorsCount = 0,
-  assignmentsCount = 0,
   onLogout,
-  onSwitchWorkspace,
-  currentWorkspace = "manager",
 }) {
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
-    { id: "team", label: "Team", icon: UsersIcon, badge: activeAdvisorsCount > 0 ? String(activeAdvisorsCount) : null },
-    { id: "assignments", label: "Assignments", icon: ClipboardIcon, badge: assignmentsCount > 0 ? String(assignmentsCount) : null },
-    { id: "performance", label: "Performance", icon: TrophyIcon },
     { id: "reports", label: "Reports", icon: CheckCircleIcon, badge: pendingCount > 0 ? `${pendingCount}` : null, highlightBadge: pendingCount > 0 },
   ];
 
@@ -78,58 +67,11 @@ export function ManagerTopNav({
 
         {/* Right: Workspace switcher & Actions */}
         <div className="manager-topnav-actions">
-          {/* Workspace Switcher */}
-          <div className="manager-workspace-switcher">
-            <span className="workspace-label">WORKSPACE:</span>
-            <div className="workspace-pills">
-              <button
-                type="button"
-                className={`ws-pill ${currentWorkspace === "admin" ? "active" : ""}`}
-                onClick={() => onSwitchWorkspace && onSwitchWorkspace("admin")}
-                title="Admin Console"
-              >
-                <span>⚙️</span>
-                <span>Admin</span>
-              </button>
-              <button
-                type="button"
-                className={`ws-pill ${currentWorkspace === "manager" ? "active" : ""}`}
-                onClick={() => onSwitchWorkspace && onSwitchWorkspace("manager")}
-                title="Manager Portal"
-              >
-                <span>🛠️</span>
-                <span>Manager</span>
-              </button>
-              <button
-                type="button"
-                className={`ws-pill ${currentWorkspace === "advisor" ? "active" : ""}`}
-                onClick={() => onSwitchWorkspace && onSwitchWorkspace("advisor")}
-                title="Advisor Workspace"
-              >
-                <span>👤</span>
-                <span>Advisor</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Notifications */}
-          <div className="manager-notif-wrap">
-            <button
-              type="button"
-              className="manager-icon-btn"
-              title="Thông báo hệ thống"
-              aria-label="Thông báo"
-            >
-              <BellIcon style={{ width: 16, height: 16 }} />
-              {pendingCount > 0 && <span className="notif-badge">{pendingCount}</span>}
-            </button>
-          </div>
-
           {/* User Profile */}
           <div className="manager-user-badge">
             <span className="manager-user-avatar">{initials}</span>
             <div className="manager-user-details">
-              <span className="manager-user-name">{currentUser?.display_name || "Lê Văn Hoàng"}</span>
+              <span className="manager-user-name">{currentUser?.display_name || "Manager"}</span>
               <span className="manager-user-role">Manager</span>
             </div>
           </div>

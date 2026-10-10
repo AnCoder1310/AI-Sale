@@ -29,16 +29,13 @@ from src.agents.roleplay.state import EvaluationStatus
 from src.integrations.practice_persistence import normalize_database_url
 from src.models.evaluation import CriterionStatus, CriterionType, ReviewStatus, SessionEvaluationResult
 from src.services.practice_records import (
-    AdvisorPerformanceView,
-    AssignmentRecord,
-    CreateAssignmentInput,
-    SkillSummary,
-    TeamOverview,
     AttemptNotFoundError,
     AttemptSummary,
     ManagerReviewDecision,
     ManagerReviewRecord,
     ReviewConflictError,
+    SkillSummary,
+    TeamOverview,
     approved_evaluation,
 )
 
@@ -66,21 +63,6 @@ class SQLPracticeRecordsRepository:
             Column("reviewed_at", DateTime(timezone=True), nullable=False),
             Column("change_reason", Text, nullable=False),
             Column("approved_result_json", Text, nullable=False),
-        )
-        self._assignments = Table(
-            "practice_assignments",
-            metadata,
-            Column("assignment_id", String(120), primary_key=True),
-            Column("title", String(200), nullable=False),
-            Column("scenario_id", String(120), nullable=False),
-            Column("scenario_title", String(200), nullable=False),
-            Column("target_vehicle", String(120), nullable=False),
-            Column("advisor_id", String(120), nullable=False, index=True),
-            Column("advisor_name", String(200), nullable=False),
-            Column("manager_id", String(120), nullable=False),
-            Column("due_date", String(50), nullable=False),
-            Column("status", String(50), nullable=False, default="pending"),
-            Column("created_at", DateTime(timezone=True), nullable=False),
         )
         self._metadata = metadata
         self._schema_ready = False
@@ -277,109 +259,6 @@ class SQLPracticeRecordsRepository:
                 if values
             ],
         )
-
-    async def list_assignments(self, advisor_id: str | None = None) -> list[AssignmentRecord]:
-        self._ensure_schema()
-        query = select(self._assignments)
-        if advisor_id:
-            query = query.where(self._assignments.c.advisor_id == advisor_id)
-        query = query.order_by(self._assignments.c.created_at.desc())
-        with self._engine.connect() as connection:
-            rows = connection.execute(query).mappings().all()
-            return [
-                AssignmentRecord(
-                    assignment_id=row.assignment_id,
-                    title=row.title,
-                    scenario_id=row.scenario_id,
-                    scenario_title=row.scenario_title,
-                    target_vehicle=row.target_vehicle,
-                    advisor_id=row.advisor_id,
-                    advisor_name=row.advisor_name,
-                    manager_id=row.manager_id,
-                    due_date=row.due_date,
-                    status=row.status,
-                    created_at=row.created_at.isoformat() if row.created_at else "",
-                )
-                for row in rows
-            ]
-
-    async def create_assignment(
-        self, manager_id: str, payload: CreateAssignmentInput, scenario_title: str, advisor_name: str
-    ) -> AssignmentRecord:
-        self._ensure_schema()
-        import uuid
-        now = datetime.now(UTC)
-        assignment_id = f"asg-{uuid.uuid4().hex[:8]}"
-        with self._engine.begin() as connection:
-            connection.execute(
-                insert(self._assignments).values(
-                    assignment_id=assignment_id,
-                    title=payload.title,
-                    scenario_id=payload.scenario_id,
-                    scenario_title=scenario_title,
-                    target_vehicle=payload.target_vehicle,
-                    advisor_id=payload.advisor_id,
-                    advisor_name=advisor_name,
-                    manager_id=manager_id,
-                    due_date=payload.due_date,
-                    status="pending",
-                    created_at=now,
-                )
-            )
-        return AssignmentRecord(
-            assignment_id=assignment_id,
-            title=payload.title,
-            scenario_id=payload.scenario_id,
-            scenario_title=scenario_title,
-            target_vehicle=payload.target_vehicle,
-            advisor_id=payload.advisor_id,
-            advisor_name=advisor_name,
-            manager_id=manager_id,
-            due_date=payload.due_date,
-            status="pending",
-            created_at=now.isoformat(),
-        )
-
-    async def list_advisors(self) -> list[AdvisorPerformanceView]:
-        self._ensure_schema()
-        query = self._summary_query().where(self._attempts.c.completed_at.is_not(None))
-        with self._engine.connect() as connection:
-            rows = list(connection.execute(query).mappings())
-
-        grouped = {}
-        for row in rows:
-            grouped.setdefault(row.advisor_id, []).append(row)
-
-        advisors = []
-        for adv_id, adv_rows in grouped.items():
-            completed = len(adv_rows)
-            approved = [r for r in adv_rows if r.approved_result_json]
-            scores = []
-            for r in approved:
-                res = SessionEvaluationResult.model_validate_json(r.approved_result_json)
-                if res.overall_score is not None:
-                    scores.append(res.overall_score)
-            if not scores:
-                for r in adv_rows:
-                    if r.ai_draft_json:
-                        res = SessionEvaluationResult.model_validate_json(r.ai_draft_json)
-                        if res.overall_score is not None:
-                            scores.append(res.overall_score)
-            avg = sum(scores) / len(scores) if scores else None
-            status = "top" if (avg and avg >= 2.5) else ("on_track" if (avg and avg >= 2.0) else "needs_attention")
-            latest_dt = max((r.completed_at for r in adv_rows if r.completed_at), default=None)
-            advisors.append(
-                AdvisorPerformanceView(
-                    advisor_id=adv_id,
-                    advisor_name=adv_id,
-                    completed_sessions=completed,
-                    approved_sessions=len(approved),
-                    average_score=round(avg, 1) if avg is not None else None,
-                    latest_activity=latest_dt.isoformat() if latest_dt else None,
-                    status=status,
-                )
-            )
-        return advisors
 
     async def approve(self, session_id: str, manager_id: str, decision: ManagerReviewDecision) -> ManagerReviewRecord:
         if not manager_id.strip():

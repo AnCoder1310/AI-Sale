@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from src.agents.roleplay.customer_agent import CustomerAgent, CustomerModelOutput, CustomerResponseError
+from src.agents.roleplay.customer_agent import CustomerAgent, CustomerResponseError
 from src.agents.roleplay.prompts import CUSTOMER_PROMPT_VERSION, CUSTOMER_SYSTEM_PROMPT
 from src.agents.roleplay.scenario_loader import ScenarioRepository
-from src.agents.roleplay.state import RoleplayMessage, RoleplayState
+from src.agents.roleplay.state import RoleplayState
 
 SCENARIOS = Path("data/scenarios/scenarios.json")
 
@@ -17,7 +17,7 @@ class CapturingCustomerModel:
 
     async def generate(self, *, system_prompt, context):
         self.calls.append({"system_prompt": system_prompt, "context": context})
-        return {"raised_objection_id": None, "decision": "reply", **self.output}
+        return self.output
 
 
 @pytest.fixture
@@ -47,7 +47,6 @@ async def test_customer_agent_uses_versioned_prompt_and_returns_customer_message
 @pytest.mark.asyncio
 async def test_customer_context_only_contains_revealed_facts_and_active_objections(scenario, state):
     state.revealed_facts = ["daily_distance"]
-    state.messages.append(RoleplayMessage(message_id="customer-2", role="customer", content="Anh đi khoảng 180 cây."))
     state.spoken_fact_message_ids = {"daily_distance": "customer-2"}
     state.active_objections = ["OBJ_VF5_BATTERY_VS_GAS"]
     model = CapturingCustomerModel({"reply": "Vậy em thử tính theo quãng đường của anh xem."})
@@ -56,7 +55,7 @@ async def test_customer_context_only_contains_revealed_facts_and_active_objectio
     await agent.generate_reply(scenario, state, mode="response")
 
     context = model.calls[0]["context"]
-    assert context["revealed_facts"] == {"daily_distance": "Anh đi khoảng 180 cây."}
+    assert context["revealed_facts"] == {"daily_distance": scenario.hidden_facts["daily_distance"]}
     assert context["revealed_statements"] == [
         {
             "fact_key": "daily_distance",
@@ -98,10 +97,35 @@ async def test_customer_agent_rejects_unrevealed_private_fact_in_output(scenario
         await agent.generate_reply(scenario, state, mode="response")
 
 
-def test_customer_decision_fields_are_required():
-    from pydantic import ValidationError
+@pytest.mark.asyncio
+async def test_customer_retries_a_mixed_language_reply_once(scenario, state):
+    class MixedLanguageModel(CapturingCustomerModel):
+        async def generate(self, *, system_prompt, context):
+            self.calls.append({"system_prompt": system_prompt, "context": context})
+            if len(self.calls) == 1:
+                return {
+                    "reply": "Mức góp đó là bình quân hay cố định? Could you show monthly installment separately from charging costs?"
+                }
+            return {
+                "reply": "Mức góp đó là bình quân hay tháng nào cũng vậy? Em tách tiền góp và tiền sạc giúp anh nhé."
+            }
 
-    with pytest.raises(ValidationError, match="raised_objection_id"):
-        CustomerModelOutput.model_validate({"reply": "Vâng."})
-    assert "raised_objection_id" in CUSTOMER_SYSTEM_PROMPT
-    assert "decision" in CUSTOMER_SYSTEM_PROMPT
+    model = MixedLanguageModel(None)
+    message = await CustomerAgent(model).generate_reply(scenario, state, mode="opening")
+
+    assert (
+        message.content == "Mức góp đó là bình quân hay tháng nào cũng vậy? Em tách tiền góp và tiền sạc giúp anh nhé."
+    )
+    assert len(model.calls) == 2
+    assert "previous_mixed_language_reply" in model.calls[1]["context"]
+    assert "# Correction" in model.calls[1]["system_prompt"]
+
+
+@pytest.mark.asyncio
+async def test_customer_does_not_publish_english_when_retry_still_fails(scenario, state):
+    model = CapturingCustomerModel({"reply": "Could you show the monthly installment separately?"})
+
+    with pytest.raises(CustomerResponseError, match="English prose"):
+        await CustomerAgent(model).generate_reply(scenario, state, mode="opening")
+
+    assert len(model.calls) == 2

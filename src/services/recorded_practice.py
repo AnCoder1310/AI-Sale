@@ -17,14 +17,11 @@ from src.services.practice import (
     PracticeSessionView,
 )
 from src.services.practice_records import (
-    AdvisorPerformanceView,
-    AssignmentRecord,
     AttemptSummary,
-    CreateAssignmentInput,
-    TeamOverview,
     ManagerReviewDecision,
     ManagerReviewRecord,
     PracticeRecordsRepository,
+    TeamOverview,
 )
 
 
@@ -60,10 +57,6 @@ class RecordedPracticeService:
         await self._records.owned_attempt(session_id, advisor_id)
         return await self._practice.send_message(session_id, message)
 
-    async def retry_customer_reply(self, session_id: str, advisor_id: str) -> PracticeSessionView:
-        await self._records.owned_attempt(session_id, advisor_id)
-        return await self._practice.retry_customer_reply(session_id)
-
     async def finish_session(self, session_id: str, advisor_id: str) -> PracticeResultView:
         await self._records.owned_attempt(session_id, advisor_id)
         try:
@@ -98,6 +91,9 @@ class RecordedPracticeService:
     async def history(self, advisor_id: str, scenario_id: str | None = None) -> list[AttemptSummary]:
         return await self._records.history(advisor_id, scenario_id)
 
+    async def review_queue(self) -> list[AttemptSummary]:
+        return await self._records.review_queue()
+
     async def manager_history(
         self, advisor_id: str | None = None, scenario_id: str | None = None, limit: int = 50, offset: int = 0
     ) -> list[AttemptSummary]:
@@ -105,24 +101,6 @@ class RecordedPracticeService:
 
     async def team_overview(self) -> TeamOverview:
         return await self._records.team_overview()
-
-    async def list_assignments(self, advisor_id: str | None = None) -> list[AssignmentRecord]:
-        return await self._records.list_assignments(advisor_id)
-
-    async def create_assignment(
-        self, manager_id: str, payload: CreateAssignmentInput
-    ) -> AssignmentRecord:
-        scenarios = self._practice.list_scenarios()
-        scenario_match = next((s for s in scenarios if s.scenario_id == payload.scenario_id), None)
-        scenario_title = scenario_match.title if scenario_match else payload.scenario_id
-        advisor_name = payload.advisor_id
-        return await self._records.create_assignment(manager_id, payload, scenario_title, advisor_name)
-
-    async def list_advisors(self) -> list[AdvisorPerformanceView]:
-        return await self._records.list_advisors()
-
-    async def review_queue(self) -> list[AttemptSummary]:
-        return await self._records.review_queue()
 
     async def manager_detail(self, session_id: str) -> RecordedAttemptDetail:
         attempt = await self._records.manager_attempt(session_id)

@@ -1,38 +1,37 @@
-# Architecture Diagram
-
-## System Overview
+# P-043 MVP architecture — Gate 2
 
 ```mermaid
-graph TB
-    User([User]) --> UI[Frontend<br/>React/Next.js]
-    UI -->|REST API| API[FastAPI Backend]
-    API --> Agent[LangGraph Agent]
-    Agent --> LLM[LLM Service<br/>GPT-4o / Gemini]
-    Agent --> Tools[Agent Tools]
-    Tools --> DB[(Database)]
-    Agent --> VS[Vector Store<br/>ChromaDB]
+flowchart LR
+  A[Advisor browser] --> UI[React / Vite]
+  M[Manager browser] --> UI
+  UI -->|REST + session cookie| API[FastAPI]
+  API --> AUTH[Auth service]
+  AUTH --> SQL[(SQL: users / sessions)]
+  API --> CP[Copilot LangGraph]
+  CP --> RET[Hybrid retrieval + evidence gate]
+  RET --> CH[(Vector index: pgvector or Chroma)]
+  RET --> CORPUS[Corpus JSON + metadata]
+  CP --> CHAT[OpenRouter chat model]
+  API --> RP[Practice / Role-play LangGraph]
+  RP --> CUSTOMER[AI Customer + turn analysis]
+  CUSTOMER --> CHAT
+  RP --> JUDGE[Rubric evaluator + evidence checks]
+  JUDGE --> CHAT
+  JUDGE --> RET
+  RP --> RECORDS[(SQL: attempts / transcript / scores / review)]
+  API --> REVIEW[Manager review API]
+  REVIEW --> RECORDS
+  EMB[OpenRouter embedding model] --> CH
+  CORPUS -->|ingest on empty index| EMB
 ```
 
-## Agent Flow
+## Luồng và quyền
 
-```mermaid
-graph LR
-    START((Start)) --> Input[Parse Input]
-    Input --> Analyze[Analyze Query]
-    Analyze --> Decide{Need Tool?}
-    Decide -->|Yes| CallTool[Call Tool]
-    CallTool --> Analyze
-    Decide -->|No| Generate[Generate Response]
-    Generate --> END((End))
-```
+1. `POST /api/v1/auth/login` đặt HTTP-only cookie. Practice giới hạn Advisor; review giới hạn Manager. **Copilot routes trên `develop` chưa được bảo vệ bởi Advisor auth**; phần hardening ở nhánh riêng.
+2. Copilot nhận `/api/v1/copilot/query`, tìm evidence từ corpus/vector index và lexical retrieval, lọc theo metadata, tạo câu trả lời trích nguồn hoặc abstain/lỗi. `/api/v1/copilot/sources/{document_id}` mở tài liệu gốc.
+3. Advisor chọn scenario JSON, trao đổi nhiều lượt với AI Customer, kết thúc rõ ràng. State machine giới hạn lượt, bảo vệ hidden facts; evaluator chấm kỹ năng bán hàng với transcript evidence và đối chiếu claim thực tế với nguồn.
+4. SQL lưu ownership, transcript, AI draft và review. Advisor chỉ đọc lịch sử của mình. Manager xem hàng đợi/lịch sử, sửa điểm kèm lý do và duyệt; Advisor xem kết quả đã duyệt.
 
-## Component Details
+## Ranh giới MVP
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Frontend | React/Next.js | User interface |
-| Backend | FastAPI | API server |
-| Agent | LangGraph | AI agent orchestration |
-| LLM | OpenAI/Gemini | Language model |
-| Database | PostgreSQL/SQLite | Data persistence |
-| Vector Store | ChromaDB | RAG / embeddings |
+`data/knowledge/corpus.json` là nguồn nội dung demo được kiểm soát; vector index chỉ là dữ liệu dẫn xuất. Docker Compose dùng PostgreSQL + pgvector trong volume riêng của từng máy. Chạy Python trực tiếp vẫn mặc định SQLite + Chroma. Muốn chia sẻ lịch sử cần một backend và database hosted dùng chung. `/health` chỉ đo liveness, không xác nhận provider. Scenario/khách hàng là dữ liệu giả lập; không đưa PII thật vào log, báo cáo hay video.

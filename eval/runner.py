@@ -24,6 +24,7 @@ DEFAULT_REPORTS_DIR = REPO_ROOT / "eval" / "reports"
 CORPUS_PATH = REPO_ROOT / "data" / "knowledge" / "corpus.json"
 _GROUPS = {"on_topic", "negative", "edge"}
 _BEHAVIORS = {"answer", "abstain", "clarify"}
+_QUESTION_TYPES = {"factual", "multi_hop", "comparison", "version_sensitive", "ambiguous", "unsupported", "out_of_scope", "adversarial"}
 
 
 def _object(value: Any, location: str, fields: Sequence[str]) -> dict[str, Any]:
@@ -67,7 +68,7 @@ def load_dataset(path: Path = DEFAULT_DATASET) -> dict[str, Any]:
     seen: set[str] = set()
     for index, raw_case in enumerate(cases):
         location = f"cases[{index}]"
-        case = _object(raw_case, location, ("case_id", "group", "category", "query", "target_date", "expected", "notes"))
+        case = _object(raw_case, location, ("case_id", "group", "category", "query", "target_date", "expected", "notes", "question_type", "reference_contexts", "reference_context_sources", "ground_truth"))
         case_id = _string(case["case_id"], f"{location}.case_id")
         if case_id in seen:
             raise ValueError(f"Duplicate case_id: {case_id}")
@@ -77,6 +78,24 @@ def load_dataset(path: Path = DEFAULT_DATASET) -> dict[str, Any]:
         _string(case["category"], f"{location}.category")
         _string(case["query"], f"{location}.query")
         _string(case["notes"], f"{location}.notes", allow_empty=True)
+        if _string(case["question_type"], f"{location}.question_type") not in _QUESTION_TYPES:
+            raise ValueError(f"{location}.question_type must be one of {sorted(_QUESTION_TYPES)}")
+        _string(case["ground_truth"], f"{location}.ground_truth")
+        contexts = case["reference_contexts"]
+        sources = case["reference_context_sources"]
+        if not isinstance(contexts, list) or not isinstance(sources, list) or len(contexts) != len(sources):
+            raise ValueError(f"{location} must have one provenance record per reference context")
+        for context_index, (context, source) in enumerate(zip(contexts, sources)):
+            _string(context, f"{location}.reference_contexts[{context_index}]")
+            source = _object(source, f"{location}.reference_context_sources[{context_index}]", ("context_index", "document_id", "corpus_file", "source", "version", "status", "start_char", "end_char"))
+            if source["context_index"] != context_index:
+                raise ValueError(f"{location}.reference_context_sources[{context_index}].context_index is misaligned")
+            for key in ("document_id", "corpus_file", "source", "version", "status"):
+                _string(source[key], f"{location}.reference_context_sources[{context_index}].{key}")
+            if source["corpus_file"] != "data/knowledge/corpus.json":
+                raise ValueError(f"{location}.reference_context_sources[{context_index}].corpus_file is unsupported")
+            if not isinstance(source["start_char"], int) or not isinstance(source["end_char"], int) or source["start_char"] < 0 or source["end_char"] <= source["start_char"]:
+                raise ValueError(f"{location}.reference_context_sources[{context_index}] has invalid character offsets")
         target_date = case["target_date"]
         if target_date is not None:
             if not isinstance(target_date, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", target_date):
@@ -97,6 +116,15 @@ def load_dataset(path: Path = DEFAULT_DATASET) -> dict[str, Any]:
         forbidden = _string_ids(expected["forbidden_document_ids"], f"{location}.expected.forbidden_document_ids")
         if set(supporting).intersection(forbidden):
             raise ValueError(f"{location} lists the same document as supporting and forbidden")
+        if expected["behavior"] == "abstain" and (contexts or sources):
+            raise ValueError(f"{location} abstention case must not claim a gold reference context")
+        if expected["behavior"] == "answer" and not contexts:
+            raise ValueError(f"{location} answer case requires reference contexts")
+        context_ids = {source["document_id"] for source in sources}
+        if not set(supporting).issubset(context_ids):
+            raise ValueError(f"{location} lacks a reference context for each supporting document")
+        if not context_ids.issubset(set(supporting + forbidden)):
+            raise ValueError(f"{location} has a reference context outside expected supporting/forbidden documents")
         facts = expected["required_facts"]
         if not isinstance(facts, list):
             raise ValueError(f"{location}.expected.required_facts must be an array")
@@ -155,6 +183,14 @@ def validate_ground_truth(dataset: Mapping[str, Any], corpus_by_id: Mapping[str,
         unknown = referenced - known
         if unknown:
             raise ValueError(f"case_id={case['case_id']} references documents absent from corpus: {', '.join(sorted(unknown))}")
+        for context, source in zip(case["reference_contexts"], case["reference_context_sources"]):
+            record = corpus_by_id.get(source["document_id"])
+            if record is None:
+                raise ValueError(f"case_id={case['case_id']} has context from unknown document {source['document_id']}")
+            if any(source[key] != record[key] for key in ("source", "version", "status")):
+                raise ValueError(f"case_id={case['case_id']} has provenance inconsistent with corpus metadata")
+            if record["content"][source["start_char"]:source["end_char"]] != context:
+                raise ValueError(f"case_id={case['case_id']} has a context not found at its corpus offsets")
 
 
 def select_cases(dataset: Mapping[str, Any], case_ids: Sequence[str] = (), groups: Sequence[str] = ()) -> list[dict[str, Any]]:
@@ -274,9 +310,13 @@ async def run_cases(
                 "run_index": run_index,
                 "group": case["group"],
                 "category": case["category"],
+                "question_type": case["question_type"],
                 "query": case["query"],
                 "target_date": case["target_date"],
                 "expected": case["expected"],
+                "ground_truth": case["ground_truth"],
+                "reference_contexts": case["reference_contexts"],
+                "reference_context_sources": case["reference_context_sources"],
                 "actual": actual,
                 "metrics": metrics,
                 "passed": all(metric["status"] in {"pass", "not_applicable"} for metric in metrics.values()),
@@ -361,7 +401,11 @@ def write_component_reports(
                 "case_id": case["case_id"],
                 "run_index": case["run_index"],
                 "query": case["query"],
+                "question_type": case["question_type"],
                 "expected": case["expected"],
+                "ground_truth": case["ground_truth"],
+                "reference_contexts": case["reference_contexts"],
+                "reference_context_sources": case["reference_context_sources"],
                 "actual": case["actual"],
                 "retrieved_document_ids": case["actual"].get("retrieved_document_ids", []),
                 "citations": case["actual"].get("citations", []),

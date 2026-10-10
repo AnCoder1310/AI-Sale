@@ -18,35 +18,10 @@ from src.services.recorded_practice import RecordedPracticeService
 logger = logging.getLogger(__name__)
 
 
-settings = get_settings()
-auth_service = build_auth_service(settings)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    settings = get_settings()
     print(f"Starting {settings.app_name} in {settings.app_env} mode")
-    try:
-        from src.models.auth import UserRole
-        if settings.demo_advisor_password:
-            await auth_service.seed_user(
-                user_id="advisor-demo",
-                username="advisor.demo",
-                display_name="Tư vấn viên Demo",
-                role=UserRole.ADVISOR,
-                password=settings.demo_advisor_password,
-            )
-        if settings.demo_manager_password:
-            await auth_service.seed_user(
-                user_id="manager-demo",
-                username="manager.demo",
-                display_name="Quản lý Demo",
-                role=UserRole.MANAGER,
-                password=settings.demo_manager_password,
-            )
-        logger.info("Demo accounts initialized.")
-    except Exception as exc:
-        logger.warning("Demo account initialization skipped or failed (%s: %s)", type(exc).__name__, exc)
-
     try:
         # Existing data is reused. Replacing an index is an explicit ingestion action.
         retriever = get_retrieval_service()
@@ -66,6 +41,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins.split(","),
@@ -75,6 +51,7 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api/v1")
+auth_service = build_auth_service(settings)
 current_user = CurrentUserDependency(auth_service, settings.auth_cookie_name)
 recorded_practice = RecordedPracticeService(
     build_practice_service(),

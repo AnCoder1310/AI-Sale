@@ -41,7 +41,7 @@ def test_discovery_reveals_fact_without_mutating_input(initial_state, scenario):
     assert updated.messages[-1].content == "Mỗi ngày anh chạy bao nhiêu km?"
 
 
-def test_presentation_does_not_force_an_objection(initial_state, scenario):
+def test_presentation_activates_the_stage_objection(initial_state, scenario):
     updated = apply_turn_analysis(
         initial_state,
         scenario,
@@ -49,8 +49,8 @@ def test_presentation_does_not_force_an_objection(initial_state, scenario):
         TurnAnalysis(factual_claims=[FactualClaim(text="Chi phí sử dụng thấp hơn", category="price")]),
     )
 
-    assert updated.conversation_stage is ConversationStage.PRESENTATION
-    assert updated.active_objections == []
+    assert updated.conversation_stage is ConversationStage.OBJECTION_HANDLING
+    assert updated.active_objections == ["OBJ_VF5_BATTERY_VS_GAS"]
     assert len(updated.factual_claims) == 1
     assert updated.factual_claims[0].message_id == updated.messages[-1].message_id
     assert updated.factual_claims[0].text == "Chi phí sử dụng thấp hơn"
@@ -69,7 +69,7 @@ def test_reducer_rejects_fact_without_matching_intent(initial_state, scenario):
     assert updated.advisor_discoveries == []
 
 
-def test_analyzer_cannot_resolve_without_customer_reaction(initial_state, scenario):
+def test_resolved_objection_is_moved_once(initial_state, scenario):
     initial_state.conversation_stage = ConversationStage.OBJECTION_HANDLING
     initial_state.active_objections = ["OBJ_VF5_BATTERY_VS_GAS"]
 
@@ -83,10 +83,10 @@ def test_analyzer_cannot_resolve_without_customer_reaction(initial_state, scenar
         ),
     )
 
-    assert updated.active_objections == ["OBJ_VF5_BATTERY_VS_GAS"]
-    assert updated.resolved_objections == []
-    assert "OBJ_VF5_BATTERY_VS_GAS" in updated.unresolved_objections
-    assert updated.conversation_stage is ConversationStage.OBJECTION_HANDLING
+    assert updated.active_objections == []
+    assert updated.resolved_objections == ["OBJ_VF5_BATTERY_VS_GAS"]
+    assert "OBJ_VF5_BATTERY_VS_GAS" not in updated.unresolved_objections
+    assert updated.conversation_stage is ConversationStage.PRESENTATION
 
 
 def test_reducer_does_not_resolve_unaddressed_objection(initial_state, scenario):
@@ -104,7 +104,7 @@ def test_reducer_does_not_resolve_unaddressed_objection(initial_state, scenario)
     assert updated.resolved_objections == []
 
 
-def test_next_step_does_not_inject_a_closing_objection(initial_state, scenario):
+def test_closing_after_resolution_activates_closing_objection(initial_state, scenario):
     initial_state.conversation_stage = ConversationStage.OBJECTION_HANDLING
     initial_state.active_objections = ["OBJ_VF5_BATTERY_VS_GAS"]
 
@@ -120,7 +120,7 @@ def test_next_step_does_not_inject_a_closing_objection(initial_state, scenario):
     )
 
     assert updated.conversation_stage is ConversationStage.OBJECTION_HANDLING
-    assert updated.active_objections == ["OBJ_VF5_BATTERY_VS_GAS"]
+    assert updated.active_objections == ["OBJ_VF5_CHARGING_TIME"]
 
 
 def test_explicit_finish_terminates_session(initial_state, scenario):
@@ -135,7 +135,7 @@ def test_explicit_finish_terminates_session(initial_state, scenario):
     assert updated.conversation_stage is ConversationStage.FINISHED
 
 
-def test_turn_limit_waits_for_customer_reply(initial_state, scenario):
+def test_turn_limit_terminates_session(initial_state, scenario):
     initial_state.turn_count = scenario.termination_conditions.max_turns - 1
 
     updated = apply_turn_analysis(
@@ -145,8 +145,8 @@ def test_turn_limit_waits_for_customer_reply(initial_state, scenario):
         TurnAnalysis(),
     )
 
-    assert updated.termination_status is TerminationStatus.ACTIVE
-    assert updated.turn_count == scenario.termination_conditions.max_turns
+    assert updated.termination_status is TerminationStatus.MAX_TURNS
+    assert updated.conversation_stage is ConversationStage.FINISHED
 
 
 def test_cannot_continue_a_terminated_session(initial_state, scenario):

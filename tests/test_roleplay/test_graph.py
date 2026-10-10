@@ -38,7 +38,7 @@ class QueueCustomerModel:
 
     async def generate(self, *, system_prompt, context):
         self.calls.append({"system_prompt": system_prompt, "context": context})
-        return {"raised_objection_id": None, "decision": "reply", **self.outputs.pop(0)}
+        return self.outputs.pop(0)
 
 
 class QueueAnalysisModel:
@@ -141,13 +141,11 @@ async def test_customer_discloses_mileage_once_before_claiming_it_was_spoken():
 
 @pytest.mark.asyncio
 async def test_unresolved_cost_concern_gets_two_prompts_then_customer_defers():
-    cost = "OBJ_VF5_BATTERY_VS_GAS"
     graph, checkpoint, customer_model, _ = build_graph(
         [
-            {"reply": "Anh lo tiền pin và tiền sạc.", "raised_objection_id": cost},
-            {"reply": "Cộng tiền pin với sạc thì có đáng đổi không em?", "raised_objection_id": cost},
-            {"reply": "Anh muốn biết tổng chi phí thực tế thôi.", "raised_objection_id": cost},
-            {"reply": "Anh cần cân nhắc lại, em gửi thông tin cụ thể sau nhé.", "decision": "defer"},
+            {"reply": "Anh đang cân nhắc đổi xe."},
+            {"reply": "Cộng tiền pin với sạc thì có đáng đổi không em?"},
+            {"reply": "Anh muốn biết tổng chi phí thực tế thôi."},
         ],
         [
             {"factual_claims": [{"text": "Giá xe là 500 triệu", "category": "price"}]},
@@ -160,35 +158,43 @@ async def test_unresolved_cost_concern_gets_two_prompts_then_customer_defers():
     await graph.continue_session("session-1", "Dạ em hiểu.")
     final = await graph.continue_session("session-1", "Để em xem thêm.")
 
-    assert [call["context"]["focus_objection_prompt_number"] for call in customer_model.calls[1:]] == [1, 2, None]
-    assert len(customer_model.calls) == 4
+    assert [call["context"]["focus_objection_prompt_number"] for call in customer_model.calls[1:]] == [1, 2]
+    assert len(customer_model.calls) == 3
     assert final["termination_status"] == TerminationStatus.DROPPED_OUT.value
     saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
     assert saved.concern_prompt_counts["OBJ_VF5_BATTERY_VS_GAS"] == 2
 
 
 @pytest.mark.asyncio
-async def test_customer_acceptance_of_relevant_step_completes_session():
+async def test_customer_acceptance_after_follow_up_allows_next_concern():
     cost = "OBJ_VF5_BATTERY_VS_GAS"
+    charging = "OBJ_VF5_CHARGING_TIME"
     graph, checkpoint, _, _ = build_graph(
         [
-            {"reply": "Anh lo tiền pin và sạc.", "raised_objection_id": cost},
+            {"reply": "Anh đang cân nhắc đổi xe."},
             {"reply": "Tiền pin và sạc có đáng đổi không?", "raised_objection_id": cost},
             {"reply": "Em tính thêm giúp anh nhé.", "raised_objection_id": cost},
-            {"reply": "Ừ, em gửi bảng tính cho anh.", "decision": "accept_step"},
+            {"reply": "Ừ, em gửi bảng tính cho anh.", "accepted_next_step": True},
+            {"reply": "Sạc giữa ca có mất nhiều cuốc không?", "raised_objection_id": charging},
         ],
         [
             {"factual_claims": [{"text": "Giá xe là 500 triệu", "category": "price"}]},
             {},
-            {"next_step_attempted": True, "addressed_objection_ids": [cost]},
+            {"next_step_attempted": True},
+            {"next_step_attempted": True},
         ],
     )
     await graph.start("session-1", "SCENARIO_01_VF5_TAXI")
     await graph.continue_session("session-1", "Giá xe là 500 triệu")
     await graph.continue_session("session-1", "Em ghi nhận điều này.")
     accepted = await graph.continue_session("session-1", "Em sẽ gửi bảng chi phí theo quãng đường anh chạy.")
-    assert accepted["termination_status"] == TerminationStatus.COMPLETED.value
+    assert accepted["termination_status"] == TerminationStatus.ACTIVE.value
     assert cost in RoleplayState.model_validate(await checkpoint.load("session-1")).resolved_objections
+    continued = await graph.continue_session("session-1", "Mình cũng kiểm tra lịch sạc giữa ca nhé?")
+    saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
+    assert continued["termination_status"] == TerminationStatus.ACTIVE.value
+    assert charging in saved.active_objections
+    assert saved.concern_prompt_counts.get(charging, 0) == 0
 
 
 @pytest.mark.asyncio
@@ -305,107 +311,6 @@ async def test_customer_provider_failure_does_not_lose_advisor_turn():
     assert saved.turn_count == 1
     assert saved.messages[-1].role == "advisor"
     assert saved.messages[-1].content == "Anh cần em tư vấn thêm."
-    assert saved.pending_customer_reply is True
-
-
-@pytest.mark.asyncio
-async def test_failed_customer_reply_resumes_without_duplicate_advisor_turn():
-    graph, checkpoint, customer_model, analysis_model = build_graph(
-        [
-            {"reply": "Anh muốn tìm hiểu xe."},
-            {"reply": "", "raised_objection_id": None, "decision": "reply"},
-            {"reply": "Anh hiểu rồi, em nói tiếp đi."},
-        ],
-        [{}],
-    )
-    await graph.start("session-1", "SCENARIO_01_VF5_TAXI")
-    with pytest.raises(CustomerResponseError):
-        await graph.continue_session("session-1", "Mình cùng xem chi phí nhé anh.")
-    with pytest.raises(RoleplaySessionConflictError, match="pending"):
-        await graph.continue_session("session-1", "Tin nhắn khác")
-    with pytest.raises(RoleplaySessionConflictError, match="pending"):
-        await graph.finish_session("session-1")
-
-    result = await graph.continue_session("session-1", "Mình cùng xem chi phí nhé anh.")
-    saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
-    assert result["pending_customer_reply"] is False
-    assert [message.role for message in saved.messages] == ["customer", "advisor", "customer"]
-    assert [event.decision for event in saved.customer_decisions] == ["reply", "reply"]
-    assert saved.turn_count == 1
-    assert analysis_model.calls == ["Mình cùng xem chi phí nhé anh."]
-    assert len(customer_model.calls) == 3
-
-
-@pytest.mark.asyncio
-async def test_accepting_unrelated_proposal_does_not_clear_cost_concern():
-    cost = "OBJ_VF5_BATTERY_VS_GAS"
-    graph, checkpoint, _, _ = build_graph(
-        [
-            {"reply": "Anh lo tổng chi phí.", "raised_objection_id": cost},
-            {"reply": "Được, mình xem xe trước.", "decision": "accept_step"},
-        ],
-        [{"next_step_attempted": True}],
-    )
-    await graph.start("session-1", "SCENARIO_01_VF5_TAXI")
-    result = await graph.continue_session("session-1", "Mình hẹn xem màu xe nhé?")
-    saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
-    assert result["termination_status"] == TerminationStatus.ACTIVE.value
-    assert saved.active_objections == [cost]
-    assert saved.resolved_objections == []
-
-
-@pytest.mark.asyncio
-async def test_unlabeled_reply_does_not_consume_concern_follow_up():
-    cost = "OBJ_VF5_BATTERY_VS_GAS"
-    graph, checkpoint, _, _ = build_graph(
-        [{"reply": "Anh lo tổng chi phí.", "raised_objection_id": cost}, {"reply": "Để anh nghe thêm."}],
-        [{}],
-    )
-    await graph.start("session-1", "SCENARIO_01_VF5_TAXI")
-    await graph.continue_session("session-1", "Em sẽ giải thích theo lịch chạy của anh.")
-    saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
-    assert saved.concern_prompt_counts.get(cost, 0) == 0
-
-
-@pytest.mark.asyncio
-async def test_final_allowed_advisor_turn_receives_customer_reply():
-    graph, checkpoint, _, _ = build_graph(
-        [{"reply": "Anh đang xem xe."}, {"reply": "Anh hiểu, cảm ơn em."}],
-        [{}],
-    )
-    await graph.start("session-1", "SCENARIO_01_VF5_TAXI", max_turns=1)
-    result = await graph.continue_session("session-1", "Em gửi anh bảng chi phí nhé.")
-    saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
-    assert result["termination_status"] == TerminationStatus.MAX_TURNS.value
-    assert [message.role for message in saved.messages] == ["customer", "advisor", "customer"]
-    assert saved.messages[-1].content == "Anh hiểu, cảm ơn em."
-
-
-@pytest.mark.asyncio
-async def test_session_uses_its_scenario_snapshot_after_catalog_changes():
-    graph, _, customer_model, _ = build_graph(
-        [{"reply": "Anh đang xem xe."}, {"reply": "Em nói thêm đi."}],
-        [{}],
-    )
-    await graph.start("session-1", "SCENARIO_01_VF5_TAXI")
-    graph._repository._scenarios["SCENARIO_01_VF5_TAXI"].persona["name"] = "Different buyer"
-    await graph.continue_session("session-1", "Em gửi thêm thông tin nhé.")
-    assert customer_model.calls[-1]["context"]["persona"]["name"] == "Anh Nam"
-
-
-@pytest.mark.asyncio
-async def test_customer_memory_contains_only_spoken_charging_location():
-    graph, checkpoint, _, _ = build_graph(
-        [{"reply": "Anh đang xem VF 6."}],
-        [{"detected_intents": ["ask_living_location"], "discovered_fact_ids": ["charging_access"]}],
-    )
-    await graph.start("session-1", "SCENARIO_03_VF6_APARTMENT")
-    await graph.continue_session("session-1", "Anh ở khu nào ạ?")
-    saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
-    spoken = saved.customer_prompt_context()["revealed_facts"]["charging_access"]
-    assert "Vincom Trần Duy Hưng" in spoken
-    assert "800m" not in spoken
-    assert "V-GREEN" not in spoken
 
 
 @pytest.mark.asyncio
