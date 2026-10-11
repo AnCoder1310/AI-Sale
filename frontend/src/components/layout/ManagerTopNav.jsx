@@ -18,7 +18,7 @@ export function ManagerTopNav({
     { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
     { id: "assignments", label: "Giao bài", icon: ClipboardIcon },
     { id: "performance", label: "Năng lực", icon: TrophyIcon },
-    { id: "reports", label: "Reports", icon: CheckCircleIcon, badge: pendingCount > 0 ? `${pendingCount}` : null, highlightBadge: pendingCount > 0 },
+    { id: "reports", label: "Lịch sử luyện tập", icon: CheckCircleIcon, badge: pendingCount > 0 ? `${pendingCount}` : null, highlightBadge: pendingCount > 0 },
   ];
 
   const initials = currentUser?.display_name
