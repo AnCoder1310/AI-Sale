@@ -1,0 +1,24 @@
+{
+  "provenance": "curated_synthetic JC1-JC5 transcripts; evaluation-only RoleplayState from scenario defaults; COMPLETED marks transcript end; no RoleplayGraph session, checkpoint, or runtime events",
+  "generated_at": "2026-10-09T10:13:04.607320+00:00",
+  "provider": "openai",
+  "model": "gpt-4o-mini",
+  "status": "INCOMPLETE",
+  "successful_case_count": 0,
+  "failed_case_count": 1,
+  "missing_case_ids": [
+    "JC1_WEAK_DISCOVERY",
+    "JC2_ADEQUATE_RESPONSE",
+    "JC3_CONTEXT_ADAPTIVE",
+    "JC4_FACTUAL_ERROR",
+    "JC5_PARTIAL_OPPORTUNITY"
+  ],
+  "predictions": [],
+  "failures": [
+    {
+      "case_id": "JC3_CONTEXT_ADAPTIVE",
+      "error_type": "EvaluationError",
+      "reason": "score 3 requires customer context evidence"
+    }
+  ]
+}

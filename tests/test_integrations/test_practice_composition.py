@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from src.agents.roleplay.customer_agent import CustomerModelOutput
-from src.agents.roleplay.evaluator import EvaluationDraft
+from src.agents.roleplay.evaluator import EvaluationDraft, FactualFindingsDraft
 from src.agents.roleplay.turn_analyzer import TurnAnalysis
 from src.config import Settings
 from src.integrations.practice_runtime import build_practice_service
@@ -81,8 +81,6 @@ async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path:
     ]
 
     def evaluation_output(messages):
-        context = json.loads(messages[1].content.removeprefix("CONTEXT_JSON:\n"))
-        claim = context["final_state"]["factual_claims"][0]
         return {
             "evaluations": [
                 {
@@ -99,6 +97,13 @@ async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path:
                     "closing_next_step",
                 )
             ],
+            "factual_findings": [],
+        }
+
+    def factual_output(messages):
+        context = json.loads(messages[1].content.removeprefix("CONTEXT_JSON:\n"))
+        claim = context["factual_claims"][0]
+        return {
             "factual_findings": [
                 {
                     "claim": claim["text"],
@@ -117,6 +122,7 @@ async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path:
         }
 
     model.outputs[EvaluationDraft] = [evaluation_output]
+    model.outputs[FactualFindingsDraft] = [factual_output]
     retriever = RecordingRetriever()
     service = build_practice_service(
         settings=Settings(database_url=f"sqlite:///{tmp_path / 'practice.db'}"),
@@ -138,4 +144,5 @@ async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path:
         TurnAnalysis,
         CustomerModelOutput,
         EvaluationDraft,
+        FactualFindingsDraft,
     ]

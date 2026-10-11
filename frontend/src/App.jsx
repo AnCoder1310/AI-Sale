@@ -5,13 +5,10 @@ import { HomeView } from './components/home/HomeView';
 import { CopilotView } from './components/copilot/CopilotView';
 import { RoleplayView } from './components/roleplay/RoleplayView';
 import { KnowledgeView } from './components/knowledge/KnowledgeView';
-import { ChargingView } from './components/charging/ChargingView';
-import { ErrorState } from './components/common/ErrorState';
 import { LoginView } from './components/auth/LoginView';
 import { ChangePasswordView } from './components/auth/ChangePasswordView';
 import { ManagerReviewView } from './components/manager/ManagerReviewView';
 
-import { ADVISOR_PROFILE } from './data/competencyData';
 import { authApi } from './api/authApi';
 import { practiceApi } from './api/practiceApi';
 
@@ -128,11 +125,15 @@ export function App() {
   }
 
   if (currentUser?.role === 'manager') {
-    return <ManagerReviewView currentUser={currentUser} onLogout={handleLogout} />;
+    return (
+      <ManagerReviewView
+        currentUser={currentUser}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   const advisorProfile = {
-    ...ADVISOR_PROFILE,
     name: currentUser.display_name,
     role: 'Tư vấn viên',
   };
@@ -191,19 +192,6 @@ export function App() {
           />
         )}
 
-        {currentTab === 'charging' && (
-          <ChargingView
-            onConsultCopilot={handleConsultCopilot}
-          />
-        )}
-
-        {currentTab === 'progress' && (
-          <ErrorState
-            title="Theo dõi tiến bộ sẽ được bổ sung"
-            message="MVP hiện lưu và đánh giá từng phiên luyện tập; dashboard tổng hợp năng lực chưa kết nối dữ liệu thật."
-            onRetry={() => setCurrentTab('roleplay')}
-          />
-        )}
       </main>
 
       {/* NOTIFICATIONS FLYOUT */}

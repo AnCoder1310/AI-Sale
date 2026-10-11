@@ -272,7 +272,7 @@ _vector_store_instance: BaseVectorStore | None = None
 
 
 def get_vector_store() -> BaseVectorStore:
-    """Use the configured store without silently replacing a failed backend."""
+    """Use the configured backend without silently replacing a failed store."""
     global _vector_store_instance
     if _vector_store_instance is not None:
         return _vector_store_instance

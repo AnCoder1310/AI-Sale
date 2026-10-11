@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
@@ -12,6 +13,38 @@ from .prompts import CUSTOMER_PROMPT_VERSION, CUSTOMER_SYSTEM_PROMPT
 from .state import RoleplayMessage, RoleplayState
 
 CustomerTurnMode = Literal["opening", "response"]
+
+ENGLISH_PROSE_MARKERS = {
+    "could",
+    "would",
+    "should",
+    "you",
+    "your",
+    "please",
+    "show",
+    "monthly",
+    "installment",
+    "installments",
+    "charging",
+    "costs",
+    "payment",
+    "payments",
+    "the",
+    "from",
+    "with",
+    "about",
+    "what",
+    "when",
+    "where",
+    "how",
+    "why",
+}
+
+
+def _contains_english_prose(reply: str) -> bool:
+    """Catch English clauses while allowing car names and common abbreviations."""
+    words = re.findall(r"[a-zA-Z]+", reply.casefold())
+    return sum(word in ENGLISH_PROSE_MARKERS for word in words) >= 2
 
 
 class CustomerModelOutput(BaseModel):
@@ -108,16 +141,30 @@ class CustomerAgent:
         context["consider_next_step"] = consider_next_step
         if consider_next_step and self.focus_objection_id(state) is None:
             context["active_objections"] = []
-        try:
-            raw_output = await self._model.generate(
-                system_prompt=CUSTOMER_SYSTEM_PROMPT,
-                context=context,
-            )
-            output = CustomerModelOutput.model_validate(raw_output)
-        except (ValidationError, TypeError, ValueError) as exc:
-            raise CustomerResponseError(f"invalid customer response: {exc}") from exc
+        for attempt in range(2):
+            try:
+                raw_output = await self._model.generate(
+                    system_prompt=(
+                        CUSTOMER_SYSTEM_PROMPT
+                        if attempt == 0
+                        else CUSTOMER_SYSTEM_PROMPT + "\n# Correction\nYour previous response contained English prose. "
+                        "Respond entirely in Vietnamese while preserving the customer's intent."
+                    ),
+                    context=context,
+                )
+                output = CustomerModelOutput.model_validate(raw_output)
+            except (ValidationError, TypeError, ValueError) as exc:
+                raise CustomerResponseError(f"invalid customer response: {exc}") from exc
 
-        self._reject_private_fact_leak(output.reply, scenario, state)
+            self._reject_private_fact_leak(output.reply, scenario, state)
+            if not _contains_english_prose(output.reply):
+                break
+            if attempt:
+                raise CustomerResponseError("customer response contains English prose")
+            context = {
+                **context,
+                "previous_mixed_language_reply": output.reply,
+            }
         known_ids = {item.objection_id for item in scenario.objections}
         raised_id = output.raised_objection_id if output.raised_objection_id in known_ids else None
         if raised_id and state.concern_prompt_counts.get(raised_id, 0) >= 2:

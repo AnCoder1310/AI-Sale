@@ -3,6 +3,7 @@ import { ScenarioCatalog } from './ScenarioCatalog';
 import { PracticeRoom } from './PracticeRoom';
 import { EvaluationScorecard } from './EvaluationScorecard';
 import { HistoryModal } from './HistoryModal';
+import { AdvisorAssignmentsView } from './AdvisorAssignmentsView';
 import { practiceApi } from '../../api/practiceApi';
 import { ErrorState } from '../common/ErrorState';
 
@@ -13,6 +14,8 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
   const [evaluationResult, setEvaluationResult] = useState(null);
   const [attemptDetail, setAttemptDetail] = useState(null);
   const [detailStatus, setDetailStatus] = useState('idle');
+  const [retryingEvaluation, setRetryingEvaluation] = useState(false);
+  const [retryEvaluationError, setRetryEvaluationError] = useState('');
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyStatus, setHistoryStatus] = useState('loading');
@@ -21,6 +24,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
   const [startError, setStartError] = useState('');
   const [starting, setStarting] = useState(false);
   const [lastMaxTurns, setLastMaxTurns] = useState(10);
+  const [assignmentReloadToken, setAssignmentReloadToken] = useState(0);
 
   const loadHistory = useCallback(async () => {
     setHistoryStatus('loading');
@@ -58,7 +62,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
     return latest;
   }, [history]);
 
-  const handleStartScenario = async (scenarioId, maxTurns = 10) => {
+  const handleStartScenario = async (scenarioId, maxTurns = 10, assignmentId = null) => {
     const scen = scenarios.find((s) => s.scenario_id === scenarioId);
     if (!scen || starting) return;
     setActiveScenario(scen);
@@ -66,7 +70,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
     setStarting(true);
     setLastMaxTurns(maxTurns);
     try {
-      const sessionView = await practiceApi.startSession(scen.scenario_id, maxTurns);
+      const sessionView = await practiceApi.startSession(scen.scenario_id, maxTurns, assignmentId);
       setActiveSession(sessionView);
       setViewMode('room');
     } catch (error) {
@@ -81,6 +85,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
     setAttemptDetail(null);
     setViewMode('evaluation');
     loadHistory();
+    setAssignmentReloadToken((value) => value + 1);
   };
 
   const handleBackToCatalog = () => {
@@ -89,9 +94,11 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
     setEvaluationResult(null);
     setAttemptDetail(null);
     loadHistory();
+    setAssignmentReloadToken((value) => value + 1);
   };
 
   const openAttempt = async (sessionId) => {
+    setRetryEvaluationError('');
     setHistoryScenarioId(null);
     setSelectedSessionId(sessionId);
     setDetailStatus('loading');
@@ -107,6 +114,21 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
     }
   };
 
+  const retryFailedEvaluation = async () => {
+    if (!attemptDetail || retryingEvaluation) return;
+    setRetryingEvaluation(true);
+    setRetryEvaluationError('');
+    try {
+      await practiceApi.finishSession(attemptDetail.attempt.session_id);
+      setAttemptDetail(await practiceApi.getAttempt(attemptDetail.attempt.session_id));
+      await loadHistory();
+    } catch (error) {
+      setRetryEvaluationError(error.message || 'Chưa thể chấm điểm lại. Hãy thử lại sau.');
+    } finally {
+      setRetryingEvaluation(false);
+    }
+  };
+
   const visibleHistory = historyScenarioId ? history.filter((item) => item.scenario_id === historyScenarioId) : history;
 
   return (
@@ -116,6 +138,12 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
       {viewMode === 'catalog' && startError && <ErrorState message={startError} onRetry={() => handleStartScenario(activeScenario?.scenario_id, lastMaxTurns)} />}
       {viewMode === 'catalog' && (
         <>
+          <AdvisorAssignmentsView
+            scenarios={scenarios}
+            reloadToken={assignmentReloadToken}
+            onStart={(assignment) => handleStartScenario(assignment.scenario_id, 10, assignment.assignment_id)}
+            onOpenAttempt={openAttempt}
+          />
           {historyStatus === 'loading' && <p>Đang tải kết quả gần nhất...</p>}
           {historyStatus === 'error' && <ErrorState message={`Không tải được lịch sử: ${historyError}`} onRetry={loadHistory} />}
           <ScenarioCatalog
@@ -149,7 +177,13 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
                 ))}
               </section>
               {attemptDetail.attempt.evaluation_status === 'failed' ? (
-                <div role="alert" className="card-white">Phiên này đã lưu nhưng chấm điểm thất bại.</div>
+                <div role="alert" className="card-white">
+                  <p>Phiên này đã lưu nhưng chấm điểm thất bại.</p>
+                  <button className="btn-primary" onClick={retryFailedEvaluation} disabled={retryingEvaluation}>
+                    {retryingEvaluation ? 'Đang chấm điểm lại...' : 'Thử chấm điểm lại'}
+                  </button>
+                  {retryEvaluationError && <p role="alert">{retryEvaluationError}</p>}
+                </div>
               ) : (
                 <EvaluationScorecard
                   result={{ ...attemptDetail.ai_evaluation, result: attemptDetail.manager_review?.approved_result || attemptDetail.ai_evaluation.result }}

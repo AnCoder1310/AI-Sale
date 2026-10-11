@@ -83,7 +83,9 @@ class SQLAuthRepository:
         self._ensure_schema()
         try:
             with self._engine.begin() as connection:
-                connection.execute(insert(self._users).values(**user.model_dump(mode="json", exclude={"must_change_password"})))
+                connection.execute(
+                    insert(self._users).values(**user.model_dump(mode="json", exclude={"must_change_password"}))
+                )
                 if require_password_change:
                     connection.execute(insert(self._password_change_required).values(user_id=user.user_id))
         except IntegrityError as exc:
@@ -108,8 +110,9 @@ class SQLAuthRepository:
         self._ensure_schema()
         with self._engine.connect() as connection:
             row = connection.execute(
-                select(self._password_change_required.c.user_id)
-                .where(self._password_change_required.c.user_id == user_id)
+                select(self._password_change_required.c.user_id).where(
+                    self._password_change_required.c.user_id == user_id
+                )
             ).first()
         return row is not None
 
@@ -126,10 +129,33 @@ class SQLAuthRepository:
                 )
             )
             connection.execute(
-                delete(self._password_change_required)
-                .where(self._password_change_required.c.user_id == user_id)
+                delete(self._password_change_required).where(self._password_change_required.c.user_id == user_id)
             )
             connection.execute(delete(self._sessions).where(self._sessions.c.user_id == user_id))
+
+    async def active_advisors(self) -> list[AuthenticatedUser]:
+        """Return public identities only; never expose password fields."""
+        self._ensure_schema()
+        query = (
+            select(self._users.c.user_id, self._users.c.username, self._users.c.display_name, self._users.c.role)
+            .where(self._users.c.role == UserRole.ADVISOR.value, self._users.c.active.is_(True))
+            .order_by(self._users.c.display_name, self._users.c.user_id)
+        )
+        with self._engine.connect() as connection:
+            return [AuthenticatedUser.model_validate(dict(row)) for row in connection.execute(query).mappings()]
+
+    async def active_advisor(self, user_id: str) -> AuthenticatedUser | None:
+        self._ensure_schema()
+        query = select(
+            self._users.c.user_id, self._users.c.username, self._users.c.display_name, self._users.c.role
+        ).where(
+            self._users.c.user_id == user_id,
+            self._users.c.role == UserRole.ADVISOR.value,
+            self._users.c.active.is_(True),
+        )
+        with self._engine.connect() as connection:
+            row = connection.execute(query).mappings().first()
+        return AuthenticatedUser.model_validate(dict(row)) if row else None
 
     async def create_session(self, session: StoredSession) -> None:
         self._ensure_schema()

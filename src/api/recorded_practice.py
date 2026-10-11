@@ -18,8 +18,12 @@ from src.api.practice import AdvisorMessageRequest, CreatePracticeSessionRequest
 from src.models.auth import AuthenticatedUser
 from src.services.practice import PracticeEvaluationUnavailableError, PracticeResultView, PracticeSessionView
 from src.services.practice_records import (
+    AdvisorPerformance,
+    AssignmentConflictError,
+    AssignmentRecord,
     AttemptNotFoundError,
     AttemptSummary,
+    CreateAssignmentInput,
     ManagerReviewDecision,
     ManagerReviewRecord,
     ReviewConflictError,
@@ -43,22 +47,34 @@ def create_recorded_practice_routers(
     manager = APIRouter(prefix="/manager", tags=["manager-review"])
     actor = Annotated[AuthenticatedUser, Depends(get_identity)]
 
-    def require_role(identity: AuthenticatedUser, role: str) -> None:
-        if identity.role != role:
+    def require_role(identity: AuthenticatedUser, *roles: str) -> None:
+        if identity.role not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This role cannot access this operation.")
 
     @practice.get("/scenarios", response_model=list[ScenarioSummary])
     async def list_scenarios(identity: actor) -> list[ScenarioSummary]:
-        require_role(identity, "advisor")
+        require_role(identity, "advisor", "manager")
         return service.list_scenarios()
 
     @practice.post("/sessions", response_model=PracticeSessionView, status_code=status.HTTP_201_CREATED)
     async def start_session(request: CreatePracticeSessionRequest, identity: actor) -> PracticeSessionView:
         require_role(identity, "advisor")
         try:
-            return await service.start_session(request.scenario_id, identity.user_id, max_turns=request.max_turns)
+            return await service.start_session(
+                request.scenario_id,
+                identity.user_id,
+                max_turns=request.max_turns,
+                assignment_id=request.assignment_id,
+            )
         except RoleplayScenarioNotFoundError as exc:
             raise HTTPException(status_code=404, detail="Practice scenario was not found.") from exc
+        except AssignmentConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @practice.get("/assignments", response_model=list[AssignmentRecord])
+    async def advisor_assignments(identity: actor) -> list[AssignmentRecord]:
+        require_role(identity, "advisor")
+        return await service.advisor_assignments(identity.user_id)
 
     @practice.get("/history", response_model=list[AttemptSummary])
     async def history(identity: actor, scenario_id: str | None = Query(None, max_length=120)) -> list[AttemptSummary]:
@@ -137,6 +153,24 @@ def create_recorded_practice_routers(
     async def team_overview(identity: actor) -> TeamOverview:
         require_role(identity, "manager")
         return await service.team_overview()
+
+    @manager.get("/advisors", response_model=list[AdvisorPerformance])
+    async def advisor_performance(identity: actor) -> list[AdvisorPerformance]:
+        require_role(identity, "manager")
+        return await service.advisor_performance()
+
+    @manager.get("/assignments", response_model=list[AssignmentRecord])
+    async def manager_assignments(identity: actor) -> list[AssignmentRecord]:
+        require_role(identity, "manager")
+        return await service.manager_assignments()
+
+    @manager.post("/assignments", response_model=AssignmentRecord, status_code=status.HTTP_201_CREATED)
+    async def create_assignment(request: CreateAssignmentInput, identity: actor) -> AssignmentRecord:
+        require_role(identity, "manager")
+        try:
+            return await service.create_assignment(identity.user_id, request)
+        except AssignmentConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @manager.get("/reviews/{session_id}", response_model=RecordedAttemptDetail)
     async def manager_detail(session_id: SessionId, identity: actor) -> RecordedAttemptDetail:

@@ -65,7 +65,6 @@ class CreateAdvisorRequest(BaseModel):
             raise ValueError("username must not be blank")
         return normalized
 
-
     @field_validator("display_name")
     @classmethod
     def normalize_display_name(cls, value: str) -> str:

@@ -1,0 +1,61 @@
+<svg width="800" height="480" viewBox="0 0 800 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg-vf5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1C1C1C"/>
+      <stop offset="100%" stop-color="#0E0E0E"/>
+    </linearGradient>
+    <linearGradient id="body-vf5" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#383838"/>
+      <stop offset="50%" stop-color="#262626"/>
+      <stop offset="100%" stop-color="#1A1A1A"/>
+    </linearGradient>
+    <filter id="glow-vf5" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <rect width="800" height="480" fill="url(#bg-vf5)"/>
+  <ellipse cx="400" cy="405" rx="330" ry="22" fill="#000000" opacity="0.85"/>
+
+  <!-- Compact A-SUV Cabin -->
+  <path d="M 260 150 L 520 150 L 580 230 L 200 230 Z" fill="#0F0F0F" stroke="#333333" stroke-width="2"/>
+  <path d="M 270 155 L 510 155 L 565 225 L 215 225 Z" fill="#0A0A0A"/>
+  <path d="M 370 155 L 372 225" stroke="#262626" stroke-width="2.5"/>
+
+  <!-- Main Body Contours -->
+  <path d="M 170 230 L 630 230 L 650 330 L 620 370 L 180 370 L 150 330 Z" fill="url(#body-vf5)" stroke="#525252" stroke-width="1.5"/>
+
+  <!-- Front Fascia with Modern Sculpted Lightbar -->
+  <rect x="220" y="280" width="360" height="60" rx="14" fill="#0D0D0D" stroke="#333333" stroke-width="2"/>
+
+  <!-- Signature V-Wing LED -->
+  <path d="M 235 298 Q 355 316 390 328" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" filter="url(#glow-vf5)"/>
+  <path d="M 565 298 Q 445 316 410 328" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" filter="url(#glow-vf5)"/>
+
+  <!-- VinFast Chrome Logo -->
+  <g transform="translate(388, 316) scale(0.24)">
+    <path d="M 12 15 C 22 26, 32 46, 32 55 C 27 41, 18 25, 12 15 Z" fill="#FFFFFF"/>
+    <path d="M 52 15 C 42 26, 32 46, 32 55 C 37 41, 46 25, 52 15 Z" fill="#FFFFFF"/>
+    <path d="M 21 19 C 27 27, 30 38, 32 46 C 30 37, 26 27, 21 19 Z" fill="#E5E5E5"/>
+    <path d="M 43 19 C 37 27, 34 38, 32 46 C 34 37, 38 27, 43 19 Z" fill="#E5E5E5"/>
+  </g>
+
+  <!-- Wheels -->
+  <circle cx="210" cy="380" r="46" fill="#0A0A0A" stroke="#262626" stroke-width="3"/>
+  <circle cx="210" cy="380" r="32" fill="#1C1C1C" stroke="#404040" stroke-width="2"/>
+  <circle cx="210" cy="380" r="14" fill="#525252"/>
+
+  <circle cx="590" cy="380" r="46" fill="#0A0A0A" stroke="#262626" stroke-width="3"/>
+  <circle cx="590" cy="380" r="32" fill="#1C1C1C" stroke="#404040" stroke-width="2"/>
+  <circle cx="590" cy="380" r="14" fill="#525252"/>
+
+  <!-- Skid plate -->
+  <path d="M 320 370 L 480 370 L 465 390 L 335 390 Z" fill="#262626"/>
+
+  <!-- Overlay Text -->
+  <text x="40" y="55" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="900" fill="#FFFFFF" letter-spacing="1">VINFAST VF 5 PLUS</text>
+  <text x="40" y="85" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="700" fill="#737373" letter-spacing="2">A-SUV ĐÔ THỊ • 134 MÃ LỰC VƯỢT TRỘI</text>
+  <rect x="40" y="102" width="130" height="26" rx="6" fill="#262626"/>
+  <text x="50" y="119" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="800" fill="#E5E5E5">GIÁ TỪ 468 TRIỆU</text>
+</svg>

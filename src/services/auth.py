@@ -115,12 +115,20 @@ class AuthService:
             username=username.strip().casefold(),
             display_name=display_name.strip(),
             role=UserRole.MANAGER,
-            password_hash=base64.urlsafe_b64encode(self._derive_password(password, salt, PBKDF2_ITERATIONS)).decode("ascii"),
+            password_hash=base64.urlsafe_b64encode(self._derive_password(password, salt, PBKDF2_ITERATIONS)).decode(
+                "ascii"
+            ),
             password_salt=base64.urlsafe_b64encode(salt).decode("ascii"),
             password_iterations=PBKDF2_ITERATIONS,
         )
         await self._repository.create_user(user, require_password_change=True)
         return True
+
+    async def active_advisors(self) -> list[AuthenticatedUser]:
+        return await self._repository.active_advisors()
+
+    async def active_advisor(self, user_id: str) -> AuthenticatedUser | None:
+        return await self._repository.active_advisor(user_id)
 
     async def login(self, username: str, password: str) -> tuple[str, AuthenticatedUser]:
         user = await self._repository.user_by_username(username.strip().casefold())
@@ -159,7 +167,9 @@ class AuthService:
         if hmac.compare_digest(current_password, new_password):
             raise ValueError("New password must differ from current password")
         salt = secrets.token_bytes(16)
-        password_hash = base64.urlsafe_b64encode(self._derive_password(new_password, salt, PBKDF2_ITERATIONS)).decode("ascii")
+        password_hash = base64.urlsafe_b64encode(self._derive_password(new_password, salt, PBKDF2_ITERATIONS)).decode(
+            "ascii"
+        )
         await self._repository.update_password(
             user.user_id,
             password_hash,

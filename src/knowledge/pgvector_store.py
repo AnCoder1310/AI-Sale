@@ -109,9 +109,7 @@ class PgVectorStore(BaseVectorStore):
         parameters.extend((query, top_k))
         statement = (
             "SELECT chunk_id, content, metadata, 1 - (embedding <=> %s::vector) AS score "
-            "FROM knowledge_vectors WHERE "
-            + " AND ".join(filters)
-            + " ORDER BY embedding <=> %s::vector LIMIT %s"
+            "FROM knowledge_vectors WHERE " + " AND ".join(filters) + " ORDER BY embedding <=> %s::vector LIMIT %s"
         )
         with self._connect() as connection:
             rows = connection.execute(statement, parameters).fetchall()

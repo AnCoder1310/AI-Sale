@@ -1,11 +1,26 @@
 services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg16-bookworm
+    environment:
+      POSTGRES_USER: p043
+      POSTGRES_PASSWORD: p043_local_only
+      POSTGRES_DB: p043
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U p043 -d p043"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build: .
     environment:
       APP_ENV: development
       PORT: 8000
-      DATABASE_URL: sqlite:////app/data/db/app.db
-      CHROMA_PERSIST_DIR: /app/data/chroma
+      DATABASE_URL: postgresql://p043:p043_local_only@postgres:5432/p043
+      VECTOR_STORE_TYPE: pgvector
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_MODEL_NAME: ${OPENROUTER_MODEL_NAME:-openai/gpt-6-luna}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openrouter}
@@ -13,9 +28,9 @@ services:
       AUTH_COOKIE_SECURE: "false"
       DEMO_ADVISOR_PASSWORD: ${DEMO_ADVISOR_PASSWORD:-}
       DEMO_MANAGER_PASSWORD: ${DEMO_MANAGER_PASSWORD:-}
-    volumes:
-      - sqlite_data:/app/data/db
-      - chroma_data:/app/data/chroma
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
@@ -42,5 +57,4 @@ services:
       retries: 3
 
 volumes:
-  sqlite_data:
-  chroma_data:
+  postgres_data:

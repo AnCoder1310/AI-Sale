@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
         if retriever.vector_store.count() == 0:
             count = await asyncio.to_thread(retriever.ingest_corpus, reset=False)
             logger.info("Initialized empty knowledge index with %d chunks", count)
-    except Exception as exc:
+    except Exception:
         logger.exception("Knowledge startup failed")
         if settings.app_env == "production":
             raise
@@ -75,6 +75,7 @@ async def require_advisor_for_copilot(request: Request) -> None:
 recorded_practice = RecordedPracticeService(
     build_practice_service(),
     SQLPracticeRecordsRepository(settings.database_url),
+    auth_service,
 )
 practice_router, manager_router = create_recorded_practice_routers(recorded_practice, current_user)
 app.include_router(create_auth_router(auth_service, settings), prefix="/api/v1")

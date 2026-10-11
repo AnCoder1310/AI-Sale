@@ -169,3 +169,21 @@ async def test_bootstrap_manager_runs_once_and_requires_password_change(tmp_path
     with pytest.raises(InvalidCredentialsError):
         await service.login("first.manager", "temporary manager password")
     assert not (await service.login("first.manager", "permanent manager password"))[1].must_change_password
+
+
+@pytest.mark.asyncio
+async def test_assignment_directory_lists_only_advisors_without_password_data(tmp_path):
+    service = AuthService(SQLAuthRepository(f"sqlite:///{tmp_path / 'auth.db'}"))
+    for user_id, role in (("advisor-1", UserRole.ADVISOR), ("manager-1", UserRole.MANAGER)):
+        await service.seed_user(
+            user_id=user_id,
+            username=user_id,
+            display_name=user_id,
+            role=role,
+            password="correct horse battery staple",
+        )
+    advisors = await service.active_advisors()
+    assert [user.user_id for user in advisors] == ["advisor-1"]
+    assert "password_hash" not in advisors[0].model_dump()
+    assert (await service.active_advisor("advisor-1")).user_id == "advisor-1"
+    assert await service.active_advisor("manager-1") is None
