@@ -36,4 +36,19 @@ export const managerApi = {
     const qs = params.toString();
     return request(`/manager/attempts${qs ? "?" + qs : ""}`);
   },
+
+  getAdvisors() {
+    return request('/manager/advisors');
+  },
+
+  getAssignments() {
+    return request('/manager/assignments');
+  },
+
+  createAssignment(payload) {
+    return request('/manager/assignments', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };

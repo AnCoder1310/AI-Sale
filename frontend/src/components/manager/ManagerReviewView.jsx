@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { managerApi } from "../../api/managerApi";
 import { ManagerTopNav } from "../layout/ManagerTopNav";
 import { ManagerReviewModal } from "./ManagerReviewModal";
+import { ManagerAssignmentsView } from "./ManagerAssignmentsView";
+import { TeamPerformanceView } from "./TeamPerformanceView";
 
 function formatDate(value) {
   return value ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)) : "—";
@@ -78,6 +80,9 @@ export function ManagerReviewView({ currentUser, onLogout }) {
       <ManagerTopNav activeTab={activeTab} onTabChange={setActiveTab} currentUser={currentUser}
         pendingCount={queue.length} onLogout={onLogout} />
       <main className="manager-app-content">
+        {activeTab === "assignments" && <ManagerAssignmentsView />}
+        {activeTab === "performance" && <TeamPerformanceView />}
+        {(activeTab === "dashboard" || activeTab === "reports") && <>
         <h1>{activeTab === "reports" ? "Lịch sử luyện tập" : "Tổng quan đội ngũ"}</h1>
         {error && <div className="manager-error-alert" role="alert">{error} <button type="button" onClick={load}>Thử lại</button></div>}
         {activeTab === "dashboard" && overview && (
@@ -103,6 +108,7 @@ export function ManagerReviewView({ currentUser, onLogout }) {
               </div>
             ))}
           </div>}
+        </>}
       </main>
       {selectedReview && <ManagerReviewModal detail={selectedReview} onClose={() => setSelectedReview(null)} onApprove={approve} />}
     </div>

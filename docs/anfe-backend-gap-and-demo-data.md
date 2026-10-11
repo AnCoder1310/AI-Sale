@@ -1,5 +1,7 @@
 # An frontend audit against `develop` (2026-10-10)
 
+Update 2026-10-11: Manager assignments and advisor performance are implemented on `feature/manager-assignments-performance` for PR to `develop`. The table below records the original gap assessment; the current implementation links assignments to specific practice sessions and ranks only advisors with at least three manager-approved, scored sessions.
+
 Compared `origin/anfe` (51add6c) with `origin/develop` (d206724) before integration. The branch contains both frontend screens and divergent backend work. The integration retains the current `develop` backend contracts; additional features below need their own reviewed vertical slices.
 
 | Priority | Feature in An's branch | Backend status on `develop` | Decision |
