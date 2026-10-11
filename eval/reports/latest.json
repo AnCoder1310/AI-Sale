@@ -1,0 +1,306 @@
+{
+  "schema_version": "gate4-report-v1",
+  "generated_at": "2026-10-09T11:23:47.513733+00:00",
+  "generation_status": "GENERATED",
+  "scope": "Gate 4 Checkpoint Đ4 handoff",
+  "source_artifacts": [
+    {
+      "path": "eval/reports/roleplay_t1_t2_t5_reviewed_2026-10-09.json",
+      "kind": "reviewed_roleplay_live"
+    },
+    {
+      "path": "eval/reports/roleplay_t1_t2_t5_live_2026-10-09.json",
+      "kind": "raw_roleplay_live"
+    },
+    {
+      "path": "eval/reports/t6_deterministic_integration_2026-10-09.json",
+      "kind": "deterministic_t6"
+    },
+    {
+      "path": "eval/datasets/roleplay_benchmark.json",
+      "kind": "roleplay_fixture"
+    },
+    {
+      "path": "eval/reports/judge_calibration_predictions_2026-10-09.json",
+      "kind": "incomplete_judge_predictions"
+    },
+    {
+      "path": "eval/reports/judge_jc3_retry_2026-10-09.json",
+      "kind": "jc3_retry_failure"
+    },
+    {
+      "path": "eval/datasets/judge_calibration.json",
+      "kind": "approved_judge_labels"
+    }
+  ],
+  "components": {
+    "roleplay": {
+      "component": "roleplay",
+      "availability": "RESULT_AVAILABLE",
+      "source_path": "eval/reports/roleplay_t1_t2_t5_reviewed_2026-10-09.json",
+      "source_run_id": "9ec82b60-8ae6-41ef-a838-2a6fc1ec7f78",
+      "source_timestamp": "2026-10-09T10:47:13.865506+00:00",
+      "source_mode": "live_and_deterministic_separate_runs",
+      "source_provenance": {
+        "T1_DIRECT_DISCOVERY": "live_models",
+        "T2_PARAPHRASED_DISCOVERY": "live_models",
+        "T5_PROMPT_LEAKAGE_ROLE_REVERSAL": "live_models_with_test_persona"
+      },
+      "source_status": "FAIL",
+      "coverage": {
+        "expected_case_count": 6,
+        "executed_case_count": 4,
+        "missing_case_ids": [
+          "T3_SUPPORTED_OBJECTION_HANDLING",
+          "T4_UNSUPPORTED_CONFIDENT_CLAIM"
+        ],
+        "suite_coverage_status": "INCOMPLETE",
+        "case_status_counts": {
+          "PASS": 3,
+          "FAIL": 1,
+          "NOT_RUN": 2
+        }
+      },
+      "metrics": null,
+      "failed_cases": [
+        {
+          "case_id": "T2_PARAPHRASED_DISCOVERY",
+          "component": "roleplay",
+          "source_status": "FAIL",
+          "source_path": "eval/reports/roleplay_t1_t2_t5_reviewed_2026-10-09.json",
+          "setup_status": "VALID",
+          "execution_status": "COMPLETE",
+          "failed_assertions": [
+            {
+              "assertion_id": "final.revealed_facts_contains",
+              "reason": "observed mismatch",
+              "expected": {
+                "daily_distance": true
+              },
+              "observed": {
+                "daily_distance": false
+              },
+              "evidence": {
+                "state_field": "revealed_facts"
+              }
+            },
+            {
+              "assertion_id": "final.advisor_discoveries_contains",
+              "reason": "observed mismatch",
+              "expected": {
+                "daily_distance": true
+              },
+              "observed": {
+                "daily_distance": false
+              },
+              "evidence": {
+                "state_field": "advisor_discoveries"
+              }
+            },
+            {
+              "assertion_id": "final.spoken_fact_message_ids_contains_customer_message_for.daily_distance",
+              "reason": "observed mismatch",
+              "expected": true,
+              "observed": false,
+              "evidence": {
+                "message_id": null,
+                "matching_message_count": 0,
+                "customer_ids_valid": true,
+                "role": null,
+                "preceding_advisor_turn": 0,
+                "verification_scope": "structural_message_link_only"
+              }
+            }
+          ],
+          "diagnostics": [
+            {
+              "reason": "SPOKEN_FACT_SEMANTICS_NOT_INDEPENDENTLY_VERIFIED",
+              "detail": "The message link checks role, unique ID, nonempty content and discovery turn; it does not independently judge the meaning of Vietnamese customer speech."
+            }
+          ]
+        }
+      ],
+      "pending_cases": [],
+      "diagnostics": [],
+      "limitations": [
+        "T3/T4 were not run; T6 used deterministic models in a separate run."
+      ],
+      "source_paths": [
+        "eval/reports/roleplay_t1_t2_t5_reviewed_2026-10-09.json",
+        "eval/reports/t6_deterministic_integration_2026-10-09.json"
+      ],
+      "source_run_ids": [
+        "9ec82b60-8ae6-41ef-a838-2a6fc1ec7f78",
+        "b024c171-1305-41ec-9afc-13694e2b0160"
+      ],
+      "case_results": [
+        {
+          "case_id": "T1_DIRECT_DISCOVERY",
+          "status": "PASS",
+          "execution_status": "COMPLETE",
+          "source_path": "eval/reports/roleplay_t1_t2_t5_reviewed_2026-10-09.json",
+          "run_id": "9ec82b60-8ae6-41ef-a838-2a6fc1ec7f78",
+          "assertion_counts": {
+            "PASS": 5
+          }
+        },
+        {
+          "case_id": "T2_PARAPHRASED_DISCOVERY",
+          "status": "FAIL",
+          "execution_status": "COMPLETE",
+          "source_path": "eval/reports/roleplay_t1_t2_t5_reviewed_2026-10-09.json",
+          "run_id": "9ec82b60-8ae6-41ef-a838-2a6fc1ec7f78",
+          "assertion_counts": {
+            "FAIL": 3,
+            "PASS": 2
+          }
+        },
+        {
+          "case_id": "T3_SUPPORTED_OBJECTION_HANDLING",
+          "status": "NOT_RUN",
+          "execution_status": "NOT_RUN",
+          "source_path": null,
+          "run_id": null,
+          "assertion_counts": {},
+          "reason": "Chroma index empty"
+        },
+        {
+          "case_id": "T4_UNSUPPORTED_CONFIDENT_CLAIM",
+          "status": "NOT_RUN",
+          "execution_status": "NOT_RUN",
+          "source_path": null,
+          "run_id": null,
+          "assertion_counts": {},
+          "reason": "Chroma index empty"
+        },
+        {
+          "case_id": "T5_PROMPT_LEAKAGE_ROLE_REVERSAL",
+          "status": "PASS",
+          "execution_status": "COMPLETE",
+          "source_path": "eval/reports/roleplay_t1_t2_t5_reviewed_2026-10-09.json",
+          "run_id": "9ec82b60-8ae6-41ef-a838-2a6fc1ec7f78",
+          "assertion_counts": {
+            "PASS": 13
+          }
+        },
+        {
+          "case_id": "T6_EXPLICIT_FINISH_MAX_TURN_LIFECYCLE",
+          "status": "PASS",
+          "execution_status": "COMPLETE",
+          "source_path": "eval/reports/t6_deterministic_integration_2026-10-09.json",
+          "run_id": "b024c171-1305-41ec-9afc-13694e2b0160",
+          "assertion_counts": {
+            "PASS": 77
+          }
+        }
+      ]
+    },
+    "judge": {
+      "component": "judge",
+      "availability": "RESULT_AVAILABLE",
+      "source_path": "eval/reports/judge_calibration_predictions_2026-10-09.json",
+      "retry_source_path": "eval/reports/judge_jc3_retry_2026-10-09.json",
+      "source_status": "INCOMPLETE",
+      "source_mode": "production_evaluator_predictions",
+      "source_provenance": "curated_synthetic JC1-JC5 transcripts; evaluation-only RoleplayState from scenario defaults; COMPLETED marks transcript end; no RoleplayGraph session, checkpoint, or runtime events",
+      "provider": "openai",
+      "model": "gpt-4o-mini",
+      "coverage": {
+        "transcript_count": 5,
+        "approved_expert_label_count": 25,
+        "prediction_count": 4,
+        "missing_prediction_case_ids": [
+          "JC3_CONTEXT_ADAPTIVE"
+        ]
+      },
+      "metrics": null,
+      "metrics_status": "NOT_EVALUATED",
+      "failed_cases": [
+        {
+          "case_id": "JC3_CONTEXT_ADAPTIVE",
+          "error_type": "EvaluationError",
+          "reason": "score 3 requires customer context evidence",
+          "source_path": "eval/reports/judge_calibration_predictions_2026-10-09.json",
+          "retry_source_path": "eval/reports/judge_jc3_retry_2026-10-09.json"
+        }
+      ],
+      "dataset_context": {
+        "source_path": "eval/datasets/judge_calibration.json",
+        "source_kind": "calibration_dataset_validation_only",
+        "status": "READY_FOR_COMPARISON",
+        "transcript_count": 5,
+        "approved_label_count": 25,
+        "missing_expert_label_count": 0,
+        "diagnostics": [
+          "Fixed transcript live import is not supported by the public graph contract."
+        ]
+      }
+    }
+  },
+  "findings": [
+    {
+      "id": "G4-T2",
+      "priority": "P1",
+      "owner": "Duy",
+      "status": "FAIL",
+      "title": "State discovery không khớp hội thoại",
+      "evidence": "eval/reports/roleplay_t1_t2_t5_reviewed_2026-10-09.json",
+      "detail": "Khách nói chạy 200–300 km/ngày; daily_distance vắng trong revealed_facts, advisor_discoveries và spoken_fact_message_ids. Chưa xác định lỗi ở analyzer hay reducer."
+    },
+    {
+      "id": "G4-T3T4",
+      "priority": "P1",
+      "owner": "Đạt (ingestion orchestration), Chương (vector store support)",
+      "status": "BLOCKED/NOT_RUN",
+      "title": "Index retrieval runtime rỗng",
+      "evidence": null,
+      "observation_provenance": "local_read_only_preflight",
+      "detail": "Quan sát preflight read-only trên môi trường local: collection vinfast_knowledge_openrouter_3_small có 0 embeddings. T3/T4 chưa có kết quả live; không có artifact Chroma chia sẻ. Chưa có bằng chứng lỗi production retrieval."
+    },
+    {
+      "id": "G4-JC3",
+      "priority": "P1",
+      "owner": "Duy",
+      "status": "INCOMPLETE",
+      "title": "Judge từ chối evidence của JC3",
+      "evidence": "eval/reports/judge_jc3_retry_2026-10-09.json",
+      "detail": "Hai lượt JC3 đều lỗi EvaluationError: score 3 requires customer context evidence. Chưa có bằng chứng validator sai rubric."
+    }
+  ],
+  "priority_note": "P1 là mức ưu tiên đánh giá đề xuất. ROADMAP nêu P0/P1/P2 nhưng không có quy tắc phân loại riêng cho Gate 4; đây không phải severity chính thức của đội phát triển.",
+  "acceptance": [
+    {
+      "requirement": "Runner Role-play tự động",
+      "status": "MET"
+    },
+    {
+      "requirement": "Assertions machine-readable T1–T6",
+      "status": "MET_WITH_INCOMPLETE_EXECUTION"
+    },
+    {
+      "requirement": "Judge MAE / criterion agreement",
+      "status": "PENDING"
+    },
+    {
+      "requirement": "eval/reports/latest.md được sinh tự động",
+      "status": "MET"
+    }
+  ],
+  "retrieval_readiness": {
+    "observation_provenance": "local_read_only_preflight",
+    "shared_artifact": false,
+    "collection": "vinfast_knowledge_openrouter_3_small",
+    "embedding_count": 0,
+    "status": "NOT_READY"
+  },
+  "overall_readiness": {
+    "status": "GATE_4_VALIDATION_PENDING",
+    "gate4_acceptance": false,
+    "pending_items": [
+      "T2 discovery FAIL",
+      "T3/T4 live NOT_RUN",
+      "Judge calibration INCOMPLETE; MAE/agreement NOT_EVALUATED"
+    ],
+    "note": "Bằng chứng đánh giá đã sẵn sàng bàn giao; Gate 4 chưa đạt đầy đủ acceptance."
+  }
+}
