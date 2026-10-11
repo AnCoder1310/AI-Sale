@@ -35,28 +35,77 @@ export function AdvisorAssignmentsView({ scenarios, onStart, onOpenAttempt, relo
   }, [reloadToken]);
 
   const scenarioNames = Object.fromEntries(scenarios.map((item) => [item.scenario_id, item.title]));
+
   return (
-    <section className="card-white" style={{ padding: 20, marginBottom: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-        <div><h2>Bài được giao</h2><p>Luyện đúng kịch bản để Manager theo dõi tiến độ của bài.</p></div>
-        <button type="button" className="btn-outline" onClick={load} disabled={status === 'loading'}>Làm mới</button>
+    <section className="card-white" style={{ padding: 24, marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>Bài tập được giao</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginTop: 2 }}>
+            Hoàn thành các bài tập do Quản lý giao để cập nhật tiến độ và năng lực cá nhân.
+          </p>
+        </div>
+        <button type="button" className="btn-outline" onClick={load} disabled={status === 'loading'}>
+          Làm mới
+        </button>
       </div>
-      {status === 'loading' && <p role="status">Đang tải bài được giao…</p>}
-      {status === 'error' && <p role="alert">{error} <button type="button" onClick={load}>Thử lại</button></p>}
-      {status === 'ready' && assignments.length === 0 && <p>Chưa có bài nào được giao. Bạn vẫn có thể chọn kịch bản bên dưới để tự luyện.</p>}
-      {status === 'ready' && <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-        {assignments.map((assignment) => <article key={assignment.assignment_id} style={{ padding: 14, border: '1px solid #e5e5e5', borderRadius: 10 }}>
-          <strong>{assignment.title}</strong><p>{scenarioNames[assignment.scenario_id] || assignment.scenario_id}</p>
-          <small>{STATUS[assignment.status] || assignment.status} · Hạn: {assignment.due_date || 'Không đặt'}</small>
-          <div style={{ marginTop: 10 }}>
-            {assignment.status === 'completed' && assignment.session_id ?
-              <button type="button" className="btn-outline" onClick={() => onOpenAttempt(assignment.session_id)}>Xem kết quả</button> :
-              <button type="button" className="btn-primary" onClick={() => onStart(assignment)} disabled={!scenarioNames[assignment.scenario_id]}>
-                {assignment.status === 'in_progress' ? 'Bắt đầu lại bài này' : 'Bắt đầu bài được giao'}
-              </button>}
-          </div>
-        </article>)}
-      </div>}
+
+      {status === 'loading' && <p role="status" style={{ color: 'var(--muted)', padding: '12px 0' }}>Đang tải bài được giao…</p>}
+      {error && (
+        <p role="alert" style={{ color: '#dc2626', marginBottom: 14 }}>
+          {error} <button type="button" className="btn-outline" style={{ marginLeft: 8 }} onClick={load}>Thử lại</button>
+        </p>
+      )}
+
+      {status === 'ready' && assignments.length === 0 && (
+        <div style={{ padding: '20px', textAlign: 'center', backgroundColor: 'var(--surface-alt)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--muted)', fontSize: '0.88rem' }}>
+          Hiện tại bạn chưa có bài tập nào được giao. Hãy tự do chọn các tình huống bên dưới để tự luyện tập!
+        </div>
+      )}
+
+      {status === 'ready' && assignments.length > 0 && (
+        <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
+          {assignments.map((assignment) => (
+            <article
+              key={assignment.assignment_id}
+              className="manager-assignment-card-item"
+            >
+              <div>
+                <strong style={{ fontSize: '0.98rem', color: 'var(--primary)' }}>{assignment.title}</strong>
+                <p style={{ margin: '4px 0 6px', color: 'var(--secondary)', fontSize: '0.88rem' }}>
+                  Kịch bản: <strong>{scenarioNames[assignment.scenario_id] || assignment.scenario_id}</strong>
+                </p>
+                <small style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>
+                  Trạng thái: <strong>{STATUS[assignment.status] || assignment.status}</strong> · Hạn: {assignment.due_date || 'Không đặt'}
+                </small>
+              </div>
+
+              <div>
+                {assignment.status === 'completed' && assignment.session_id ? (
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    onClick={() => onOpenAttempt(assignment.session_id)}
+                    style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                  >
+                    Xem kết quả
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => onStart(assignment)}
+                    disabled={!scenarioNames[assignment.scenario_id]}
+                    style={{ padding: '8px 18px', fontSize: '0.85rem' }}
+                  >
+                    {assignment.status === 'in_progress' ? 'Luyện tiếp bài này →' : 'Bắt đầu bài được giao →'}
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
