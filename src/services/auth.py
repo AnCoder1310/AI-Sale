@@ -70,6 +70,12 @@ class AuthService:
         await self._repository.upsert_user(user)
         return self._public_user(user)
 
+    async def active_advisors(self) -> list[AuthenticatedUser]:
+        return await self._repository.active_advisors()
+
+    async def active_advisor(self, user_id: str) -> AuthenticatedUser | None:
+        return await self._repository.active_advisor(user_id)
+
     async def login(self, username: str, password: str) -> tuple[str, AuthenticatedUser]:
         user = await self._repository.user_by_username(username.strip().casefold())
         if user is None or not user.active or not self._password_matches(user, password):

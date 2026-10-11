@@ -24,6 +24,7 @@ The `practice_voice_usage` SQL table records each successful STT or TTS call wit
 - Denied microphone permission, missing browser recording support, empty audio, or interrupted recording leaves the current Practice turn unchanged.
 - A failed transcription shows a retry message. A recognized transcript can be edited before the usual send action. Empty recognized speech is counted as an STT call but does not advance the role-play.
 - A failed customer TTS call does not roll back the already saved customer reply. The advisor can retry playback or continue in Text Mode.
+- If customer reply generation fails after an advisor message is saved, the Practice Room displays **Thử lại phản hồi**. Retry generates only the missing customer reply; it does not resend or reanalyze the advisor message. In Voice Mode, a successful retry also plays the new customer reply. Sending another message or finishing is blocked until the pending reply is resolved.
 - Customer audio is cached only in the current browser view for replay, then released when leaving the room. Recording audio is not written to the database.
 
 The recording hook has one output boundary: an audio `Blob` and duration passed to the transcription action. A future browser Silero VAD can produce a compatible blob and call that same action while retaining the Push-to-Talk control. VAD is not installed in this phase.

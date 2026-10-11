@@ -78,6 +78,30 @@ class SQLAuthRepository:
             row = connection.execute(query).mappings().first()
         return StoredUser.model_validate(dict(row)) if row else None
 
+    async def active_advisors(self) -> list[AuthenticatedUser]:
+        """Return public identities only; never expose password fields."""
+        self._ensure_schema()
+        query = (
+            select(self._users.c.user_id, self._users.c.username, self._users.c.display_name, self._users.c.role)
+            .where(self._users.c.role == UserRole.ADVISOR.value, self._users.c.active.is_(True))
+            .order_by(self._users.c.display_name, self._users.c.user_id)
+        )
+        with self._engine.connect() as connection:
+            return [AuthenticatedUser.model_validate(dict(row)) for row in connection.execute(query).mappings()]
+
+    async def active_advisor(self, user_id: str) -> AuthenticatedUser | None:
+        self._ensure_schema()
+        query = select(
+            self._users.c.user_id, self._users.c.username, self._users.c.display_name, self._users.c.role
+        ).where(
+            self._users.c.user_id == user_id,
+            self._users.c.role == UserRole.ADVISOR.value,
+            self._users.c.active.is_(True),
+        )
+        with self._engine.connect() as connection:
+            row = connection.execute(query).mappings().first()
+        return AuthenticatedUser.model_validate(dict(row)) if row else None
+
     async def create_session(self, session: StoredSession) -> None:
         self._ensure_schema()
         with self._engine.begin() as connection:

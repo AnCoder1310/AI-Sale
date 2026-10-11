@@ -22,11 +22,15 @@ export const practiceApi = {
     });
   },
 
-  async startSession(scenarioId, maxTurns = 10) {
+  async startSession(scenarioId, maxTurns = 10, assignmentId = null) {
     return request('/practice/sessions', {
       method: 'POST',
-      body: JSON.stringify({ scenario_id: scenarioId, max_turns: maxTurns }),
+      body: JSON.stringify({ scenario_id: scenarioId, max_turns: maxTurns, ...(assignmentId ? { assignment_id: assignmentId } : {}) }),
     });
+  },
+
+  async getAssignments() {
+    return request('/practice/assignments');
   },
 
   async sendMessage(sessionId, message) {
@@ -51,6 +55,12 @@ export const practiceApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message_id: messageId, gender }),
     }, 'blob');
+  },
+
+  async retryCustomerReply(sessionId) {
+    return request(`/practice/${encodeURIComponent(sessionId)}/retry-reply`, {
+      method: 'POST',
+    });
   },
 
   async finishSession(sessionId) {

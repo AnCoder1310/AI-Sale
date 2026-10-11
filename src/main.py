@@ -58,6 +58,7 @@ current_user = CurrentUserDependency(auth_service, settings.auth_cookie_name)
 recorded_practice = RecordedPracticeService(
     build_practice_service(),
     SQLPracticeRecordsRepository(settings.database_url),
+    auth_service,
 )
 voice_service = VoiceService(recorded_practice, SQLVoiceUsageRepository(settings.database_url), settings)
 practice_router, manager_router = create_recorded_practice_routers(recorded_practice, current_user, voice_service)

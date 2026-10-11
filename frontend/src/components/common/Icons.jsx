@@ -1,7 +1,84 @@
-export function VinFastLogo({ className = 'w-6 h-6', ...props }) {
+export function VinFastLogo({ className = 'w-6 h-6', variant = 'chrome', ...props }) {
+  if (variant === 'monochrome') {
+    return (
+      <svg viewBox="0 0 100 100" fill="currentColor" className={className} {...props}>
+        <path d="M 14 20 C 26 34, 40 64, 50 88 C 44 65, 30 38, 14 20 Z" />
+        <path d="M 86 20 C 74 34, 60 64, 50 88 C 56 65, 70 38, 86 20 Z" />
+        <path d="M 28 26 C 37 38, 45 56, 50 72 C 46 56, 38 40, 28 26 Z" opacity="0.9" />
+        <path d="M 72 26 C 63 38, 55 56, 50 72 C 54 56, 62 40, 72 26 Z" opacity="0.9" />
+      </svg>
+    );
+  }
+
   return (
-    <svg viewBox="0 0 32 32" fill="currentColor" className={className} {...props}>
-      <path d="M16 2.5L28 12.5L16 29.5L4 12.5L16 2.5ZM16 7.5L8.5 13.8L16 24.5L23.5 13.8L16 7.5Z" />
+    <svg
+      viewBox="0 0 100 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <defs>
+        <linearGradient id="vf-chrome-highlight" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="35%" stopColor="#E2E8F0" />
+          <stop offset="70%" stopColor="#94A3B8" />
+          <stop offset="100%" stopColor="#475569" />
+        </linearGradient>
+
+        <linearGradient id="vf-chrome-shadow" x1="100%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#CBD5E1" />
+          <stop offset="45%" stopColor="#64748B" />
+          <stop offset="85%" stopColor="#1E293B" />
+          <stop offset="100%" stopColor="#0F172A" />
+        </linearGradient>
+
+        <linearGradient id="vf-chrome-inner" x1="50%" y1="0%" x2="50%" y2="100%">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="40%" stopColor="#F1F5F9" />
+          <stop offset="80%" stopColor="#64748B" />
+          <stop offset="100%" stopColor="#334155" />
+        </linearGradient>
+      </defs>
+
+      {/* Outer Left Wing - Light Facet */}
+      <path
+        d="M 14 20 C 26 34, 40 64, 50 88 C 44 65, 30 38, 14 20 Z"
+        fill="url(#vf-chrome-highlight)"
+      />
+      {/* Outer Left Wing - Shadow Facet */}
+      <path
+        d="M 14 20 C 32 38, 45 62, 50 88 C 48 70, 36 44, 22 26 Z"
+        fill="url(#vf-chrome-shadow)"
+        opacity="0.85"
+      />
+
+      {/* Outer Right Wing - Light Facet */}
+      <path
+        d="M 86 20 C 74 34, 60 64, 50 88 C 56 65, 70 38, 86 20 Z"
+        fill="url(#vf-chrome-highlight)"
+      />
+      {/* Outer Right Wing - Shadow Facet */}
+      <path
+        d="M 86 20 C 68 38, 55 62, 50 88 C 52 70, 64 44, 78 26 Z"
+        fill="url(#vf-chrome-shadow)"
+        opacity="0.85"
+      />
+
+      {/* Inner Wing Left */}
+      <path
+        d="M 28 26 C 37 38, 45 56, 50 72 C 46 56, 38 40, 28 26 Z"
+        fill="url(#vf-chrome-inner)"
+      />
+
+      {/* Inner Wing Right */}
+      <path
+        d="M 72 26 C 63 38, 55 56, 50 72 C 54 56, 62 40, 72 26 Z"
+        fill="url(#vf-chrome-inner)"
+      />
+
+      {/* Center Specular Glint */}
+      <circle cx="50" cy="72" r="1.5" fill="#FFFFFF" opacity="0.9" />
     </svg>
   );
 }
@@ -253,6 +330,110 @@ export function CarIcon({ className = 'w-4 h-4', ...props }) {
       <circle cx="7" cy="17" r="2" />
       <path d="M9 17h6" />
       <circle cx="17" cy="17" r="2" />
+    </svg>
+  );
+}
+
+export function DashboardIcon({ className = "w-4 h-4", ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <rect width="7" height="9" x="3" y="3" rx="1" />
+      <rect width="7" height="5" x="14" y="3" rx="1" />
+      <rect width="7" height="9" x="14" y="12" rx="1" />
+      <rect width="7" height="5" x="3" y="16" rx="1" />
+    </svg>
+  );
+}
+
+export function UsersIcon({ className = "w-4 h-4", ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+export function ClipboardIcon({ className = "w-4 h-4", ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <path d="m9 14 2 2 4-4" />
+    </svg>
+  );
+}
+
+export function HistoryIcon({ className = "w-4 h-4", ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M12 7v5l4 2" />
+    </svg>
+  );
+}
+
+export function FilterIcon({ className = "w-4 h-4", ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+    </svg>
+  );
+}
+
+export function PlusIcon({ className = "w-4 h-4", ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </svg>
+  );
+}
+
+
+export function ShieldCheckIcon({ className = 'w-4 h-4', ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+export function FileTextIcon({ className = 'w-4 h-4', ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
+
+export function UploadIcon({ className = 'w-4 h-4', ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  );
+}
+
+export function TrophyIcon({ className = 'w-4 h-4', ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+      <path d="M4 22h16" />
+      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
     </svg>
   );
 }

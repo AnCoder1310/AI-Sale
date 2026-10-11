@@ -4,6 +4,7 @@ import httpx
 import pytest
 from fastapi import FastAPI, Header, HTTPException
 
+from src.agents.roleplay.graph import RoleplaySessionConflictError
 from src.agents.roleplay.scenario_loader import ScenarioRepository
 from src.api.auth import CurrentUserDependency, create_auth_router
 from src.api.recorded_practice import create_recorded_practice_routers
@@ -15,6 +16,24 @@ from src.models.evaluation import CriterionType, SessionEvaluationResult
 from src.services.auth import AuthService
 from src.services.practice import PracticeEvaluationUnavailableError, PracticeResultView, PracticeSessionView
 from src.services.recorded_practice import RecordedPracticeService
+
+
+class AdvisorDirectoryStub:
+    def __init__(self):
+        self.users = [
+            AuthenticatedUser(
+                user_id="advisor-a", username="advisor.a", display_name="Advisor A", role=UserRole.ADVISOR
+            ),
+            AuthenticatedUser(
+                user_id="advisor-b", username="advisor.b", display_name="Advisor B", role=UserRole.ADVISOR
+            ),
+        ]
+
+    async def active_advisors(self):
+        return self.users
+
+    async def active_advisor(self, user_id):
+        return next((user for user in self.users if user.user_id == user_id), None)
 
 
 class StubPractice:
@@ -45,6 +64,14 @@ class StubPractice:
     async def get_session(self, session_id):
         return self.sessions[session_id]
 
+    async def retry_customer_reply(self, session_id):
+        session = self.sessions[session_id]
+        if not session.pending_customer_reply:
+            raise RoleplaySessionConflictError("no customer reply is pending")
+        updated = session.model_copy(update={"pending_customer_reply": False})
+        self.sessions[session_id] = updated
+        return updated
+
     async def get_result(self, session_id):
         return PracticeResultView(session_id=session_id, evaluation_status="not_started")
 
@@ -62,6 +89,34 @@ async def fake_identity(x_test_identity: str | None = Header(None)) -> Authentic
         display_name=user_id,
         role=role,
     )
+
+
+@pytest.mark.asyncio
+async def test_retry_reply_route_requires_owner_and_pending_turn(tmp_path):
+    records = SQLPracticeRecordsRepository(f"sqlite:///{tmp_path / 'records.db'}")
+    practice = StubPractice()
+    service = RecordedPracticeService(practice, records)
+    practice_router, _ = create_recorded_practice_routers(service, fake_identity)
+    app = FastAPI()
+    app.include_router(practice_router, prefix="/api/v1")
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        created = await client.post(
+            "/api/v1/practice/sessions",
+            headers={"X-Test-Identity": "advisor-a:advisor"},
+            json={"scenario_id": "SCENARIO_01_VF5_TAXI"},
+        )
+        session_id = created.json()["session_id"]
+        path = f"/api/v1/practice/{session_id}/retry-reply"
+        practice.sessions[session_id] = practice.sessions[session_id].model_copy(
+            update={"pending_customer_reply": True}
+        )
+        assert (await client.post(path)).status_code == 401
+        assert (await client.post(path, headers={"X-Test-Identity": "manager-a:manager"})).status_code == 403
+        assert (await client.post(path, headers={"X-Test-Identity": "advisor-b:advisor"})).status_code == 404
+        retried = await client.post(path, headers={"X-Test-Identity": "advisor-a:advisor"})
+        assert retried.status_code == 200
+        assert retried.json()["pending_customer_reply"] is False
+        assert (await client.post(path, headers={"X-Test-Identity": "advisor-a:advisor"})).status_code == 409
 
 
 @pytest.mark.asyncio
@@ -201,6 +256,105 @@ def draft_for(session_id: str) -> SessionEvaluationResult:
         overall_score=3,
         evaluations=evaluations,
     )
+
+
+@pytest.mark.asyncio
+async def test_assignment_flow_and_approved_performance_use_real_attempts(tmp_path):
+    database_url = f"sqlite:///{tmp_path / 'assignments.db'}"
+    records = SQLPracticeRecordsRepository(database_url)
+    service = RecordedPracticeService(StubPractice(), records, AdvisorDirectoryStub())
+    practice_router, manager_router = create_recorded_practice_routers(service, fake_identity)
+    app = FastAPI()
+    app.include_router(practice_router, prefix="/api/v1")
+    app.include_router(manager_router, prefix="/api/v1")
+    manager = {"X-Test-Identity": "manager-a:manager"}
+    advisor = {"X-Test-Identity": "advisor-a:advisor"}
+    other = {"X-Test-Identity": "advisor-b:advisor"}
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        assert (await client.get("/api/v1/practice/scenarios", headers=manager)).status_code == 200
+        assert (
+            await client.post(
+                "/api/v1/manager/assignments",
+                headers=advisor,
+                json={"advisor_id": "advisor-a", "scenario_id": "SCENARIO_01_VF5_TAXI", "title": "Practice VF 5"},
+            )
+        ).status_code == 403
+        assert (
+            await client.post(
+                "/api/v1/manager/assignments",
+                headers=manager,
+                json={"advisor_id": "missing", "scenario_id": "SCENARIO_01_VF5_TAXI", "title": "Practice VF 5"},
+            )
+        ).status_code == 409
+        created = await client.post(
+            "/api/v1/manager/assignments",
+            headers=manager,
+            json={"advisor_id": "advisor-a", "scenario_id": "SCENARIO_01_VF5_TAXI", "title": "Practice VF 5"},
+        )
+        assert created.status_code == 201, created.text
+        assignment_id = created.json()["assignment_id"]
+        assert created.json()["status"] == "assigned"
+        assert (await client.get("/api/v1/practice/assignments", headers=other)).json() == []
+        assert (await client.get("/api/v1/practice/assignments", headers=manager)).status_code == 403
+        assert (
+            await client.post(
+                "/api/v1/practice/sessions",
+                headers=other,
+                json={"scenario_id": "SCENARIO_01_VF5_TAXI", "assignment_id": assignment_id},
+            )
+        ).status_code == 409
+        assert (
+            await client.post(
+                "/api/v1/practice/sessions",
+                headers=advisor,
+                json={"scenario_id": "SCENARIO_02_VF8_FAMILY", "assignment_id": assignment_id},
+            )
+        ).status_code == 409
+        started = await client.post(
+            "/api/v1/practice/sessions",
+            headers=advisor,
+            json={"scenario_id": "SCENARIO_01_VF5_TAXI", "assignment_id": assignment_id},
+        )
+        assert started.status_code == 201, started.text
+        session_id = started.json()["session_id"]
+        assert (await client.get("/api/v1/practice/assignments", headers=advisor)).json()[0]["status"] == "in_progress"
+        await records.complete(session_id, draft_for(session_id))
+        assignment = (await client.get("/api/v1/manager/assignments", headers=manager)).json()[0]
+        assert (assignment["status"], assignment["session_id"]) == ("completed", session_id)
+        assert (
+            await client.post(
+                "/api/v1/practice/sessions",
+                headers=advisor,
+                json={"scenario_id": "SCENARIO_01_VF5_TAXI", "assignment_id": assignment_id},
+            )
+        ).status_code == 409
+        before_review = (await client.get("/api/v1/manager/advisors", headers=manager)).json()
+        assert before_review[0]["average_score"] is None
+        assert all(item["rank"] is None for item in before_review)
+        assert (
+            await client.patch(
+                f"/api/v1/manager/reviews/{session_id}", headers=manager, json={"change_reason": "Transcript checked."}
+            )
+        ).status_code == 200
+        for _ in range(2):
+            response = await client.post(
+                "/api/v1/practice/sessions", headers=advisor, json={"scenario_id": "SCENARIO_01_VF5_TAXI"}
+            )
+            extra_id = response.json()["session_id"]
+            await records.complete(extra_id, draft_for(extra_id))
+            assert (
+                await client.patch(
+                    f"/api/v1/manager/reviews/{extra_id}",
+                    headers=manager,
+                    json={"change_reason": "Transcript checked."},
+                )
+            ).status_code == 200
+        performance = (await client.get("/api/v1/manager/advisors", headers=manager)).json()
+        assert performance[0]["advisor_id"] == "advisor-a"
+        assert performance[0]["rank"] == 1
+        assert performance[0]["scored_sessions"] == 3
+        assert performance[0]["average_score"] == 3
+        assert performance[1]["rank"] is None
 
 
 @pytest.mark.asyncio

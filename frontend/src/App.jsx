@@ -5,12 +5,9 @@ import { HomeView } from './components/home/HomeView';
 import { CopilotView } from './components/copilot/CopilotView';
 import { RoleplayView } from './components/roleplay/RoleplayView';
 import { KnowledgeView } from './components/knowledge/KnowledgeView';
-import { ChargingView } from './components/charging/ChargingView';
-import { ErrorState } from './components/common/ErrorState';
 import { LoginView } from './components/auth/LoginView';
 import { ManagerReviewView } from './components/manager/ManagerReviewView';
 
-import { ADVISOR_PROFILE } from './data/competencyData';
 import { authApi } from './api/authApi';
 import { practiceApi } from './api/practiceApi';
 
@@ -18,6 +15,7 @@ export function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authStatus, setAuthStatus] = useState('loading');
   const [currentTab, setCurrentTab] = useState('home');
+  const [workspace, setWorkspace] = useState('advisor');
   const [scenarios, setScenarios] = useState([]);
   const [scenarioStatus, setScenarioStatus] = useState('loading');
   const [scenarioReloadToken, setScenarioReloadToken] = useState(0);
@@ -67,6 +65,7 @@ export function App() {
   const handleLogin = async (username, password) => {
     const user = await authApi.login(username, password);
     setCurrentUser(user);
+    setWorkspace(user.role === 'manager' ? 'manager' : 'advisor');
     setAuthStatus('authenticated');
     setCurrentTab(user.role === 'advisor' ? 'home' : 'manager');
   };
@@ -115,12 +114,17 @@ export function App() {
     return <LoginView onLogin={handleLogin} />;
   }
 
-  if (currentUser?.role === 'manager') {
-    return <ManagerReviewView currentUser={currentUser} onLogout={handleLogout} />;
+  if (workspace === 'manager' || (currentUser?.role === 'manager' && workspace !== 'advisor')) {
+    return (
+      <ManagerReviewView
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onSwitchWorkspace={(ws) => setWorkspace(ws)}
+      />
+    );
   }
 
   const advisorProfile = {
-    ...ADVISOR_PROFILE,
     name: currentUser.display_name,
     role: 'Tư vấn viên',
   };
@@ -179,19 +183,6 @@ export function App() {
           />
         )}
 
-        {currentTab === 'charging' && (
-          <ChargingView
-            onConsultCopilot={handleConsultCopilot}
-          />
-        )}
-
-        {currentTab === 'progress' && (
-          <ErrorState
-            title="Theo dõi tiến bộ sẽ được bổ sung"
-            message="MVP hiện lưu và đánh giá từng phiên luyện tập; dashboard tổng hợp năng lực chưa kết nối dữ liệu thật."
-            onRetry={() => setCurrentTab('roleplay')}
-          />
-        )}
       </main>
 
       {/* NOTIFICATIONS FLYOUT */}

@@ -7,6 +7,7 @@ import {
   ChevronRight,
 } from '../common/Icons';
 import { Badge } from '../common/Badge';
+import { getVehicleImage } from '../../data/vehicleData';
 
 export function HomeView({
   advisorProfile,
@@ -20,6 +21,23 @@ export function HomeView({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       {/* HERO BANNER */}
       <div className="card-dark" style={{ position: 'relative', overflow: 'hidden' }}>
+        {/* Subtle Hero Vehicle Visual Accent */}
+        <div
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: '48%',
+            minWidth: 260,
+            backgroundImage: "linear-gradient(to right, #14161F 0%, rgba(20,22,31,0.75) 30%, rgba(20,22,31,0.2) 100%), url('/vehicles/vf-7.jpg')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 40%',
+            opacity: 0.45,
+            pointerEvents: 'none',
+            zIndex: 1,
+          }}
+        />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 760, position: 'relative', zIndex: 2 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255, 255, 255, 0.08)', padding: '5px 12px', borderRadius: 9999, border: '1px solid rgba(255, 255, 255, 0.15)', width: 'fit-content' }}>
             <SparkleIcon style={{ width: 14, height: 14, color: '#FFFFFF' }} />
@@ -177,11 +195,32 @@ export function HomeView({
                 className="card-white card-white-hover"
                 style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}
               >
-                {/* Badges row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <Badge variant="highlight">{scenario.model_badge || scenario.model || 'VinFast'}</Badge>
-                  <Badge variant="default">Độ khó: {scenario.difficulty}</Badge>
-                  <span style={{ fontSize: '0.78rem', color: '#737373' }}>Tối đa {scenario.max_turns} lượt</span>
+                {/* Badges & Vehicle Thumbnail row */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <Badge variant="highlight">{scenario.model_badge || scenario.model || 'VinFast'}</Badge>
+                    <Badge variant="default">Độ khó: {scenario.difficulty}</Badge>
+                    <span style={{ fontSize: '0.78rem', color: '#737373' }}>Tối đa {scenario.max_turns} lượt</span>
+                  </div>
+                  {getVehicleImage(scenario.model_badge || scenario.model || scenario.title) && (
+                    <div
+                      style={{
+                        width: 58,
+                        height: 36,
+                        borderRadius: 6,
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                        backgroundColor: '#141722',
+                        border: '1px solid #E5E7EB',
+                      }}
+                    >
+                      <img
+                        src={getVehicleImage(scenario.model_badge || scenario.model || scenario.title)}
+                        alt={scenario.model_badge || scenario.model || 'VinFast'}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Title */}

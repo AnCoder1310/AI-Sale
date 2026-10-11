@@ -120,7 +120,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                   VinFast AI Copilot
                 </h2>
                 <Badge variant="default" style={{ backgroundColor: '#F4F4F2', border: '1px solid #E0E0DD' }}>
-                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#166534', marginRight: 4 }} />
+                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#111111', marginRight: 4 }} />
                   RAG Grounded
                 </Badge>
               </div>
@@ -278,8 +278,8 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                       >
                         {copiedId === msg.id ? (
                           <>
-                            <CheckIcon style={{ width: 13, height: 13, color: '#166534' }} />
-                            <span style={{ color: '#166534' }}>Đã sao chép</span>
+                            <CheckIcon style={{ width: 13, height: 13, color: '#111111' }} />
+                            <span style={{ color: '#111111' }}>Đã sao chép</span>
                           </>
                         ) : (
                           <>
@@ -383,7 +383,15 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {FAQ_QUESTIONS.map((item) => (
+            {FAQ_QUESTIONS.length === 0 ? (
+              <div style={{ padding: '12px 14px', borderRadius: 8, backgroundColor: '#F9FAFB', border: '1px dashed #D1D5DB', fontSize: '0.8rem', color: '#6B7280' }}>
+                <span style={{ fontWeight: 600, color: '#374151', display: 'block', marginBottom: 2 }}>
+                  Chờ nạp tài liệu FAQ thực tế
+                </span>
+                Cần 6 tệp PDF câu hỏi thường gặp theo dải xe (VF 3 – VF 9) từ thư mục <code>data/knowledge/</code>.
+              </div>
+            ) : (
+              FAQ_QUESTIONS.map((item) => (
               <div
                 key={item.id}
                 onClick={() => handleSend(item.query)}
@@ -413,7 +421,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                 </span>
                 <ChevronRight style={{ width: 14, height: 14, color: '#888888', flexShrink: 0 }} />
               </div>
-            ))}
+            )))}
           </div>
         </div>
 
@@ -430,7 +438,12 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
           </h4>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-            {CHEAT_SHEET_DATA.items.map((item, idx) => (
+            {CHEAT_SHEET_DATA.items.length === 0 ? (
+              <div style={{ fontSize: '0.8rem', color: '#9CA3AF', lineHeight: 1.4 }}>
+                Đang để trống — Sẽ tự động trích xuất thông số khi nạp các tệp PDF thông số xe & chính sách bảo hành.
+              </div>
+            ) : (
+              CHEAT_SHEET_DATA.items.map((item, idx) => (
               <div key={idx} style={{ fontSize: '0.82rem', color: '#D4D4D4', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                 <span style={{ color: '#FFFFFF' }}>•</span>
                 <div>
@@ -438,7 +451,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                   <span style={{ fontWeight: 600, color: '#FFFFFF' }}>{item.value}</span>
                 </div>
               </div>
-            ))}
+            )))}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, SendIcon } from '../common/Icons';
 import { Badge } from '../common/Badge';
+import { getVehicleImage } from '../../data/vehicleData';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { practiceApi } from '../../api/practiceApi';
@@ -20,6 +21,7 @@ export function PracticeRoom({
   const [turnCount, setTurnCount] = useState(session?.turn_count || 0);
   const [stage, setStage] = useState(session?.conversation_stage || 'opening');
   const [terminationStatus, setTerminationStatus] = useState(session?.termination_status || 'active');
+  const [pendingReply, setPendingReply] = useState(session?.pending_customer_reply || false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState('');
@@ -97,7 +99,7 @@ export function PracticeRoom({
 
   const handleSendMessage = async () => {
     const text = inputMessage.trim();
-    if (!text || loading || finishing || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active') return;
+    if (!text || loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active') return;
 
     const advisorMsg = {
       message_id: createId('adv'),
@@ -117,6 +119,7 @@ export function PracticeRoom({
       setStage(updated.conversation_stage);
       setTurnCount(updated.turn_count);
       setTerminationStatus(updated.termination_status);
+      setPendingReply(updated.pending_customer_reply);
       if (mode === 'voice') {
         const customerReply = updated.messages.at(-1);
         if (customerReply?.role === 'customer') playCustomer(customerReply);
@@ -129,6 +132,7 @@ export function PracticeRoom({
         setStage(saved.conversation_stage);
         setTurnCount(saved.turn_count);
         setTerminationStatus(saved.termination_status);
+        setPendingReply(saved.pending_customer_reply);
       } catch {
         // Keep the advisor's visible draft; do not fabricate a customer reply.
       }
@@ -137,8 +141,40 @@ export function PracticeRoom({
     }
   };
 
+  const handleRetryReply = async () => {
+    if (!pendingReply || loading || finishing || transcribing || recorder.recordingState !== 'idle') return;
+    setLoading(true);
+    setError('');
+    try {
+      const updated = await practiceApi.retryCustomerReply(session.session_id);
+      setMessages(updated.messages);
+      setStage(updated.conversation_stage);
+      setTurnCount(updated.turn_count);
+      setTerminationStatus(updated.termination_status);
+      setPendingReply(updated.pending_customer_reply);
+      if (mode === 'voice') {
+        const customerReply = updated.messages.at(-1);
+        if (customerReply?.role === 'customer') playCustomer(customerReply);
+      }
+    } catch (requestError) {
+      setError(requestError.message || 'AI Customer chưa phản hồi. Hãy thử lại.');
+      try {
+        const saved = await practiceApi.getSession(session.session_id);
+        setMessages(saved.messages);
+        setStage(saved.conversation_stage);
+        setTurnCount(saved.turn_count);
+        setTerminationStatus(saved.termination_status);
+        setPendingReply(saved.pending_customer_reply);
+      } catch {
+        // Keep the saved pending turn visible until the session can be loaded.
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFinishSession = async () => {
-    if (loading || finishing || transcribing || recorder.recordingState !== 'idle') return;
+    if (loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle') return;
     setFinishing(true);
     setError('');
     try {
@@ -168,6 +204,26 @@ export function PracticeRoom({
 
           <div style={{ height: 20, width: 1, backgroundColor: '#E5E5E5' }} />
 
+          {getVehicleImage(scenario?.model_badge || scenario?.model || scenario?.title) && (
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 8,
+                overflow: 'hidden',
+                flexShrink: 0,
+                backgroundColor: '#141722',
+                border: '1px solid #E5E7EB',
+              }}
+            >
+              <img
+                src={getVehicleImage(scenario?.model_badge || scenario?.model || scenario?.title)}
+                alt={scenario?.model_badge || scenario?.model}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+          )}
+
           <div>
             <h2 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#111111' }}>
               {scenario?.title}
@@ -188,7 +244,7 @@ export function PracticeRoom({
           className="btn-primary"
           style={{ backgroundColor: '#111111', fontSize: '0.82rem', padding: '8px 16px' }}
           onClick={() => setShowFinishConfirm(true)}
-          disabled={loading || finishing || transcribing || recorder.recordingState !== 'idle'}
+          disabled={loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle'}
         >
           🏁 Kết thúc & Chấm điểm
         </button>
@@ -289,8 +345,14 @@ export function PracticeRoom({
       {/* INPUT BAR */}
       <div style={{ padding: '16px 20px', borderTop: '1px solid #E5E5E5', backgroundColor: '#FAFAFA' }}>
         {error && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{error}</p>}
+        {pendingReply && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <span style={{ fontSize: '0.82rem' }}>Tin nhắn đã lưu. Khách hàng chưa phản hồi.</span>
+            <button className="btn-primary" onClick={handleRetryReply} disabled={loading || finishing || transcribing || recorder.recordingState !== 'idle'}>Thử lại phản hồi</button>
+          </div>
+        )}
         {(voiceError || recorder.recordingError) && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{voiceError || recorder.recordingError}</p>}
-        {terminationStatus !== 'active' && <p style={{ fontSize: '0.82rem', marginBottom: 8 }}>Đã đạt giới hạn lượt. Hãy kết thúc để xem đánh giá.</p>}
+        {terminationStatus !== 'active' && <p style={{ fontSize: '0.82rem', marginBottom: 8 }}>Cuộc trò chuyện đã kết thúc. Hãy xem đánh giá.</p>}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
           <button type="button" className={mode === 'text' ? 'btn-primary' : 'btn-ghost'} onClick={() => setMode('text')} disabled={recorder.recordingState !== 'idle'}>Chế độ chữ</button>
           <button type="button" className={mode === 'voice' ? 'btn-primary' : 'btn-ghost'} onClick={() => setMode('voice')} disabled={recorder.recordingState !== 'idle'}>Chế độ nói</button>
@@ -315,7 +377,7 @@ export function PracticeRoom({
               onPointerCancel={recorder.stop}
               onKeyDown={(event) => { if (!event.repeat && [' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.start(); } }}
               onKeyUp={(event) => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.stop(); } }}
-              disabled={loading || finishing || transcribing}
+              disabled={loading || finishing || pendingReply || transcribing}
               aria-label="Giữ để nói tiếng Việt, thả để nhận dạng"
             >
               🎙️ {recorder.recordingState === 'requesting' ? 'Đang xin quyền micro...' : recorder.recordingState === 'recording' ? 'Thả để nhận dạng' : 'Giữ để nói'}
@@ -346,11 +408,11 @@ export function PracticeRoom({
               lineHeight: 1.4,
               backgroundColor: '#FFFFFF',
             }}
-            disabled={loading || finishing || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active'}
+            disabled={loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active'}
           />
           <button
             onClick={handleSendMessage}
-            disabled={!inputMessage.trim() || loading || finishing || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active'}
+            disabled={!inputMessage.trim() || loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active'}
             className="btn-primary"
             style={{ height: 46, padding: '0 20px' }}
           >
