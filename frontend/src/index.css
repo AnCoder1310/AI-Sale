@@ -633,6 +633,28 @@ a {
   font-size: 0.82rem;
 }
 
+.manager-voice-usage {
+  padding: 14px;
+  border: 1px solid #dce9df;
+  border-radius: 10px;
+  background: #f7fcf8;
+  font-size: 0.82rem;
+}
+
+.manager-voice-usage h3 {
+  margin: 0 0 8px;
+}
+
+.manager-voice-usage p {
+  margin: 4px 0;
+}
+
+.manager-voice-usage small {
+  display: block;
+  margin-top: 6px;
+  color: #68736b;
+}
+
 .manager-review-hero {
   display: flex;
   justify-content: space-between;

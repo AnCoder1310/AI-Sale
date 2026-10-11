@@ -53,10 +53,6 @@ export const practiceApi = {
     }, 'blob');
   },
 
-  async voiceUsage(sessionId) {
-    return voiceRequest(`/practice/${encodeURIComponent(sessionId)}/voice/usage`);
-  },
-
   async finishSession(sessionId) {
     return request(`/practice/${encodeURIComponent(sessionId)}/finish`, {
       method: 'POST',

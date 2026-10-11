@@ -99,6 +99,9 @@ class RecordedPracticeService:
     ) -> list[AttemptSummary]:
         return await self._records.manager_history(advisor_id, scenario_id, limit, offset)
 
+    async def manager_attempt(self, session_id: str) -> AttemptSummary:
+        return await self._records.manager_attempt(session_id)
+
     async def team_overview(self) -> TeamOverview:
         return await self._records.team_overview()
 

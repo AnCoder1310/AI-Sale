@@ -194,6 +194,6 @@ class VoiceService:
         )
         return audio
 
-    async def usage_summary(self, session_id: str, advisor_id: str) -> VoiceUsageSummary:
-        await self.practice.advisor_session(session_id, advisor_id)
+    async def manager_usage_summary(self, session_id: str) -> VoiceUsageSummary:
+        await self.practice.manager_attempt(session_id)
         return await asyncio.to_thread(self.usage.summary, session_id)

@@ -14,6 +14,8 @@ from src.services.practice import PracticeSessionView
 from src.services.recorded_practice import RecordedPracticeService
 from src.services.voice import Transcription, VoiceProviderError, VoiceProviderUnavailableError, VoiceService
 
+MANAGER_VOICE_USAGE_PATH = "/api/v1/manager/reviews/voice-session/voice/usage"
+
 
 class PracticeStub:
     def __init__(self):
@@ -79,13 +81,19 @@ async def make_client(tmp_path, transcriber=None):
     voice = VoiceService(
         service,
         SQLVoiceUsageRepository(database_url),
-        Settings(_env_file=None, vector_store_type="memory"),
+        Settings(
+            _env_file=None,
+            vector_store_type="memory",
+            voice_stt_usd_per_hour=0.04,
+            voice_tts_usd_per_million_characters=16,
+        ),
         transcriber=transcriber or TranscriberStub(),
         synthesizer=SynthesizerStub(),
     )
-    router, _ = create_recorded_practice_routers(service, fake_identity, voice)
+    router, manager_router = create_recorded_practice_routers(service, fake_identity, voice)
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
+    app.include_router(manager_router, prefix="/api/v1")
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as bootstrap:
         await bootstrap.post("/api/v1/practice/sessions", json={"scenario_id": "scenario-1"})
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test"), practice
@@ -117,7 +125,9 @@ async def test_voice_transcript_is_reviewed_then_uses_normal_message_flow(tmp_pa
         assert speech.status_code == 200
         assert speech.headers["content-type"] == "audio/mpeg"
         assert speech.content == b"mp3-data"
-        usage = (await client.get("/api/v1/practice/voice-session/voice/usage")).json()
+        usage_response = await client.get(MANAGER_VOICE_USAGE_PATH, headers={"X-Test-Identity": "manager-a:manager"})
+        assert usage_response.status_code == 200
+        usage = usage_response.json()
         assert usage["stt_requests"] == 1
         assert usage["stt_billed_seconds"] == 10
         assert usage["tts_requests"] == 1
@@ -150,10 +160,12 @@ async def test_voice_enforces_ownership_and_validates_audio_and_customer_message
                 json={"message_id": "not-a-customer", "gender": "female"},
             )
         ).status_code == 422
+        assert (await client.get(MANAGER_VOICE_USAGE_PATH)).status_code == 403
+        assert (await client.get("/api/v1/practice/voice-session/voice/usage")).status_code == 404
         assert (
             await client.get(
-                "/api/v1/practice/voice-session/voice/usage",
-                headers={"X-Test-Identity": "advisor-b:advisor"},
+                "/api/v1/manager/reviews/missing-session/voice/usage",
+                headers={"X-Test-Identity": "manager-a:manager"},
             )
         ).status_code == 404
 
@@ -179,5 +191,5 @@ async def test_voice_failure_is_retryable_and_only_billable_calls_are_counted(
         )
         assert response.status_code == expected_status
         assert len(practice.session.messages) == 1
-        usage = (await client.get("/api/v1/practice/voice-session/voice/usage")).json()
+        usage = (await client.get(MANAGER_VOICE_USAGE_PATH, headers={"X-Test-Identity": "manager-a:manager"})).json()
         assert usage["stt_requests"] == expected_usage

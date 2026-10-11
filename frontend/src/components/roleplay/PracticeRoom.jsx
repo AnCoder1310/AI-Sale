@@ -26,21 +26,12 @@ export function PracticeRoom({
   const [mode, setMode] = useState('text');
   const [voiceGender, setVoiceGender] = useState('female');
   const [transcribing, setTranscribing] = useState(false);
-  const [voiceUsage, setVoiceUsage] = useState(null);
   const [voiceError, setVoiceError] = useState('');
   const [speakingId, setSpeakingId] = useState(null);
 
   const chatEndRef = useRef(null);
   const audioRef = useRef(null);
   const audioUrlsRef = useRef(new Map());
-
-  const refreshVoiceUsage = async () => {
-    try {
-      setVoiceUsage(await practiceApi.voiceUsage(session.session_id));
-    } catch {
-      // Speech itself succeeded; usage remains available after a later refresh.
-    }
-  };
 
   const onRecorded = async (blob, durationSeconds) => {
     if (blob.size > 4_000_000) {
@@ -52,10 +43,8 @@ export function PracticeRoom({
     try {
       const result = await practiceApi.transcribeVoice(session.session_id, blob, durationSeconds);
       setInputMessage(result.transcript);
-      await refreshVoiceUsage();
     } catch (requestError) {
       setVoiceError(requestError.message || 'Không nhận dạng được giọng nói. Hãy thử ghi lại.');
-      await refreshVoiceUsage();
     } finally {
       setTranscribing(false);
     }
@@ -74,7 +63,6 @@ export function PracticeRoom({
         const blob = await practiceApi.customerSpeech(session.session_id, message.message_id, voiceGender);
         url = URL.createObjectURL(blob);
         audioUrlsRef.current.set(cacheKey, url);
-        await refreshVoiceUsage();
       }
       audioRef.current?.pause();
       const audio = new Audio(url);
@@ -305,7 +293,7 @@ export function PracticeRoom({
         {terminationStatus !== 'active' && <p style={{ fontSize: '0.82rem', marginBottom: 8 }}>Đã đạt giới hạn lượt. Hãy kết thúc để xem đánh giá.</p>}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
           <button type="button" className={mode === 'text' ? 'btn-primary' : 'btn-ghost'} onClick={() => setMode('text')} disabled={recorder.recordingState !== 'idle'}>Chế độ chữ</button>
-          <button type="button" className={mode === 'voice' ? 'btn-primary' : 'btn-ghost'} onClick={() => { setMode('voice'); refreshVoiceUsage(); }} disabled={recorder.recordingState !== 'idle'}>Chế độ nói</button>
+          <button type="button" className={mode === 'voice' ? 'btn-primary' : 'btn-ghost'} onClick={() => setMode('voice')} disabled={recorder.recordingState !== 'idle'}>Chế độ nói</button>
           {mode === 'voice' && (
             <>
               <label style={{ fontSize: '0.82rem' }} htmlFor="customer-voice">Giọng khách:</label>
@@ -313,7 +301,6 @@ export function PracticeRoom({
                 <option value="female">Nữ</option>
                 <option value="male">Nam</option>
               </select>
-              {voiceUsage && <span style={{ fontSize: '0.75rem', color: '#666666' }}>Giọng nói: {voiceUsage.stt_requests} lượt nhận dạng, {voiceUsage.tts_requests} lượt phát • ước tính ${voiceUsage.estimated_usd.toFixed(4)}</span>}
             </>
           )}
         </div>
