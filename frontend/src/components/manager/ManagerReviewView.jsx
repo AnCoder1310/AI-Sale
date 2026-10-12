@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { RefreshIcon } from "../common/Icons";
 import { managerApi } from "../../api/managerApi";
 import { ManagerTopNav } from "../layout/ManagerTopNav";
 import { ManagerReviewModal } from "./ManagerReviewModal";
@@ -104,7 +105,7 @@ export function ManagerReviewView({ currentUser, onLogout }) {
                   </div>
                   <div className="console-hero-actions">
                     <button type="button" className="btn-console-sync" onClick={load} disabled={loading}>
-                      🔄 {loading ? "Đang đồng bộ..." : "Đồng bộ số liệu"}
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><RefreshIcon style={{ width: 13, height: 13 }} /> {loading ? "Đang đồng bộ..." : "Đồng bộ số liệu"}</span>
                     </button>
                   </div>
                 </div>

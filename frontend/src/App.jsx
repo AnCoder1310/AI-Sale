@@ -166,6 +166,7 @@ export function App() {
 
         {currentTab === 'copilot' && (
           <CopilotView
+            currentUser={currentUser}
             initialQuery={copilotQuery}
             onOpenDocument={(documentId) => {
               setSourceDocumentId(documentId);

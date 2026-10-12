@@ -35,8 +35,8 @@ export function Header({
           </div>
         </div>
 
-        {/* NAVIGATION PILL TABS */}
-        <nav className="nav-tabs-pill" aria-label="Main Navigation">
+        {/* NAVIGATION PILL TABS (DESKTOP) */}
+        <nav className="nav-tabs-pill desktop-nav-pill" aria-label="Main Navigation">
           {tabs.map((tab) => {
             const isActive = currentTab === tab.id;
             return (
@@ -66,19 +66,36 @@ export function Header({
             {unreadCount > 0 && <span className="notif-badge-pill">{unreadCount}</span>}
           </button>
 
-          {/* Local MVP has no authentication or individual competency profile. */}
           <div className="user-profile-badge">
-              <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: '50%', background: '#333333', color: '#FFFFFF', display: 'grid', placeItems: 'center' }}>TV</span>
-              <div className="user-details">
-                <span className="user-name">{advisorProfile.name}</span>
-                <span className="user-role">{advisorProfile.role}</span>
-              </div>
+            <span aria-hidden="true" style={{ width: 28, height: 28, borderRadius: '50%', background: '#333333', color: '#FFFFFF', display: 'grid', placeItems: 'center', fontSize: '0.75rem', fontWeight: 700 }}>TV</span>
+            <div className="user-details">
+              <span className="user-name">{advisorProfile.name}</span>
+              <span className="user-role">{advisorProfile.role}</span>
+            </div>
           </div>
           <button className="header-logout-btn" type="button" onClick={onLogout}>
             Đăng xuất
           </button>
         </div>
       </div>
+
+      {/* MOBILE NAV PILLS BAR */}
+      <nav className="mobile-nav-pills" aria-label="Mobile Navigation">
+        {tabs.map((tab) => {
+          const isActive = currentTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              className={`mobile-nav-pill-item ${isActive ? 'active' : ''}`}
+              onClick={() => onTabChange(tab.id)}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </header>
   );
 }

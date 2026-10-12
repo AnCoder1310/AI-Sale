@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, SendIcon } from '../common/Icons';
+import { ChevronLeft, SendIcon, FlagIcon, TargetIcon } from '../common/Icons';
 import { Badge } from '../common/Badge';
 import { getVehicleImage } from '../../data/vehicleData';
 import { Button } from '../common/Button';
@@ -202,7 +202,7 @@ export function PracticeRoom({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', minHeight: 650, backgroundColor: '#FFFFFF', borderRadius: 16, border: '1px solid #E5E5E5', overflow: 'hidden' }}>
+    <div className="practice-room-container" style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#FFFFFF', borderRadius: 16, border: '1px solid #E5E5E5', overflow: 'hidden' }}>
       {/* ROOM HEADER */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid #E5E5E5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FAFAFA', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -259,7 +259,7 @@ export function PracticeRoom({
           onClick={() => setShowFinishConfirm(true)}
           disabled={loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle'}
         >
-          🏁 Kết thúc & Chấm điểm
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FlagIcon style={{ width: 13, height: 13 }} /> Kết thúc & Chấm điểm</span>
         </button>
       </div>
 
@@ -276,7 +276,7 @@ export function PracticeRoom({
           </div>
         </div>
         <div style={{ fontSize: '0.78rem', color: '#555555', textAlign: 'right' }}>
-          🎯 <strong>Mục tiêu:</strong> {scenario?.training_objective}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><TargetIcon style={{ width: 13, height: 13 }} /> <strong>Mục tiêu:</strong></span> {scenario?.training_objective}
         </div>
       </div>
 

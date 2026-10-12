@@ -117,7 +117,7 @@ export function ScenarioCatalog({
       </div>
 
       {/* SCENARIOS 2-COLUMN GRID */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: 20 }}>
+      <div className="scenario-catalog-grid">
         {filtered.map((s) => (
           <div
             key={s.scenario_id}
