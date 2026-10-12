@@ -48,7 +48,7 @@ export function HomeView({
           </div>
 
           <h1 style={{ fontSize: '2.2rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#FFFFFF', lineHeight: 1.2 }}>
-            Chào buổi sáng, {advisorProfile.name.split(' ').slice(-1)[0]}! 👋
+            Chào buổi sáng, {advisorProfile.name.split(' ').slice(-1)[0]}!
           </h1>
 
           <p style={{ fontSize: '0.98rem', color: '#A3A3A3', lineHeight: 1.5 }}>

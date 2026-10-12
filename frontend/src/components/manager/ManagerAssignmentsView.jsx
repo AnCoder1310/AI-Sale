@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { managerApi } from '../../api/managerApi';
 import { practiceApi } from '../../api/practiceApi';
+import { AlertCircleIcon } from '../common/Icons';
 
 const STATUS = { assigned: 'Đã giao', in_progress: 'Đang luyện', completed: 'Hoàn thành' };
 
@@ -96,7 +97,7 @@ export function ManagerAssignmentsView({ onNavigateTab }) {
         <>
           {advisors.length === 0 && (
             <div className="manager-banner-warning">
-              <span>⚠️ Chưa có tài khoản Advisor hoạt động để giao bài.</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><AlertCircleIcon style={{ width: 14, height: 14 }} /> Chưa có tài khoản Advisor hoạt động để giao bài.</span>
               {onNavigateTab && (
                 <button
                   type="button"

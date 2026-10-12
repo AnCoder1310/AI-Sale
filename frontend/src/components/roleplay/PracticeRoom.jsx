@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, SendIcon } from '../common/Icons';
+import { ChevronLeft, SendIcon, FlagIcon, TargetIcon } from '../common/Icons';
 import { Badge } from '../common/Badge';
 import { getVehicleImage } from '../../data/vehicleData';
 import { Button } from '../common/Button';
@@ -171,7 +171,7 @@ export function PracticeRoom({
           onClick={() => setShowFinishConfirm(true)}
           disabled={loading || finishing || pendingReply}
         >
-          🏁 Kết thúc & Chấm điểm
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FlagIcon style={{ width: 13, height: 13 }} /> Kết thúc & Chấm điểm</span>
         </button>
       </div>
 
@@ -188,7 +188,7 @@ export function PracticeRoom({
           </div>
         </div>
         <div style={{ fontSize: '0.78rem', color: '#555555', textAlign: 'right' }}>
-          🎯 <strong>Mục tiêu:</strong> {scenario?.training_objective}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><TargetIcon style={{ width: 13, height: 13 }} /> <strong>Mục tiêu:</strong></span> {scenario?.training_objective}
         </div>
       </div>
 

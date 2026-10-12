@@ -420,6 +420,19 @@ a {
   background: #dedede;
 }
 
+
+.login-internal-notice {
+  margin-top: 14px !important;
+  padding: 10px 14px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #475569 !important;
+  font-size: 0.74rem !important;
+  line-height: 1.5;
+  text-align: left;
+}
+
 .login-demo p {
   margin-top: 10px;
   color: #909090;

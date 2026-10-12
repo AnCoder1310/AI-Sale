@@ -10,6 +10,19 @@ import {
   AlertCircleIcon,
   UploadIcon,
   CheckCircleIcon,
+  CloseIcon,
+  PolicyIcon,
+  FeeIcon,
+  CarIcon,
+  FaqIcon,
+  ChecklistIcon,
+  FolderIcon,
+  BatteryIcon,
+  SettingsIcon,
+  RulerIcon,
+  ShieldCheckIcon,
+  ClockIcon,
+  PinIcon,
 } from '../common/Icons';
 import { Badge } from '../common/Badge';
 import { Modal } from '../common/Modal';
@@ -32,6 +45,8 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
   const [viewingPdf, setViewingPdf] = useState(null); // { title, url, filename }
   const [sourceError, setSourceError] = useState('');
   const [copiedId, setCopiedId] = useState(null);
+  const [faqModelFilter, setFaqModelFilter] = useState('all');
+  const [expandedFaqId, setExpandedFaqId] = useState(null);
 
   useEffect(() => {
     if (!sourceDocumentId) return;
@@ -76,17 +91,33 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
       f.summary?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredVehicles = VEHICLES.filter(
-    (v) =>
-      v.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.segment?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredVehicles = VEHICLES.filter((v) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      v.name?.toLowerCase().includes(q) ||
+      v.model?.toLowerCase().includes(q) ||
+      v.segment?.toLowerCase().includes(q) ||
+      v.tagline?.toLowerCase().includes(q) ||
+      v.highlights?.some((h) => h.toLowerCase().includes(q))
+    );
+  });
 
-  const filteredFaqs = FAQ_QUESTIONS.filter(
-    (f) =>
-      f.question?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      f.category?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredFaqs = FAQ_QUESTIONS.filter((f) => {
+    const matchesModel =
+      faqModelFilter === 'all' ||
+      f.model === faqModelFilter ||
+      f.category?.toLowerCase().includes(faqModelFilter.toLowerCase());
+    if (!matchesModel) return false;
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      f.question?.toLowerCase().includes(q) ||
+      f.category?.toLowerCase().includes(q) ||
+      f.answer?.toLowerCase().includes(q) ||
+      f.model?.toLowerCase().includes(q)
+    );
+  });
 
   // Filter required PDF checklist arrays
   const filterPdfList = (list) => {
@@ -194,7 +225,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
             <ul style={{ listStyle: 'none', paddingLeft: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
               {doc.key_points.map((pt, idx) => (
                 <li key={idx} style={{ fontSize: '0.82rem', color: '#334155', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                  <span style={{ color: '#18181B', fontWeight: 700 }}>✓</span>
+                  <CheckIcon style={{ width: 12, height: 12, color: "#0F172A", flexShrink: 0, marginTop: 3 }} />
                   <span>{pt}</span>
                 </li>
               ))}
@@ -269,7 +300,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               style={{
                 fontSize: '0.72rem',
                 fontWeight: 700,
-                color: '#52525B',
+                color: pdf.status?.includes('Đã nạp') ? '#18181B' : '#52525B',
                 backgroundColor: '#F4F4F5',
                 padding: '3px 8px',
                 borderRadius: 4,
@@ -278,7 +309,8 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
                 gap: 4,
               }}
             >
-              ⏳ {pdf.status}
+              {pdf.status?.includes('Đã nạp') ? <CheckCircleIcon style={{ width: 12, height: 12 }} /> : <ClockIcon style={{ width: 12, height: 12 }} />}
+              {pdf.status}
             </span>
           </div>
 
@@ -324,7 +356,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
         {/* Required Contents Box */}
         <div style={{ backgroundColor: '#F9FAFB', padding: '12px 16px', borderRadius: 8, border: '1px solid #E5E7EB' }}>
           <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
-            📌 CÁC MỤC NỘI DUNG CẦN CÓ TRONG TỆP PDF:
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><PinIcon style={{ width: 12, height: 12 }} /> NỘI DUNG CẦN CÓ TRONG TÀI LIỆU:</span>
           </div>
           <ul style={{ listStyle: 'none', paddingLeft: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
             {pdf.required_contents?.map((item, idx) => (
@@ -395,11 +427,11 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', backgroundColor: '#F9FAFB', padding: '10px 16px', borderRadius: 8, fontSize: '0.8rem', color: '#4B5563' }}>
-        <span>📂 Thư mục tiếp nhận: <code style={{ fontWeight: 700, color: '#111827' }}>data/knowledge/</code></span>
+        <span>Thư mục tiếp nhận: <code style={{ fontWeight: 700, color: '#111827' }}>data/knowledge/</code></span>
         <span>•</span>
-        <span>📁 Số lượng tệp cần nạp: <strong style={{ color: '#18181B' }}>{count} tệp PDF</strong></span>
+        <span>Số lượng tệp cần nạp: <strong style={{ color: '#18181B' }}>{count} tệp PDF</strong></span>
         <span>•</span>
-        <span>📑 Định dạng: <code>{docType}</code></span>
+        <span>Định dạng: <code>{docType}</code></span>
       </div>
     </div>
   );
@@ -425,9 +457,10 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
           <span>{sourceError}</span>
           <button
             onClick={() => setSourceError('')}
-            style={{ background: 'none', border: 'none', color: '#991B1B', cursor: 'pointer', fontWeight: 700 }}
+            style={{ background: 'none', border: 'none', color: '#991B1B', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 2 }}
+            aria-label="Đóng"
           >
-            ✕
+            <CloseIcon style={{ width: 14, height: 14 }} />
           </button>
         </div>
       )}
@@ -474,8 +507,8 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
       <div
         className="card-white"
         style={{
-          padding: '16px 20px',
-          borderLeft: '4px solid #111111',
+          padding: '14px 18px',
+          borderLeft: '4px solid #0F172A',
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
@@ -484,85 +517,103 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ display: 'inline-flex', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#18181B' }} />
-            <strong style={{ fontSize: '0.88rem', color: '#1E293B' }}>
-              Dữ liệu lấy từ các tệp PDF thực tế trong frontend/src/data (Đã nạp {POLICIES.length + PRICING_TARIFFS.length} tệp văn bản)
+            <span style={{ display: 'inline-flex', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#0F172A' }} />
+            <strong style={{ fontSize: '0.88rem', color: '#0F172A' }}>
+              Kho dữ liệu tài liệu & chính sách VinFast 2026
             </strong>
           </div>
           <button
             className="btn-outline"
             onClick={() => setSubTab('checklist')}
-            style={{ fontSize: '0.78rem', padding: '5px 12px', backgroundColor: '#FFFFFF' }}
+            style={{ fontSize: '0.78rem', padding: '5px 12px', backgroundColor: '#FFFFFF', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            <span>Xem toàn bộ {TOTAL_REQUIRED_PDFS} tệp PDF danh mục</span>
+            <ChecklistIcon style={{ width: 13, height: 13 }} />
+            <span>Danh mục {TOTAL_REQUIRED_PDFS} tài liệu</span>
             <ChevronRight style={{ width: 12, height: 12 }} />
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-          <div style={{ padding: '8px 12px', backgroundColor: '#FFFFFF', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '0.72rem', color: '#64748B' }}>📜 Chính sách & Hợp đồng</span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
-              <strong style={{ fontSize: '1.1rem', color: '#18181B' }}>{POLICIES.length} tệp PDF</strong>
-              <span style={{ fontSize: '0.72rem', color: '#18181B' }}>✓ Đã nạp</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+          <div style={{ padding: '10px 12px', backgroundColor: '#FFFFFF', borderRadius: 8, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0F172A', flexShrink: 0 }}>
+              <PolicyIcon style={{ width: 16, height: 16 }} />
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Chính sách & Hợp đồng</span>
+              <strong style={{ fontSize: '0.98rem', color: '#0F172A' }}>{POLICIES.length} tệp</strong>
             </div>
           </div>
-          <div style={{ padding: '8px 12px', backgroundColor: '#FFFFFF', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '0.72rem', color: '#64748B' }}>💰 Biểu phí & Bảng giá</span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
-              <strong style={{ fontSize: '1.1rem', color: '#18181B' }}>{PRICING_TARIFFS.length} tệp PDF</strong>
-              <span style={{ fontSize: '0.72rem', color: '#18181B' }}>✓ Đã nạp</span>
+          <div style={{ padding: '10px 12px', backgroundColor: '#FFFFFF', borderRadius: 8, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0F172A', flexShrink: 0 }}>
+              <FeeIcon style={{ width: 16, height: 16 }} />
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Biểu phí & Bảng giá</span>
+              <strong style={{ fontSize: '0.98rem', color: '#0F172A' }}>{PRICING_TARIFFS.length} tệp</strong>
             </div>
           </div>
-          <div style={{ padding: '8px 12px', backgroundColor: '#FFFFFF', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '0.72rem', color: '#64748B' }}>🚗 Thông số xe</span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
-              <strong style={{ fontSize: '1.1rem', color: '#0F172A' }}>0 / 7 tệp</strong>
-              <span style={{ fontSize: '0.72rem', color: '#18181B' }}>Chờ PDF xe</span>
+          <div style={{ padding: '10px 12px', backgroundColor: '#FFFFFF', borderRadius: 8, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0F172A', flexShrink: 0 }}>
+              <CarIcon style={{ width: 16, height: 16 }} />
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Thông số xe</span>
+              <strong style={{ fontSize: '0.98rem', color: '#0F172A' }}>{VEHICLES.length} dòng xe</strong>
             </div>
           </div>
-          <div style={{ padding: '8px 12px', backgroundColor: '#FFFFFF', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '0.72rem', color: '#64748B' }}>❓ Câu hỏi thường gặp FAQ</span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
-              <strong style={{ fontSize: '1.1rem', color: '#0F172A' }}>0 / 6 tệp</strong>
-              <span style={{ fontSize: '0.72rem', color: '#18181B' }}>Chờ PDF FAQ</span>
+          <div style={{ padding: '10px 12px', backgroundColor: '#FFFFFF', borderRadius: 8, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0F172A', flexShrink: 0 }}>
+              <FaqIcon style={{ width: 16, height: 16 }} />
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Hỏi đáp FAQ</span>
+              <strong style={{ fontSize: '0.98rem', color: '#0F172A' }}>{FAQ_QUESTIONS.length} câu hỏi</strong>
             </div>
           </div>
         </div>
       </div>
 
       {/* 4 CATEGORY TABS + SUMMARY CHECKLIST TAB */}
-      <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #E5E5E5', paddingBottom: 10, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #E2E8F0', paddingBottom: 10, flexWrap: 'wrap' }}>
         <button
           className={`chip ${subTab === 'policies' ? 'active' : ''}`}
           onClick={() => setSubTab('policies')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          📜 Chính sách & Hợp đồng ({POLICIES.length} tệp PDF thực tế)
+          <PolicyIcon style={{ width: 14, height: 14 }} />
+          <span>Chính sách ({POLICIES.length})</span>
         </button>
         <button
           className={`chip ${subTab === 'fees' ? 'active' : ''}`}
           onClick={() => setSubTab('fees')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          💰 Biểu phí & Bảng giá ({PRICING_TARIFFS.length} tệp PDF thực tế)
+          <FeeIcon style={{ width: 14, height: 14 }} />
+          <span>Biểu phí ({PRICING_TARIFFS.length})</span>
         </button>
         <button
           className={`chip ${subTab === 'vehicles' ? 'active' : ''}`}
           onClick={() => setSubTab('vehicles')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          🚗 Thông số xe (0 - Cần {REQUIRED_VEHICLE_PDFS.length} PDF)
+          <CarIcon style={{ width: 14, height: 14 }} />
+          <span>Dòng xe ({VEHICLES.length})</span>
         </button>
         <button
           className={`chip ${subTab === 'faq' ? 'active' : ''}`}
           onClick={() => setSubTab('faq')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          ❓ Câu hỏi thường gặp FAQ (0 - Cần {REQUIRED_FAQ_PDFS.length} PDF)
+          <FaqIcon style={{ width: 14, height: 14 }} />
+          <span>Hỏi đáp ({FAQ_QUESTIONS.length})</span>
         </button>
         <button
           className={`chip ${subTab === 'checklist' ? 'active' : ''}`}
           onClick={() => setSubTab('checklist')}
-          style={{ marginLeft: 'auto' }}
+          style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          📋 Tổng hợp ({TOTAL_REQUIRED_PDFS} tệp PDF)
+          <ChecklistIcon style={{ width: 14, height: 14 }} />
+          <span>Danh mục ({TOTAL_REQUIRED_PDFS})</span>
         </button>
       </div>
 
@@ -586,7 +637,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircleIcon style={{ width: 18, height: 18, color: '#18181B' }} />
                 <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#18181B' }}>
-                  Danh sách {POLICIES.length} tệp PDF Chính sách & Hợp đồng thực tế trong frontend/src/data
+                  Chính sách & Hợp đồng ({POLICIES.length} tài liệu)
                 </h3>
               </div>
               <p style={{ fontSize: '0.82rem', color: '#52525B', marginTop: 2 }}>
@@ -607,7 +658,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
             <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px dashed #E2E8F0' }}>
               <details style={{ cursor: 'pointer' }}>
                 <summary style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>
-                  📁 Xem danh mục văn bản có thể bổ sung thêm ({REQUIRED_POLICY_PDFS.length} tệp)
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FolderIcon style={{ width: 14, height: 14 }} /> Danh mục tài liệu bổ sung ({REQUIRED_POLICY_PDFS.length})</span>
                 </summary>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
                   {filteredPolicyPdfs.map((pdf) => renderPdfItemCard(pdf))}
@@ -638,7 +689,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircleIcon style={{ width: 18, height: 18, color: '#18181B' }} />
                 <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#18181B' }}>
-                  Danh sách {PRICING_TARIFFS.length} tệp PDF Biểu phí & Bảng giá bán thực tế trong frontend/src/data
+                  Biểu phí & Bảng giá ({PRICING_TARIFFS.length} tài liệu)
                 </h3>
               </div>
               <p style={{ fontSize: '0.82rem', color: '#52525B', marginTop: 2 }}>
@@ -659,7 +710,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
             <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px dashed #E2E8F0' }}>
               <details style={{ cursor: 'pointer' }}>
                 <summary style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>
-                  📁 Xem danh mục văn bản biểu phí có thể bổ sung thêm ({REQUIRED_FEE_PDFS.length} tệp)
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FolderIcon style={{ width: 14, height: 14 }} /> Danh mục biểu phí bổ sung ({REQUIRED_FEE_PDFS.length})</span>
                 </summary>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
                   {filteredFeePdfs.map((pdf) => renderPdfItemCard(pdf))}
@@ -670,64 +721,309 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
         </div>
       )}
 
-      {/* 3. VEHICLES TAB: ĐANG ĐỂ TRỐNG CHỜ PDF THÔNG SỐ XE */}
+      {/* 3. VEHICLES TAB: DẢI XE VINFAST CHÍNH THỨC */}
       {subTab === 'vehicles' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {VEHICLES.length === 0 ? (
-            <>
-              {renderEmptySectionNotice('Thông số xe & Trang bị kỹ thuật', REQUIRED_VEHICLE_PDFS.length, 'product_specs')}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827' }}>
-                  Danh mục 7 tệp PDF thông số kỹ thuật xe VinFast cần chuẩn bị:
+          {VEHICLES.length === 0 && renderEmptySectionNotice('Thông số xe & Trang bị kỹ thuật', REQUIRED_VEHICLE_PDFS.length, 'product_specs')}
+          <div
+            style={{
+              padding: '16px 20px',
+              borderRadius: 10,
+              backgroundColor: '#FAFAFA',
+              border: '1px solid #E4E4E7',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 10,
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircleIcon style={{ width: 18, height: 18, color: '#18181B' }} />
+                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#18181B' }}>
+                  Dải ô tô điện VinFast 2026 ({VEHICLES.length} dòng xe)
                 </h3>
-                <span style={{ fontSize: '0.78rem', color: '#6B7280' }}>
-                  Hiển thị: {filteredVehiclePdfs.length} / {REQUIRED_VEHICLE_PDFS.length} tệp
-                </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <p style={{ fontSize: '0.82rem', color: '#52525B', marginTop: 2 }}>
+                Thông số kỹ thuật chuẩn hóa, giá niêm yết, pin và trang bị ADAS phục vụ tư vấn khách hàng.
+              </p>
+            </div>
+            <span style={{ fontSize: '0.78rem', color: '#18181B', fontWeight: 600 }}>
+              Hiển thị: {filteredVehicles.length} / {VEHICLES.length} dòng xe
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20 }}>
+            {filteredVehicles.map((v) => (
+              <div
+                key={v.id}
+                className="card-white"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  backgroundColor: '#FFFFFF',
+                }}
+              >
+                {/* Image Banner */}
+                {v.image && (
+                  <div style={{ width: '100%', height: 190, backgroundColor: '#0F172A', overflow: 'hidden', position: 'relative' }}>
+                    <img
+                      src={v.image}
+                      alt={v.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        if (v.id) e.target.src = `/vehicles/${v.id}.svg`;
+                      }}
+                    />
+                    <div style={{ position: 'absolute', top: 12, left: 12 }}>
+                      <span style={{ backgroundColor: 'rgba(0,0,0,0.75)', color: '#FFFFFF', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>
+                        {v.model}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+                      <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0F172A' }}>{v.name}</h3>
+                      <span style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 500 }}>{v.segment}</span>
+                    </div>
+                    {v.tagline && (
+                      <p style={{ fontSize: '0.82rem', color: '#475569', fontStyle: 'italic', marginTop: 4 }}>
+                        "{v.tagline}"
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Specs Highlights */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 10,
+                      padding: '12px 14px',
+                      backgroundColor: '#F8FAFC',
+                      borderRadius: 10,
+                      border: '1px solid #E2E8F0',
+                    }}
+                  >
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#64748B', display: 'block' }}>Quãng đường:</span>
+                      <strong style={{ fontSize: '0.85rem', color: '#0F172A' }}>{v.range}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#64748B', display: 'block' }}>Công suất:</span>
+                      <strong style={{ fontSize: '0.85rem', color: '#0F172A' }}>{v.power}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#64748B', display: 'block' }}>Dung lượng Pin:</span>
+                      <strong style={{ fontSize: '0.85rem', color: '#0F172A' }}>{v.battery_capacity}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#64748B', display: 'block' }}>Sạc nhanh (DC):</span>
+                      <strong style={{ fontSize: '0.85rem', color: '#0F172A' }}>{v.charging_time}</strong>
+                    </div>
+                  </div>
+
+                  {/* Pricing info */}
+                  {(v.price_battery_included || v.price_battery_rental) && (
+                    <div style={{ padding: '10px 12px', backgroundColor: '#F1F5F9', borderRadius: 8, fontSize: '0.8rem', color: '#334155' }}>
+                      {v.price_battery_included && (
+                        <div><FeeIcon style={{ width: 13, height: 13, display: "inline", verticalAlign: "-2px", marginRight: 4 }} /> <strong>Kèm pin:</strong> {v.price_battery_included}</div>
+                      )}
+                      {v.price_battery_rental && (
+                        <div style={{ marginTop: 2 }}><BatteryIcon style={{ width: 13, height: 13, display: "inline", verticalAlign: "-2px", marginRight: 4 }} /> <strong>Thuê pin:</strong> {v.price_battery_rental}</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 8, borderTop: '1px solid #F1F5F9', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn-primary"
+                      onClick={() => setSelectedVehicle(v)}
+                      style={{ flex: 1, fontSize: '0.8rem', padding: '8px 12px', justifyContent: 'center' }}
+                    >
+                      <span>Chi tiết kỹ thuật</span>
+                      <ChevronRight style={{ width: 13, height: 13 }} />
+                    </button>
+                    {v.document_id && (
+                      <button
+                        className="btn-outline"
+                        onClick={() => handleOpenDocument(v.document_id, v.name)}
+                        style={{ fontSize: '0.8rem', padding: '8px 12px' }}
+                        title="Xem văn bản gốc trong Corpus"
+                      >
+                        <span>Văn bản gốc</span>
+                      </button>
+                    )}
+                    <button
+                      className="btn-outline"
+                      onClick={() => onOpenCopilotQuery && onOpenCopilotQuery(`Tư vấn thông số kỹ thuật xe ${v.name}`)}
+                      style={{ fontSize: '0.8rem', padding: '8px 10px' }}
+                      title="Hỏi Copilot về xe này"
+                    >
+                      <SparkleIcon style={{ width: 14, height: 14 }} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Collapsible reference PDF documents */}
+          <div style={{ marginTop: 8 }}>
+            <details style={{ cursor: 'pointer' }}>
+              <summary style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FolderIcon style={{ width: 14, height: 14 }} /> Danh mục tài liệu kỹ thuật ({REQUIRED_VEHICLE_PDFS.length})</span>
+              </summary>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
                 {filteredVehiclePdfs.map((pdf) => renderPdfItemCard(pdf))}
               </div>
-            </>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20 }}>
-              {filteredVehicles.map((v) => (
-                <div key={v.id} className="card-white" style={{ padding: 20 }}>
-                  <h3>{v.name}</h3>
-                  <button className="btn-outline" onClick={() => setSelectedVehicle(v)}>Chi tiết</button>
-                </div>
-              ))}
-            </div>
-          )}
+            </details>
+          </div>
         </div>
       )}
 
-      {/* 4. FAQ TAB: ĐANG ĐỂ TRỐNG CHỜ PDF FAQ */}
+      {/* 4. FAQ TAB: NGÂN HÀNG CÂU HỎI THƯỜNG GẶP FAQ */}
       {subTab === 'faq' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {FAQ_QUESTIONS.length === 0 ? (
-            <>
-              {renderEmptySectionNotice('Câu hỏi thường gặp FAQ', REQUIRED_FAQ_PDFS.length, 'faq')}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827' }}>
-                  Danh mục 6 tệp PDF câu hỏi thường gặp theo dòng xe cần chuẩn bị:
+          {FAQ_QUESTIONS.length === 0 && renderEmptySectionNotice('Câu hỏi thường gặp FAQ', REQUIRED_FAQ_PDFS.length, 'faq')}
+          <div
+            style={{
+              padding: '16px 20px',
+              borderRadius: 10,
+              backgroundColor: '#FAFAFA',
+              border: '1px solid #E4E4E7',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 10,
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircleIcon style={{ width: 18, height: 18, color: '#18181B' }} />
+                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#18181B' }}>
+                  Ngân hàng Câu hỏi thường gặp FAQ VinFast 2026 ({FAQ_QUESTIONS.length} câu hỏi đã đồng bộ từ data/knowledge/faq.json)
                 </h3>
-                <span style={{ fontSize: '0.78rem', color: '#6B7280' }}>
-                  Hiển thị: {filteredFaqPdfs.length} / {REQUIRED_FAQ_PDFS.length} tệp
-                </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <p style={{ fontSize: '0.82rem', color: '#52525B', marginTop: 2 }}>
+                Giải đáp chi tiết thắc mắc khách hàng theo từng dòng xe, pin & trạm sạc V-GREEN, bảo hành và tiện ích thông minh.
+              </p>
+            </div>
+            <span style={{ fontSize: '0.78rem', color: '#18181B', fontWeight: 600 }}>
+              Hiển thị: {filteredFaqs.length} / {FAQ_QUESTIONS.length} câu hỏi
+            </span>
+          </div>
+
+          {/* Model filter chips */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[
+              { id: 'all', label: `Tất cả (${FAQ_QUESTIONS.length})` },
+              { id: 'VF 3', label: 'VF 3' },
+              { id: 'VF 5', label: 'VF 5 Plus' },
+              { id: 'VF 6', label: 'VF 6' },
+              { id: 'VF 7', label: 'VF 7' },
+              { id: 'VF 8', label: 'VF 8' },
+              { id: 'VF 9', label: 'VF 9' },
+            ].map((m) => (
+              <button
+                key={m.id}
+                className={`chip ${faqModelFilter === m.id ? 'active' : ''}`}
+                onClick={() => setFaqModelFilter(m.id)}
+                style={{ fontSize: '0.78rem' }}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          {/* FAQ list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {filteredFaqs.map((f) => {
+              const isExpanded = expandedFaqId === f.id;
+              return (
+                <div
+                  key={f.id}
+                  className="card-white"
+                  style={{
+                    padding: '18px 22px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 10,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <Badge variant="highlight">{f.model || f.category}</Badge>
+                      <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                        Tài liệu: <code>{f.document_id}</code>
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        className="btn-outline"
+                        onClick={() => handleOpenDocument(f.document_id, f.category)}
+                        style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                        title="Xem toàn bộ tài liệu FAQ gốc"
+                      >
+                        <span>Văn bản gốc FAQ</span>
+                      </button>
+                      <button
+                        className="btn-primary"
+                        onClick={() => onOpenCopilotQuery && onOpenCopilotQuery(f.query || f.question)}
+                        style={{ fontSize: '0.75rem', padding: '4px 12px' }}
+                      >
+                        <span>Hỏi Copilot</span>
+                        <SparkleIcon style={{ width: 12, height: 12 }} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3
+                      onClick={() => setExpandedFaqId(isExpanded ? null : f.id)}
+                      style={{ fontSize: '1.02rem', fontWeight: 700, color: '#0F172A', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}
+                    >
+                      <span>{f.question}</span>
+                      <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 400 }}>
+                        {isExpanded ? 'Thu gọn ▲' : 'Xem chi tiết ▼'}
+                      </span>
+                    </h3>
+
+                    {/* Answer content */}
+                    <div style={{ marginTop: 8, fontSize: '0.86rem', color: '#334155', lineHeight: 1.6, backgroundColor: '#F8FAFC', padding: '12px 16px', borderRadius: 8, border: '1px solid #F1F5F9', whiteSpace: 'pre-line' }}>
+                      {isExpanded ? f.answer : f.preview}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Collapsible reference FAQ documents */}
+          <div style={{ marginTop: 8 }}>
+            <details style={{ cursor: 'pointer' }}>
+              <summary style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FolderIcon style={{ width: 14, height: 14 }} /> Danh mục tài liệu FAQ ({REQUIRED_FAQ_PDFS.length})</span>
+              </summary>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
                 {filteredFaqPdfs.map((pdf) => renderPdfItemCard(pdf))}
               </div>
-            </>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {filteredFaqs.map((f) => (
-                <div key={f.id} className="card-white" style={{ padding: 18 }}>
-                  <h3>{f.question}</h3>
-                </div>
-              ))}
-            </div>
-          )}
+            </details>
+          </div>
         </div>
       )}
 
@@ -796,7 +1092,12 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               <div key={cat.key} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #E5E7EB', paddingBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: '1.25rem' }}>{cat.icon}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', color: '#0F172A' }}>
+                    {cat.key === 'vehicles' ? <CarIcon style={{ width: 20, height: 20 }} /> :
+                     cat.key === 'policies' ? <PolicyIcon style={{ width: 20, height: 20 }} /> :
+                     cat.key === 'fees' ? <FeeIcon style={{ width: 20, height: 20 }} /> :
+                     <FaqIcon style={{ width: 20, height: 20 }} />}
+                  </span>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#111827' }}>
                       {cat.name} ({cat.count} tệp PDF)
                     </h3>
@@ -867,7 +1168,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
         isOpen={Boolean(selectedVehicle)}
         onClose={() => setSelectedVehicle(null)}
         title={selectedVehicle ? `${selectedVehicle.name} — Thông số chi tiết` : ''}
-        maxWidth={720}
+        maxWidth={760}
       >
         {selectedVehicle && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -877,12 +1178,170 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
                   src={selectedVehicle.image}
                   alt={selectedVehicle.name}
                   style={{ width: '100%', maxHeight: 280, objectFit: 'cover', display: 'block' }}
+                  onError={(e) => {
+                    if (selectedVehicle.id) e.target.src = `/vehicles/${selectedVehicle.id}.svg`;
+                  }}
                 />
               </div>
             )}
             <div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{selectedVehicle.name}</h3>
-              <p style={{ fontSize: '0.85rem', color: '#666' }}>{selectedVehicle.segment}</p>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0F172A' }}>{selectedVehicle.name}</h3>
+                <span style={{ fontSize: '0.85rem', color: '#64748B' }}>{selectedVehicle.segment}</span>
+              </div>
+              {selectedVehicle.tagline && (
+                <p style={{ fontSize: '0.88rem', color: '#475569', fontStyle: 'italic', marginTop: 4 }}>
+                  "{selectedVehicle.tagline}"
+                </p>
+              )}
+            </div>
+
+            {/* Price section */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: 14, backgroundColor: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+              <div>
+                <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Giá bán kèm Pin:</span>
+                <strong style={{ fontSize: '1rem', color: '#0F172A' }}>{selectedVehicle.price_battery_included || 'Đang cập nhật'}</strong>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Giá thuê Pin (nếu có):</span>
+                <strong style={{ fontSize: '1rem', color: '#0F172A' }}>{selectedVehicle.price_battery_rental || 'Theo chính sách'}</strong>
+              </div>
+            </div>
+
+            {/* Specifications Grid */}
+            <div>
+              <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0F172A', marginBottom: 10 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><SettingsIcon style={{ width: 14, height: 14 }} /> Thông số Vận hành & Pin:</span>
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                <div style={{ padding: 12, backgroundColor: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748B' }}>Quãng đường di chuyển:</span>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0F172A' }}>{selectedVehicle.range}</div>
+                </div>
+                <div style={{ padding: 12, backgroundColor: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748B' }}>Công suất tối đa:</span>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0F172A' }}>{selectedVehicle.power}</div>
+                </div>
+                <div style={{ padding: 12, backgroundColor: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748B' }}>Mô-men xoắn cực đại:</span>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0F172A' }}>{selectedVehicle.torque}</div>
+                </div>
+                <div style={{ padding: 12, backgroundColor: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748B' }}>Dung lượng pin:</span>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0F172A' }}>{selectedVehicle.battery_capacity}</div>
+                </div>
+                <div style={{ padding: 12, backgroundColor: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748B' }}>Thời gian sạc nhanh:</span>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0F172A' }}>{selectedVehicle.charging_time}</div>
+                </div>
+                <div style={{ padding: 12, backgroundColor: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748B' }}>Hệ dẫn động:</span>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0F172A' }}>{selectedVehicle.drivetrain}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Dimensions & Chassis */}
+            <div>
+              <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0F172A', marginBottom: 10 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><RulerIcon style={{ width: 14, height: 14 }} /> Kích thước & Khung gầm:</span>
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                <div style={{ padding: 12, backgroundColor: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748B' }}>Kích thước (D x R x C):</span>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0F172A' }}>{selectedVehicle.dimensions}</div>
+                </div>
+                <div style={{ padding: 12, backgroundColor: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748B' }}>Chiều dài cơ sở:</span>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0F172A' }}>{selectedVehicle.wheelbase}</div>
+                </div>
+                <div style={{ padding: 12, backgroundColor: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748B' }}>Khoảng sáng gầm:</span>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0F172A' }}>{selectedVehicle.ground_clearance}</div>
+                </div>
+                <div style={{ padding: 12, backgroundColor: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748B' }}>Tốc độ tối đa:</span>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0F172A' }}>{selectedVehicle.top_speed}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* ADAS features */}
+            {selectedVehicle.adas_features && selectedVehicle.adas_features.length > 0 && (
+              <div>
+                <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0F172A', marginBottom: 10 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><ShieldCheckIcon style={{ width: 14, height: 14 }} /> Công nghệ An toàn & Hỗ trợ Lái (ADAS):</span>
+                </h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {selectedVehicle.adas_features.map((item, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        backgroundColor: '#F1F5F9',
+                        fontSize: '0.8rem',
+                        color: '#1E293B',
+                        border: '1px solid #E2E8F0',
+                      }}
+                    >
+                      <CheckIcon style={{ width: 11, height: 11, display: "inline", verticalAlign: "-1px", marginRight: 4 }} />{item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Highlights */}
+            {selectedVehicle.highlights && selectedVehicle.highlights.length > 0 && (
+              <div>
+                <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0F172A', marginBottom: 10 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><SparkleIcon style={{ width: 14, height: 14 }} /> Điểm nhấn tư vấn nổi bật:</span>
+                </h4>
+                <ul style={{ listStyle: 'none', paddingLeft: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {selectedVehicle.highlights.map((h, idx) => (
+                    <li key={idx} style={{ fontSize: '0.84rem', color: '#334155', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <span style={{ color: '#0284C7', fontWeight: 700 }}>•</span>
+                      <span>{h}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Actions footer */}
+            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <span style={{ fontSize: '0.8rem', color: '#64748B' }}>
+                Mã văn bản Corpus: <code>{selectedVehicle.document_id}</code>
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {selectedVehicle.document_id && (
+                  <button
+                    className="btn-outline"
+                    onClick={() => {
+                      const docId = selectedVehicle.document_id;
+                      const vName = selectedVehicle.name;
+                      setSelectedVehicle(null);
+                      handleOpenDocument(docId, vName);
+                    }}
+                    style={{ fontSize: '0.82rem', padding: '8px 14px' }}
+                  >
+                    <span>Xem tài liệu gốc Corpus</span>
+                  </button>
+                )}
+                <button
+                  className="btn-primary"
+                  onClick={() => {
+                    const vName = selectedVehicle.name;
+                    setSelectedVehicle(null);
+                    onOpenCopilotQuery && onOpenCopilotQuery(`Tư vấn thông số kỹ thuật và so sánh xe ${vName}`);
+                  }}
+                  style={{ fontSize: '0.82rem', padding: '8px 16px' }}
+                >
+                  <span>Hỏi kịch bản tư vấn với Copilot</span>
+                  <SparkleIcon style={{ width: 14, height: 14 }} />
+                </button>
+              </div>
             </div>
           </div>
         )}

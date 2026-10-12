@@ -2,6 +2,7 @@ import {
   RefreshIcon,
   BookIcon,
   ClockIcon,
+  LightbulbIcon,
 } from '../common/Icons';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
@@ -176,7 +177,7 @@ export function EvaluationScorecard({
 
                 {crit.improvement_suggestion && (
                   <div style={{ fontSize: '0.82rem', color: '#111111', fontWeight: 500 }}>
-                    💡 <strong>Gợi ý cải thiện:</strong> {crit.improvement_suggestion}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><LightbulbIcon style={{ width: 13, height: 13 }} /> <strong>Gợi ý cải thiện:</strong></span> {crit.improvement_suggestion}
                   </div>
                 )}
               </div>
@@ -219,7 +220,7 @@ export function EvaluationScorecard({
                   </div>
                 </div>
                 <Badge variant={finding.status === 'supported' ? 'highlight' : 'default'}>
-                  {finding.status === 'supported' ? '✓ Chính xác' : finding.status}
+                  {finding.status === 'supported' ? 'Chính xác' : finding.status}
                 </Badge>
               </div>
             ))}
