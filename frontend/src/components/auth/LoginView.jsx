@@ -148,28 +148,36 @@ export function LoginView({ onLogin }) {
           <div className="login-demo">
             <span>Dùng thử nhanh</span>
             <p>Chọn tài khoản mẫu theo vai trò.</p>
-            <div>
+            <div className="login-demo-cards">
               <button
                 type="button"
-                className={username === 'advisor.demo' && password === 'DemoAdvisor123!' ? 'selected' : ''}
+                className={`login-demo-card advisor${username === 'advisor.demo' && password === 'DemoAdvisor123!' ? ' selected' : ''}`}
                 aria-pressed={username === 'advisor.demo' && password === 'DemoAdvisor123!'}
                 onClick={() => selectDemoAccount('advisor.demo', 'DemoAdvisor123!')}
                 disabled={isLoading}
               >
-                <strong>🚘 Tư vấn viên</strong>
-                <span>User: <code>advisor.demo</code></span>
-                <span>Pass: <code>DemoAdvisor123!</code></span>
+                <span className="login-demo-card-heading">
+                  <span className="login-demo-card-icon"><img src="/advisor-logo.png" alt="" /></span>
+                  <strong>Tư vấn viên</strong>
+                  <span className="login-demo-card-arrow" aria-hidden="true">›</span>
+                </span>
+                <span className="login-demo-card-detail"><span>Tài khoản:</span><span>advisor.demo</span></span>
+                <span className="login-demo-card-detail"><span>Mật khẩu:</span><span>DemoAdvisor123!</span></span>
               </button>
               <button
                 type="button"
-                className={username === 'manager.demo' && password === 'DemoManager123!' ? 'selected' : ''}
+                className={`login-demo-card manager${username === 'manager.demo' && password === 'DemoManager123!' ? ' selected' : ''}`}
                 aria-pressed={username === 'manager.demo' && password === 'DemoManager123!'}
                 onClick={() => selectDemoAccount('manager.demo', 'DemoManager123!')}
                 disabled={isLoading}
               >
-                <strong>👔 Quản lý</strong>
-                <span>User: <code>manager.demo</code></span>
-                <span>Pass: <code>DemoManager123!</code></span>
+                <span className="login-demo-card-heading">
+                  <span className="login-demo-card-icon"><img src="/manager-logo.png" alt="" /></span>
+                  <strong>Quản lý</strong>
+                  <span className="login-demo-card-arrow" aria-hidden="true">›</span>
+                </span>
+                <span className="login-demo-card-detail"><span>Tài khoản:</span><span>manager.demo</span></span>
+                <span className="login-demo-card-detail"><span>Mật khẩu:</span><span>DemoManager123!</span></span>
               </button>
             </div>
           </div>
