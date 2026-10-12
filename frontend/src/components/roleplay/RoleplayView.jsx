@@ -156,7 +156,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
         </>
       )}
       {viewMode === 'room' && (
-        <PracticeRoom scenario={activeScenario} session={activeSession} onFinish={handleFinishSession} onExit={handleBackToCatalog} />
+        <PracticeRoom scenario={activeScenario} session={activeSession} onFinish={handleFinishSession} onSavedAttempt={openAttempt} onExit={handleBackToCatalog} />
       )}
       {viewMode === 'evaluation' && (
         <EvaluationScorecard result={evaluationResult} scenario={activeScenario} onRetry={() => handleStartScenario(activeScenario?.scenario_id, lastMaxTurns)} onBackToCatalog={handleBackToCatalog} />

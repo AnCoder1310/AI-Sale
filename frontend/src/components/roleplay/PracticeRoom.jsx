@@ -12,6 +12,7 @@ export function PracticeRoom({
   scenario,
   session,
   onFinish,
+  onSavedAttempt,
   onExit,
 }) {
   const [messages, setMessages] = useState(session?.messages || []);
@@ -181,7 +182,19 @@ export function PracticeRoom({
       const resultView = await practiceApi.finishSession(session.session_id);
       onFinish(resultView);
     } catch (requestError) {
-      setError(requestError.message || 'Không thể chấm điểm lúc này. Phiên đã được lưu; hãy thử lại.');
+      // The server saves the finished transcript before it asks the evaluator.
+      // A failed evaluation (or a lost response) must not strand the advisor
+      // in a room that can no longer accept messages.
+      try {
+        const saved = await practiceApi.getAttempt(session.session_id);
+        if (saved.session.termination_status !== 'active') {
+          await onSavedAttempt(session.session_id);
+          return;
+        }
+      } catch {
+        // We could not verify persistence, so keep the room and show the error.
+      }
+      setError(requestError.message || 'Không thể kết thúc phiên lúc này. Vui lòng thử lại.');
     } finally {
       setFinishing(false);
       setShowFinishConfirm(false);
