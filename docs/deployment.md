@@ -44,6 +44,14 @@ Import the same Git repository as a separate Vercel project. Set Root Directory 
 
 The browser calls `/api/v1` on the Vercel domain; the rewrite forwards to Render and keeps the auth cookie on the frontend origin. Preview deployments need deliberate `CORS_ORIGINS` and environment settings.
 
+## Practice Room voice mode
+
+The optional voice endpoints run in the same Render backend and use the same Neon `DATABASE_URL` as Practice sessions. The backend creates the additional `practice_voice_usage` table on first voice use; no recording or transcript text is stored in it. Back up Neon before the first deployment because this project does not have a schema migration framework.
+
+For speech recognition, set `GROQ_API_KEY` in Render. For customer speech, set `GOOGLE_TTS_SERVICE_ACCOUNT_JSON` in Render to a single-line JSON service account credential, or configure Google Application Default Credentials for the backend. Enable Google Cloud Text-to-Speech and billing for that identity. Never set these keys in Vercel or commit them. Set the optional cost estimate variables from [`.env.render.example`](../.env.render.example) if the default rates need changing. See [Voice Mode](voice-mode.md) for provider and user-flow details.
+
+After both the Render backend and Vercel frontend deploy, sign in as an Advisor on the Vercel site. Start a Practice session, record a short Vietnamese message, confirm the editable transcript, and play a customer reply. Then check the manager review's voice usage summary. A healthy `/health` response alone does not verify either provider.
+
 ## Verify the live deployment
 
 After deployment, request the Vercel URL's `/health` and `/api/v1/status`. Log in as the bootstrap manager, change the initial password, create a test advisor, change that advisor's password, assign a practice scenario, run one Copilot and one Practice flow, approve the evaluation, and verify assignment history and knowledge retrieval after a Render restart. `/health` is process liveness; it does not prove database, model, or retrieval readiness. Record the live checks before opening a PR into `develop`.
