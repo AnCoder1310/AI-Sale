@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { VinFastLogo } from '../common/Icons';
 
 function FieldIcon({ type }) {
   if (type === 'password') {
@@ -46,54 +45,57 @@ export function LoginView({ onLogin }) {
     <main className="login-shell">
       <section className="login-showcase" aria-label="Giới thiệu AI Sales Coach">
         <div className="login-brand">
-          <span className="login-logo"><VinFastLogo style={{ width: 24, height: 24 }} /></span>
+          <span className="login-logo"><img src="/vinfast-official-logo.png" alt="VinFast" /></span>
           <div>
-            <div className="login-brand-title">AI Sales Coach <span>Automotive SaaS</span></div>
-            <p>VinFast Automotive Sales Enablement Platform</p>
+            <div className="login-brand-title">AI Sales Coach &amp; Co-pilot</div>
+            <p>Nền tảng đào tạo và hỗ trợ tư vấn bán hàng ô tô</p>
           </div>
         </div>
 
         <div className="login-pitch">
-          <span className="login-kicker">✦ Next-Gen Automotive AI Assistant</span>
-          <h1>“Empower every conversation.<br />Train smarter. Sell better.”</h1>
+          <h1>Luyện tập tốt hơn.<br />Tư vấn tự tin hơn.</h1>
           <p>
-            Huấn luyện kỹ năng tư vấn bán xe điện qua hội thoại đa lượt với AI Customer,
-            tra cứu thông tin có trích nguồn và đánh giá theo rubric rõ ràng.
+            Mô phỏng hội thoại khách hàng, tra cứu thông tin có nguồn<br className="login-desktop-break" />
+            {' '}và đánh giá kỹ năng trong một hệ thống thống nhất.
           </p>
           <div className="login-features">
             <article>
-              <strong>⌁ Grounded Copilot</strong>
-              <span>Tra cứu sản phẩm và chính sách từ kho kiến thức.</span>
+              <span className="login-feature-icon"><img src="/tra-cuu-co-nguon.svg" alt="" /></span>
+              <strong>Tra cứu<br />có nguồn</strong>
             </article>
             <article>
-              <strong>◇ Human-In-The-Loop</strong>
-              <span>Quản lý duyệt và hiệu chỉnh đánh giá AI minh bạch.</span>
+              <span className="login-feature-icon"><img src="/luyen-tap-tinh-huong.svg" alt="" /></span>
+              <strong>Luyện tập<br />theo tình huống</strong>
+            </article>
+            <article>
+              <span className="login-feature-icon"><img src="/danh-gia-ky-nang.svg" alt="" /></span>
+              <strong>Đánh giá<br />kỹ năng</strong>
             </article>
           </div>
         </div>
 
         <footer className="login-footer">
-          <span>VinFast Auto Ltd. · Đề án AI20K Team P-043</span>
-          <span>MVP nội bộ</span>
+          Đồng hành cùng đội ngũ bán hàng<br />
+          kiến tạo trải nghiệm khách hàng xuất sắc.
         </footer>
       </section>
 
       <section className="login-panel">
         <div className="login-form-wrap">
           <div className="login-mobile-brand">
-            <span className="login-logo"><VinFastLogo style={{ width: 22, height: 22 }} /></span>
-            <strong>AI Sales Coach</strong>
+            <span className="login-logo"><img src="/vinfast-official-logo.png" alt="VinFast" /></span>
+            <strong>AI Sales Coach &amp; Co-pilot</strong>
           </div>
           <header>
-            <h2>Welcome back</h2>
-            <p>Đăng nhập để tiếp tục vào không gian làm việc.</p>
+            <h2>Chào mừng bạn trở lại</h2>
+            <p>Đăng nhập để tiếp tục sử dụng hệ thống.</p>
           </header>
 
           {error && <div className="login-error" role="alert">{error}</div>}
 
           <form onSubmit={submit} className="login-form">
             <label>
-              <span>Tên đăng nhập</span>
+              <span>Email hoặc tên đăng nhập</span>
               <span className="login-input-wrap">
                 <span className="login-field-icon"><FieldIcon type="username" /></span>
                 <input
@@ -130,17 +132,19 @@ export function LoginView({ onLogin }) {
             </label>
 
             <button className="login-submit" type="submit" disabled={isLoading}>
-              {isLoading ? 'Đang đăng nhập…' : 'Sign in  →'}
+              {isLoading ? 'Đang đăng nhập…' : 'Đăng nhập  →'}
             </button>
           </form>
 
+          <div className="login-divider" aria-hidden="true"><span>Hoặc</span></div>
+
           <div className="login-demo">
-            <span>Tài khoản dùng thử — chỉ điền tên đăng nhập</span>
+            <span>Dùng thử nhanh</span>
+            <p>Chọn tài khoản mẫu theo vai trò rồi nhập mật khẩu để đăng nhập.</p>
             <div>
-              <button type="button" onClick={() => setUsername('advisor.demo')}>Advisor</button>
-              <button type="button" onClick={() => setUsername('manager.demo')}>Manager</button>
+              <button type="button" onClick={() => setUsername('advisor.demo')}>Tư vấn viên →</button>
+              <button type="button" onClick={() => setUsername('manager.demo')}>Quản lý →</button>
             </div>
-            <p>Mật khẩu được cấu hình cục bộ khi seed database và không được lưu trong frontend.</p>
           </div>
         </div>
       </section>
