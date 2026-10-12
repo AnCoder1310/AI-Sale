@@ -13,6 +13,101 @@ import { copilotApi } from '../../api/copilotApi';
 import { FAQ_QUESTIONS, CHEAT_SHEET_DATA } from '../../data/faqData';
 import { createId, getCurrentTimeString } from '../../lib/id';
 
+function formatInlineMarkdown(text) {
+  if (!text) return "";
+  const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[C\d+\])/g;
+  const parts = text.split(regex);
+  return parts.map((part, index) => {
+    if (!part) return null;
+    if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+      return (
+        <strong key={index} style={{ fontWeight: 700 }}>
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("*") && part.endsWith("*") && part.length >= 2) {
+      return <em key={index}>{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
+      return (
+        <code
+          key={index}
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.06)",
+            padding: "2px 5px",
+            borderRadius: 4,
+            fontSize: "0.85em",
+            fontFamily: "monospace",
+          }}
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (/^\[C\d+\]$/.test(part)) {
+      return (
+        <span
+          key={index}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            padding: "1px 5px",
+            margin: "0 2px",
+            borderRadius: 4,
+            backgroundColor: "#E5E7EB",
+            color: "#1F2937",
+            verticalAlign: "baseline",
+          }}
+        >
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
+function renderFormattedMarkdown(text) {
+  if (!text) return null;
+  const paragraphs = text.split(/\n\n+/);
+  return paragraphs.map((para, pIdx) => {
+    const lines = para.split("\n");
+    const isBulletList = lines.length > 0 && lines.every((l) => l.trim().startsWith("- ") || l.trim().startsWith("* "));
+    if (isBulletList) {
+      return (
+        <ul key={pIdx} style={{ margin: "8px 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 4 }}>
+          {lines.map((l, lIdx) => (
+            <li key={lIdx}>{formatInlineMarkdown(l.trim().replace(/^[-*]\s+/, ""))}</li>
+          ))}
+        </ul>
+      );
+    }
+    const isNumberedList = lines.length > 0 && lines.every((l) => /^\d+\.\s+/.test(l.trim()));
+    if (isNumberedList) {
+      return (
+        <ol key={pIdx} style={{ margin: "8px 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 4 }}>
+          {lines.map((l, lIdx) => (
+            <li key={lIdx}>{formatInlineMarkdown(l.trim().replace(/^\d+\.\s+/, ""))}</li>
+          ))}
+        </ol>
+      );
+    }
+    return (
+      <div key={pIdx} style={{ marginTop: pIdx === 0 ? 0 : 10 }}>
+        {lines.map((line, lIdx) => (
+          <span key={lIdx}>
+            {lIdx > 0 && <br />}
+            {formatInlineMarkdown(line)}
+          </span>
+        ))}
+      </div>
+    );
+  });
+}
+
 export function CopilotView({ onOpenDocument, initialQuery = '' }) {
   const [filterDomain, setFilterDomain] = useState('all');
   const [inputMessage, setInputMessage] = useState(initialQuery || '');
@@ -105,9 +200,9 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 24, alignItems: 'start' }}>
+    <div className="copilot-grid-layout">
       {/* LEFT MAIN CHAT CARD */}
-      <div className="card-white" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)', minHeight: 600, padding: 0, overflow: 'hidden' }}>
+      <div className="card-white copilot-chat-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
         {/* HEADER */}
         <div style={{ padding: '18px 24px', borderBottom: '1px solid #E5E5E5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -186,8 +281,8 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                   </div>
 
                   {/* Body text */}
-                  <div style={{ fontSize: '0.92rem', color: '#222222', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                    {msg.content}
+                  <div style={{ fontSize: '0.92rem', color: '#222222', lineHeight: 1.6 }}>
+                    {renderFormattedMarkdown(msg.content)}
                   </div>
 
                   {/* Talking points recommendation box */}
@@ -373,7 +468,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
       </div>
 
       {/* RIGHT SIDEBAR: FAQ + QUICK CHEAT-SHEET */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="copilot-sidebar-column" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* CARD: CÂU HỎI THƯỜNG GẶP */}
         <div className="card-white" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ borderBottom: '1px solid #F0F0EE', paddingBottom: 12 }}>

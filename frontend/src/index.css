@@ -2935,3 +2935,208 @@ a {
   font-size: 0.75rem;
   font-weight: 600;
 }
+
+/* =================================================================
+   COMPREHENSIVE MOBILE RESPONSIVE OPTIMIZATIONS
+   ================================================================= */
+
+/* TOP HEADER MOBILE ADAPTATION */
+.desktop-nav-pill {
+  display: flex;
+}
+
+.mobile-nav-pills {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .desktop-nav-pill {
+    display: none;
+  }
+  .mobile-nav-pills {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: #070b14;
+    border-top: 1px solid #1e293b;
+    scrollbar-width: none;
+  }
+  .mobile-nav-pills::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-nav-pill-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #94a3b8;
+    white-space: nowrap;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .mobile-nav-pill-item.active {
+    color: #0b1220;
+    background-color: #ffffff;
+    font-weight: 700;
+  }
+  .top-header-inner {
+    padding: 0 16px;
+    height: 58px;
+  }
+  .user-details {
+    display: none;
+  }
+  .brand-subtitle {
+    display: none;
+  }
+  .header-logout-btn {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+}
+
+/* HOME VIEW RESPONSIVE */
+.home-two-col-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .home-two-col-layout {
+    grid-template-columns: 1fr;
+  }
+  .hero-banner-vehicle-bg {
+    opacity: 0.25 !important;
+    width: 65% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-banner-vehicle-bg {
+    display: none !important;
+  }
+}
+
+/* COPILOT VIEW RESPONSIVE */
+.copilot-grid-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  align-items: start;
+}
+
+.copilot-chat-card {
+  height: calc(100vh - 140px);
+  min-height: 600px;
+}
+
+@media (max-width: 1024px) {
+  .copilot-grid-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .copilot-chat-card {
+    height: 65vh;
+    min-height: 480px;
+  }
+}
+
+@media (max-width: 640px) {
+  .copilot-chat-card {
+    height: 72vh;
+    min-height: 440px;
+    border-radius: var(--radius-md) !important;
+  }
+}
+
+/* SCENARIO CATALOG RESPONSIVE */
+.scenario-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 640px) {
+  .scenario-catalog-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* PRACTICE ROOM RESPONSIVE */
+.practice-room-container {
+  height: calc(100vh - 120px);
+  min-height: 650px;
+}
+
+@media (max-width: 768px) {
+  .practice-room-container {
+    height: calc(100vh - 110px);
+    min-height: 520px;
+    border-radius: var(--radius-md) !important;
+  }
+}
+
+/* MANAGER CONSOLE RESPONSIVE */
+@media (max-width: 768px) {
+  .manager-topnav-inner {
+    padding: 0 14px;
+    height: 56px;
+  }
+  .manager-brand-subtitle {
+    display: none;
+  }
+  .manager-user-role {
+    display: none;
+  }
+  .manager-user-details {
+    display: none;
+  }
+  .manager-app-content {
+    padding: 16px 14px 48px;
+  }
+  .manager-console-hero {
+    padding: 22px 18px 24px;
+    border-radius: var(--radius-lg);
+  }
+  .console-hero-title {
+    font-size: 1.35rem;
+  }
+  .console-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .cs-val {
+    font-size: 1.35rem;
+  }
+  .manager-assignment-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .manager-assignment-submit-btn {
+    width: 100% !important;
+  }
+  .manager-assignment-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .manager-assignment-card-item {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .console-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
