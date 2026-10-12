@@ -75,7 +75,9 @@ class StubPractice:
     async def get_result(self, session_id):
         return PracticeResultView(session_id=session_id, evaluation_status="not_started")
 
-    async def finish_session(self, session_id):
+    async def finish_session(self, session_id, *, on_saved=None):
+        if on_saved is not None:
+            await on_saved()
         raise PracticeEvaluationUnavailableError("Evaluator is unavailable")
 
 
