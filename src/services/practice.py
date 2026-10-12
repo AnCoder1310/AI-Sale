@@ -71,6 +71,7 @@ class PracticeSessionView(BaseModel):
     conversation_stage: ConversationStage
     turn_count: int
     max_turns: int = 10
+    pending_customer_reply: bool = False
     visible_context: str
     termination_status: TerminationStatus
     termination_reason: str | None = None
@@ -133,6 +134,11 @@ class PracticeService:
     ) -> PracticeSessionView:
         async with self._lock_for(session_id):
             result = await self._graph.continue_session(session_id, advisor_message)
+            return PracticeSessionView.model_validate(result)
+
+    async def retry_customer_reply(self, session_id: str) -> PracticeSessionView:
+        async with self._lock_for(session_id):
+            result = await self._graph.retry_customer_reply(session_id)
             return PracticeSessionView.model_validate(result)
 
     async def finish_session(self, session_id: str) -> PracticeResultView:
