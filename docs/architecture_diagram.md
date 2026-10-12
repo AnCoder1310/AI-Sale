@@ -13,6 +13,12 @@ flowchart LR
   RET --> CORPUS[Corpus JSON + metadata]
   CP --> CHAT[OpenRouter chat model]
   API --> RP[Practice / Role-play LangGraph]
+  MIC[Advisor microphone] -->|recording| UI
+  API -->|server-side transcription| STT[Groq Whisper Turbo]
+  STT -->|Vietnamese text| API
+  API -->|saved customer text| TTS[Google WaveNet]
+  TTS -->|MP3 playback| API
+  API --> USAGE[(SQL: voice usage by session)]
   RP --> CUSTOMER[AI Customer + turn analysis]
   CUSTOMER --> CHAT
   RP --> JUDGE[Rubric evaluator + evidence checks]

@@ -4,6 +4,7 @@ import httpx
 import pytest
 from fastapi import FastAPI, Header, HTTPException
 
+from src.agents.roleplay.graph import RoleplaySessionConflictError
 from src.agents.roleplay.scenario_loader import ScenarioRepository
 from src.api.auth import CurrentUserDependency, create_auth_router
 from src.api.recorded_practice import create_recorded_practice_routers
@@ -63,6 +64,14 @@ class StubPractice:
     async def get_session(self, session_id):
         return self.sessions[session_id]
 
+    async def retry_customer_reply(self, session_id):
+        session = self.sessions[session_id]
+        if not session.pending_customer_reply:
+            raise RoleplaySessionConflictError("no customer reply is pending")
+        updated = session.model_copy(update={"pending_customer_reply": False})
+        self.sessions[session_id] = updated
+        return updated
+
     async def get_result(self, session_id):
         return PracticeResultView(session_id=session_id, evaluation_status="not_started")
 
@@ -80,6 +89,34 @@ async def fake_identity(x_test_identity: str | None = Header(None)) -> Authentic
         display_name=user_id,
         role=role,
     )
+
+
+@pytest.mark.asyncio
+async def test_retry_reply_route_requires_owner_and_pending_turn(tmp_path):
+    records = SQLPracticeRecordsRepository(f"sqlite:///{tmp_path / 'records.db'}")
+    practice = StubPractice()
+    service = RecordedPracticeService(practice, records)
+    practice_router, _ = create_recorded_practice_routers(service, fake_identity)
+    app = FastAPI()
+    app.include_router(practice_router, prefix="/api/v1")
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        created = await client.post(
+            "/api/v1/practice/sessions",
+            headers={"X-Test-Identity": "advisor-a:advisor"},
+            json={"scenario_id": "SCENARIO_01_VF5_TAXI"},
+        )
+        session_id = created.json()["session_id"]
+        path = f"/api/v1/practice/{session_id}/retry-reply"
+        practice.sessions[session_id] = practice.sessions[session_id].model_copy(
+            update={"pending_customer_reply": True}
+        )
+        assert (await client.post(path)).status_code == 401
+        assert (await client.post(path, headers={"X-Test-Identity": "manager-a:manager"})).status_code == 403
+        assert (await client.post(path, headers={"X-Test-Identity": "advisor-b:advisor"})).status_code == 404
+        retried = await client.post(path, headers={"X-Test-Identity": "advisor-a:advisor"})
+        assert retried.status_code == 200
+        assert retried.json()["pending_customer_reply"] is False
+        assert (await client.post(path, headers={"X-Test-Identity": "advisor-a:advisor"})).status_code == 409
 
 
 @pytest.mark.asyncio
