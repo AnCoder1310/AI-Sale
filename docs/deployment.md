@@ -1,5 +1,11 @@
 # Local Docker and Vercel + Render + Neon deployment
 
+## Repository workflow
+
+[P-043](https://github.com/AI20K-Build-Phase-Cohort-4/P-043) is the team source repository. Develop feature branches there and merge reviewed PRs into `develop`, including committed AI logs and evaluation evidence. [AI-Sale](https://github.com/AnCoder1310/AI-Sale) is the repository connected to the hosted Vercel and Render services; its `main` branch is the deployment target. Keep both as Git remotes in one local checkout (`origin` for P-043, `hosting` for AI-Sale).
+
+To release, create a branch from `hosting/main`, merge the tested P-043 `develop` history into it, resolve integration conflicts, and open a PR to AI-Sale `main`. Merge commits preserve the original P-043 commits and authorship. Do not copy files between unrelated checkouts or push directly to either repository's `main`. Verify the hosting PR's CI, deployment and live product flow before considering the release complete.
+
 ## Local full app
 
 From the repository root:
