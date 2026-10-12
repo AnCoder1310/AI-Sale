@@ -37,10 +37,7 @@ async def lifespan(app: FastAPI):
         # Existing data is reused. Replacing an index is an explicit ingestion action.
         retriever = get_retrieval_service()
         if retriever.vector_store.count() == 0:
-            count = await asyncio.wait_for(
-                asyncio.to_thread(retriever.ingest_corpus, reset=False),
-                timeout=settings.knowledge_startup_timeout_seconds,
-            )
+            count = await asyncio.to_thread(retriever.ingest_corpus, reset=False)
             logger.info("Initialized empty knowledge index with %d chunks", count)
     except Exception:
         logger.exception("Knowledge startup failed")

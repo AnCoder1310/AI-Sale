@@ -36,7 +36,7 @@ Create a Neon PostgreSQL project and database. Copy its **pooled** connection st
 
 The application currently uses SQLAlchemy `create_all` for user/practice tables and direct DDL for the vector table. There is no schema migration framework. Back up production data and review schema changes before deploying future revisions. Neon connection and extension creation have not yet been verified against an actual Neon project.
 
-First-time corpus ingestion is bounded by `KNOWLEDGE_STARTUP_TIMEOUT_SECONDS` (default 180 seconds). Production startup fails visibly if the database or knowledge initialization fails, so `/health` cannot report a ready process with an empty required index. Investigate the provider/database failure and restart after fixing it; ingestion into an empty index is idempotent.
+Production startup fails visibly if the database or knowledge initialization fails, so `/health` cannot report a ready process with an empty required index. Investigate the provider/database failure and restart after fixing it; ingestion into an empty index is idempotent.
 
 ## 2. Render backend
 
