@@ -6,6 +6,7 @@ import { CopilotView } from './components/copilot/CopilotView';
 import { RoleplayView } from './components/roleplay/RoleplayView';
 import { KnowledgeView } from './components/knowledge/KnowledgeView';
 import { LoginView } from './components/auth/LoginView';
+import { ChangePasswordView } from './components/auth/ChangePasswordView';
 import { ManagerReviewView } from './components/manager/ManagerReviewView';
 
 import { authApi } from './api/authApi';
@@ -15,7 +16,6 @@ export function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authStatus, setAuthStatus] = useState('loading');
   const [currentTab, setCurrentTab] = useState('home');
-  const [workspace, setWorkspace] = useState('advisor');
   const [scenarios, setScenarios] = useState([]);
   const [scenarioStatus, setScenarioStatus] = useState('loading');
   const [scenarioReloadToken, setScenarioReloadToken] = useState(0);
@@ -65,7 +65,6 @@ export function App() {
   const handleLogin = async (username, password) => {
     const user = await authApi.login(username, password);
     setCurrentUser(user);
-    setWorkspace(user.role === 'manager' ? 'manager' : 'advisor');
     setAuthStatus('authenticated');
     setCurrentTab(user.role === 'advisor' ? 'home' : 'manager');
   };
@@ -80,6 +79,12 @@ export function App() {
       setScenarios([]);
       setScenarioStatus('loading');
     }
+  };
+
+  const handleChangePassword = async (currentPassword, newPassword) => {
+    await authApi.changePassword(currentPassword, newPassword);
+    setCurrentUser(null);
+    setAuthStatus('anonymous');
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -114,12 +119,16 @@ export function App() {
     return <LoginView onLogin={handleLogin} />;
   }
 
-  if (workspace === 'manager' || (currentUser?.role === 'manager' && workspace !== 'advisor')) {
+  if (currentUser?.must_change_password) {
+    return <ChangePasswordView username={currentUser.username}
+      onChangePassword={handleChangePassword} onLogout={handleLogout} />;
+  }
+
+  if (currentUser?.role === 'manager') {
     return (
       <ManagerReviewView
         currentUser={currentUser}
         onLogout={handleLogout}
-        onSwitchWorkspace={(ws) => setWorkspace(ws)}
       />
     );
   }

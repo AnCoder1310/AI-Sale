@@ -4,6 +4,7 @@ import {
   CheckCircleIcon,
   ClipboardIcon,
   TrophyIcon,
+  UsersIcon,
   LogoutIcon,
 } from "../common/Icons";
 
@@ -19,6 +20,7 @@ export function ManagerTopNav({
     { id: "assignments", label: "Giao bài", icon: ClipboardIcon },
     { id: "performance", label: "Năng lực", icon: TrophyIcon },
     { id: "reports", label: "Lịch sử luyện tập", icon: CheckCircleIcon, badge: pendingCount > 0 ? `${pendingCount}` : null, highlightBadge: pendingCount > 0 },
+    { id: "accounts", label: "Tài khoản", icon: UsersIcon },
   ];
 
   const initials = currentUser?.display_name

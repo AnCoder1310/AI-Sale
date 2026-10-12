@@ -2,11 +2,18 @@
 
 import asyncio
 import os
+import sys
+from pathlib import Path
 
-from src.config import get_settings
-from src.integrations.auth_repository import SQLAuthRepository
-from src.models.auth import UserRole
-from src.services.auth import AuthService
+from dotenv import load_dotenv
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+load_dotenv()
+
+from src.config import get_settings  # noqa: E402
+from src.integrations.auth_repository import SQLAuthRepository  # noqa: E402
+from src.models.auth import UserRole  # noqa: E402
+from src.services.auth import AuthService  # noqa: E402
 
 
 def required_password(variable_name: str) -> str:
@@ -18,6 +25,8 @@ def required_password(variable_name: str) -> str:
 
 async def seed() -> None:
     settings = get_settings()
+    if settings.app_env == "production":
+        raise RuntimeError("Demo account seeding is only allowed outside production")
     service = AuthService(SQLAuthRepository(settings.database_url))
     accounts = (
         ("advisor-demo", "advisor.demo", "Tư vấn viên Demo", UserRole.ADVISOR, "DEMO_ADVISOR_PASSWORD"),

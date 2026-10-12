@@ -124,10 +124,16 @@ class CustomerAgent:
             and self.focus_objection_id(state) is None
             and not consider_next_step
         ):
+            address = "Chị" if scenario.persona.get("name", "").startswith("Chị ") else "Anh"
+            address_lower = address.lower()
             return CustomerTurn(
                 message=RoleplayMessage(
                     role="customer",
-                    content="Anh vẫn chưa yên tâm về điểm này. Mình tạm dừng ở đây; em gửi thông tin phù hợp với trường hợp của anh sau nhé.",
+                    content=(
+                        f"{address} vẫn chưa yên tâm về điểm này. "
+                        f"Bây giờ {address_lower} phải ghé siêu thị mua ít đồ. "
+                        f"Mình tạm dừng ở đây; em gửi thông tin phù hợp với trường hợp của {address_lower} sau nhé."
+                    ),
                 )
             )
 

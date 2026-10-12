@@ -6,6 +6,8 @@ MVP gồm **Copilot** tra cứu kiến thức xe/chính sách có trích nguồn
 
 **Docker:** `docker compose up --build` chạy frontend, backend và PostgreSQL + pgvector local. Xem [hướng dẫn Docker](docs/local-docker.md) để seed tài khoản và lưu dữ liệu. Mỗi máy có database riêng; muốn chia sẻ dữ liệu cần triển khai backend dùng chung với PostgreSQL hosted.
 
+Nhánh triển khai Neon dùng Render cho backend và Vercel cho frontend; xem [hướng dẫn triển khai](docs/deployment.md). Chỉ mở PR vào `develop` sau khi kiểm tra deployment thật.
+
 Cần Python 3.11, Node.js tương thích Vite 8, npm và OpenRouter API key có quyền gọi chat/embedding. Lời gọi thật có thể phát sinh phí.
 
 ```bash
@@ -23,7 +25,7 @@ Trong `.env`, đặt `DEMO_ADVISOR_PASSWORD` và `DEMO_MANAGER_PASSWORD` riêng,
 python -c 'import asyncio; from dotenv import load_dotenv; load_dotenv(); from scripts.seed_demo_users import seed; asyncio.run(seed())'
 ```
 
-Đăng nhập bằng `advisor.demo` và `manager.demo`. Seed script cập nhật hai tài khoản demo cố định khi chạy lại; không dùng với tài khoản thật. Tính năng manager tạo Advisor mới đang ở nhánh riêng, **chưa thuộc `develop`**.
+Đăng nhập bằng `advisor.demo` và `manager.demo`. Seed script cập nhật hai tài khoản demo cố định khi chạy lại; không dùng với tài khoản thật. Trên nhánh triển khai này, manager có thể tạo tài khoản Advisor trong tab **Tài khoản**; môi trường production dùng bootstrap manager và bắt buộc đổi mật khẩu khởi tạo.
 
 Chạy hai terminal từ thư mục gốc repo:
 

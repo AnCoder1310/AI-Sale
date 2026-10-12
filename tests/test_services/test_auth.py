@@ -3,8 +3,12 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from src.integrations.auth_repository import SQLAuthRepository
-from src.models.auth import UserRole
-from src.services.auth import AuthenticationRequiredError, AuthService, InvalidCredentialsError
+from src.models.auth import AccountAlreadyExistsError, UserRole
+from src.services.auth import (
+    AuthenticationRequiredError,
+    AuthService,
+    InvalidCredentialsError,
+)
 
 
 class MutableClock:
@@ -36,6 +40,7 @@ async def test_login_persists_only_hashed_token_and_survives_repository_restart(
         "username": "advisor.one",
         "display_name": "Advisor One",
         "role": UserRole.ADVISOR,
+        "must_change_password": False,
     }
     restarted_service = AuthService(SQLAuthRepository(database_url))
     assert (await restarted_service.current_user(token)).user_id == "advisor-1"
@@ -109,6 +114,61 @@ async def test_reseeding_account_invalidates_existing_sessions(tmp_path):
         await service.login("advisor.one", "first secure password")
     _, user = await service.login("advisor.one", "second secure password")
     assert user.role is UserRole.ADVISOR
+
+
+@pytest.mark.asyncio
+async def test_create_advisor_is_insert_only_and_keeps_existing_session(tmp_path):
+    database_url = f"sqlite:///{tmp_path / 'auth.db'}"
+    service = AuthService(SQLAuthRepository(database_url))
+    await service.seed_user(
+        user_id="manager-1",
+        username="manager.one",
+        display_name="Manager One",
+        role=UserRole.MANAGER,
+        password="manager secure password",
+    )
+    manager_token, _ = await service.login("manager.one", "manager secure password")
+
+    advisor = await service.create_advisor(
+        username=" Advisor.New ", display_name=" Advisor New ", password="advisor secure password"
+    )
+    assert advisor.username == "advisor.new"
+    assert advisor.display_name == "Advisor New"
+    assert advisor.role is UserRole.ADVISOR
+    assert advisor.user_id != "manager-1"
+    assert (await service.login("advisor.new", "advisor secure password"))[1].user_id == advisor.user_id
+
+    with pytest.raises(AccountAlreadyExistsError):
+        await service.create_advisor(
+            username="ADVISOR.NEW", display_name="Other Person", password="another secure password"
+        )
+    with pytest.raises(AccountAlreadyExistsError):
+        await service.create_advisor(
+            username="MANAGER.ONE", display_name="Impostor", password="another secure password"
+        )
+    assert (await service.current_user(manager_token)).role is UserRole.MANAGER
+    assert (await service.login("advisor.new", "advisor secure password"))[1].display_name == "Advisor New"
+
+
+@pytest.mark.asyncio
+async def test_bootstrap_manager_runs_once_and_requires_password_change(tmp_path):
+    database_url = f"sqlite:///{tmp_path / 'auth.db'}"
+    service = AuthService(SQLAuthRepository(database_url))
+    assert await service.bootstrap_manager(
+        username="First.Manager",
+        display_name="First Manager",
+        password="temporary manager password",
+    )
+    token, manager = await service.login("first.manager", "temporary manager password")
+    assert manager.role is UserRole.MANAGER
+    assert manager.must_change_password
+    assert not await service.bootstrap_manager(username=None, display_name=None, password=None)
+    await service.change_password(manager, "temporary manager password", "permanent manager password")
+    with pytest.raises(AuthenticationRequiredError):
+        await service.current_user(token)
+    with pytest.raises(InvalidCredentialsError):
+        await service.login("first.manager", "temporary manager password")
+    assert not (await service.login("first.manager", "permanent manager password"))[1].must_change_password
 
 
 @pytest.mark.asyncio

@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     auth_cookie_name: str = Field(default="p043_session", min_length=1, max_length=100)
     auth_session_ttl_hours: int = Field(default=8, ge=1, le=168)
     auth_cookie_secure: bool = False
+    bootstrap_manager_username: str = ""
+    bootstrap_manager_display_name: str = ""
+    bootstrap_manager_password: str = ""
 
     # Vector Store
     vector_store_type: Literal["chroma", "pgvector", "memory"] = "chroma"
@@ -80,9 +83,25 @@ class Settings(BaseSettings):
     similarity_top_k: int = 4
 
     @model_validator(mode="after")
-    def reject_hash_in_production(self) -> "Settings":
-        if self.app_env == "production" and self.embedding_provider == "hash":
+    def validate_production_settings(self) -> "Settings":
+        if self.app_env != "production":
+            return self
+        if self.embedding_provider == "hash":
             raise ValueError("Hash embeddings are not allowed in production")
+        if not self.auth_cookie_secure:
+            raise ValueError("AUTH_COOKIE_SECURE must be true in production")
+        if self.database_url.startswith("sqlite"):
+            raise ValueError("Production requires a persistent external DATABASE_URL")
+        if not self.database_url.startswith(("postgres://", "postgresql://")):
+            raise ValueError("Production requires a PostgreSQL DATABASE_URL")
+        if self.vector_store_type != "pgvector":
+            raise ValueError("Production requires VECTOR_STORE_TYPE=pgvector")
+        if (
+            self.llm_provider == "openrouter" or self.embedding_provider == "openrouter"
+        ) and not self.openrouter_api_key:
+            raise ValueError("OPENROUTER_API_KEY is required in production")
+        if (self.llm_provider == "openai" or self.embedding_provider == "openai") and not self.openai_api_key:
+            raise ValueError("OPENAI_API_KEY is required in production")
         return self
 
 
