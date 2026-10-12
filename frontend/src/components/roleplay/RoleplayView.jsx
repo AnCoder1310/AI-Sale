@@ -156,7 +156,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
         </>
       )}
       {viewMode === 'room' && (
-        <PracticeRoom scenario={activeScenario} session={activeSession} onFinish={handleFinishSession} onExit={handleBackToCatalog} />
+        <PracticeRoom scenario={activeScenario} session={activeSession} onFinish={handleFinishSession} onSavedAttempt={openAttempt} onExit={handleBackToCatalog} />
       )}
       {viewMode === 'evaluation' && (
         <EvaluationScorecard result={evaluationResult} scenario={activeScenario} onRetry={() => handleStartScenario(activeScenario?.scenario_id, lastMaxTurns)} onBackToCatalog={handleBackToCatalog} />
@@ -176,9 +176,11 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
                   </p>
                 ))}
               </section>
-              {attemptDetail.attempt.evaluation_status === 'failed' ? (
+              {!attemptDetail.ai_evaluation.result && attemptDetail.session.termination_status !== 'active' ? (
                 <div role="alert" className="card-white">
-                  <p>Phiên này đã lưu nhưng chấm điểm thất bại.</p>
+                  <p>{attemptDetail.attempt.evaluation_status === 'pending'
+                    ? 'Hội thoại đã lưu. Nếu việc chấm điểm bị gián đoạn, bạn có thể thử lại.'
+                    : 'Phiên này đã lưu nhưng chấm điểm thất bại.'}</p>
                   <button className="btn-primary" onClick={retryFailedEvaluation} disabled={retryingEvaluation}>
                     {retryingEvaluation ? 'Đang chấm điểm lại...' : 'Thử chấm điểm lại'}
                   </button>

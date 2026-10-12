@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Protocol
 from uuid import uuid4
 
@@ -141,9 +141,14 @@ class PracticeService:
             result = await self._graph.retry_customer_reply(session_id)
             return PracticeSessionView.model_validate(result)
 
-    async def finish_session(self, session_id: str) -> PracticeResultView:
+    async def finish_session(
+        self, session_id: str, *, on_saved: Callable[[], Awaitable[None]] | None = None
+    ) -> PracticeResultView:
         async with self._lock_for(session_id):
+            # finish_session commits the frozen transcript before evaluation starts.
             state = await self._graph.finish_session(session_id)
+            if on_saved is not None:
+                await on_saved()
             if state.evaluation_result is not None:
                 return self._result_view(state)
 

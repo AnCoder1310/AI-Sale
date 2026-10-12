@@ -3,6 +3,7 @@ import { Modal } from '../common/Modal';
 const reviewLabel = (attempt) => {
   if (attempt.review_status === 'manager_approved') return 'Quản lý đã duyệt';
   if (attempt.evaluation_status === 'failed') return 'Chấm điểm thất bại';
+  if (attempt.evaluation_status === 'pending') return 'Đã lưu • đang chấm điểm';
   return 'Bản nháp AI • chờ duyệt';
 };
 
