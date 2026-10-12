@@ -36,8 +36,3 @@ def test_production_accepts_persistent_secure_configuration() -> None:
         OPENROUTER_API_KEY="test-key",
     )
     assert settings.app_env == "production"
-
-
-def test_knowledge_startup_timeout_must_be_positive() -> None:
-    with pytest.raises(ValueError, match="knowledge_startup_timeout_seconds"):
-        Settings(_env_file=None, KNOWLEDGE_STARTUP_TIMEOUT_SECONDS="0")

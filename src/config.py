@@ -63,7 +63,6 @@ class Settings(BaseSettings):
     embedding_provider: Literal["openai", "openrouter", "hash"] = "openrouter"
     llm_timeout_seconds: float = Field(default=30.0, gt=0)
     retrieval_timeout_seconds: float = Field(default=20.0, gt=0)
-    knowledge_startup_timeout_seconds: float = Field(default=180.0, gt=0)
     llm_temperature: float = Field(default=0.2, ge=0.0, le=2.0)
 
     # Database
