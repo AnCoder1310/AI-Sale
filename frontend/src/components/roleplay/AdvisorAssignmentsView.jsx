@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { practiceApi } from '../../api/practiceApi';
+import { BookIcon, RefreshIcon } from '../common/Icons';
 
 const STATUS = { assigned: 'Chưa bắt đầu', in_progress: 'Đang luyện', completed: 'Hoàn thành' };
 
@@ -37,16 +38,17 @@ export function AdvisorAssignmentsView({ scenarios, onStart, onOpenAttempt, relo
   const scenarioNames = Object.fromEntries(scenarios.map((item) => [item.scenario_id, item.title]));
 
   return (
-    <section className="card-white" style={{ padding: 24, marginBottom: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+    <section className="practice-assignments">
+      <div className="practice-assignments-header">
+        <span className="practice-assignment-icon"><BookIcon aria-hidden="true" /></span>
         <div>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>Bài tập được giao</h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginTop: 2 }}>
+          <h2>Bài tập được giao</h2>
+          <p>
             Hoàn thành các bài tập do Quản lý giao để cập nhật tiến độ và năng lực cá nhân.
           </p>
         </div>
-        <button type="button" className="btn-outline" onClick={load} disabled={status === 'loading'}>
-          Làm mới
+        <button type="button" className="practice-refresh" onClick={load} disabled={status === 'loading'}>
+          <RefreshIcon aria-hidden="true" /> Làm mới
         </button>
       </div>
 
@@ -58,8 +60,9 @@ export function AdvisorAssignmentsView({ scenarios, onStart, onOpenAttempt, relo
       )}
 
       {status === 'ready' && assignments.length === 0 && (
-        <div style={{ padding: '20px', textAlign: 'center', backgroundColor: 'var(--surface-alt)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--muted)', fontSize: '0.88rem' }}>
-          Hiện tại bạn chưa có bài tập nào được giao. Hãy tự do chọn các tình huống bên dưới để tự luyện tập!
+        <div className="practice-assignments-empty">
+          <BookIcon aria-hidden="true" />
+          <p>Hiện tại bạn chưa có bài tập nào được giao.<br />Hãy tự do chọn các tình huống bên dưới để tự luyện tập!</p>
         </div>
       )}
 

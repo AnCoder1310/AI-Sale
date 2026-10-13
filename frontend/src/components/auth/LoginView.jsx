@@ -52,7 +52,7 @@ export function LoginView({ onLogin }) {
     <main className="login-shell">
       <section className="login-showcase" aria-label="Giới thiệu AI Sales Coach">
         <div className="login-brand">
-          <span className="login-logo"><img src="/vinfast-official-logo.png" alt="VinFast" /></span>
+          <span className="login-logo"><img src="/vinfast-official-logo.png?v=silver" alt="VinFast" /></span>
           <div>
             <div className="login-brand-title">AI Sales Coach &amp; Co-pilot</div>
             <p>Nền tảng đào tạo và hỗ trợ tư vấn bán hàng ô tô</p>
@@ -90,7 +90,7 @@ export function LoginView({ onLogin }) {
       <section className="login-panel">
         <div className="login-form-wrap">
           <div className="login-mobile-brand">
-            <span className="login-logo"><img src="/vinfast-official-logo.png" alt="VinFast" /></span>
+            <span className="login-logo"><img src="/vinfast-official-logo.png?v=silver" alt="VinFast" /></span>
             <strong>AI Sales Coach &amp; Co-pilot</strong>
           </div>
           <header>

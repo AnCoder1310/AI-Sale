@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   SearchIcon,
-  BookIcon,
   ChevronRight,
   SparkleIcon,
   FileTextIcon,
@@ -139,141 +138,59 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
   const filteredFeePdfs = filterPdfList(REQUIRED_FEE_PDFS);
   const filteredFaqPdfs = filterPdfList(REQUIRED_FAQ_PDFS);
 
-  // Render card for a Real PDF Document
-  const renderRealDocCard = (doc) => {
-    const isCopied = copiedId === doc.id || copiedId === doc.filename;
-    return (
-      <div
-        key={doc.id}
-        className="card-white"
-        style={{
-          padding: '20px 24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-          border: '1px solid #E2E8F0',
-          borderLeft: '4px solid #111111',
-          borderRadius: 10,
-          backgroundColor: '#FFFFFF',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Badge variant="highlight">{doc.category}</Badge>
-            <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
-              Hiệu lực: {doc.effective_date}
-            </span>
-            <span
-              style={{
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                color: '#18181B',
-                backgroundColor: '#F4F4F5',
-                padding: '3px 8px',
-                borderRadius: 4,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              <CheckCircleIcon style={{ width: 12, height: 12 }} />
-              {doc.status}
-            </span>
-            {doc.file_size && (
-              <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
-                Dung lượng: <strong>{doc.file_size}</strong>
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              className="btn-primary"
-              onClick={() => setViewingPdf({ title: doc.title, url: doc.file_url, filename: doc.filename })}
-              style={{ fontSize: '0.78rem', padding: '6px 14px' }}
-            >
-              <span>Xem trực tiếp PDF</span>
-              <ChevronRight style={{ width: 12, height: 12 }} />
-            </button>
-            <a
-              href={doc.file_url}
-              download={doc.filename}
-              className="btn-outline"
-              style={{ fontSize: '0.78rem', padding: '6px 12px', textDecoration: 'none' }}
-              title="Tải tệp PDF về máy"
-            >
-              <span>Tải file</span>
-            </a>
-          </div>
+  // Render a source PDF with its summary and direct preview.
+  const renderRealDocCard = (doc) => (
+    <article key={doc.id} className="card-white knowledge-document-card">
+      <div className="knowledge-document-meta">
+        <div className="knowledge-document-meta-left">
+          <Badge variant="highlight">{doc.category}</Badge>
+          <span>Hiệu lực: {doc.effective_date}</span>
         </div>
+        <span className="knowledge-document-status">
+          <CheckCircleIcon style={{ width: 13, height: 13 }} />
+          {doc.status}
+        </span>
+      </div>
 
-        <div>
-          <h3 style={{ fontSize: '1.08rem', fontWeight: 700, color: '#0F172A' }}>
-            {doc.title}
-          </h3>
-          <p style={{ fontSize: '0.86rem', color: '#475569', marginTop: 4, lineHeight: 1.5 }}>
-            {doc.summary}
-          </p>
+      <div className="knowledge-document-body">
+        <div className="knowledge-document-copy">
+          <h3>{doc.title}</h3>
+          <p>{doc.summary}</p>
+          {doc.key_points?.length > 0 && (
+            <div className="knowledge-document-points">
+              <strong>ĐIỀU KHOẢN CỐT LÕI TƯ VẤN VIÊN CẦN NẮM:</strong>
+              <ul>
+                {doc.key_points.map((point, index) => (
+                  <li key={index}>
+                    <CheckIcon style={{ width: 13, height: 13, flexShrink: 0 }} />
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-
-        {/* Key Points Box */}
-        {doc.key_points && doc.key_points.length > 0 && (
-          <div style={{ backgroundColor: '#F8FAFC', padding: '12px 16px', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E293B', display: 'block', marginBottom: 6, letterSpacing: '0.04em' }}>
-              ĐIỀU KHOẢN CỐT LÕI TƯ VẤN VIÊN CẦN NẮM:
-            </span>
-            <ul style={{ listStyle: 'none', paddingLeft: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {doc.key_points.map((pt, idx) => (
-                <li key={idx} style={{ fontSize: '0.82rem', color: '#334155', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                  <CheckIcon style={{ width: 12, height: 12, color: "#0F172A", flexShrink: 0, marginTop: 3 }} />
-                  <span>{pt}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Footer specs & actions */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, paddingTop: 10, borderTop: '1px solid #F1F5F9', fontSize: '0.75rem', color: '#64748B' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <FileTextIcon style={{ width: 14, height: 14, color: '#52525B' }} />
-            <span style={{ color: '#334155' }}>Tên file PDF nguồn: <code>{doc.filename}</code></span>
-            <button
-              onClick={() => handleCopyText(doc.filename, doc.filename)}
-              title="Sao chép tên file"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 3,
-                fontSize: '0.72rem',
-                color: isCopied ? '#111111' : '#64748B',
-                padding: '2px 6px',
-                borderRadius: 4,
-                backgroundColor: '#F1F5F9',
-              }}
-            >
-              {isCopied ? <CheckIcon style={{ width: 11, height: 11 }} /> : <CopyIcon style={{ width: 11, height: 11 }} />}
-              <span>{isCopied ? 'Đã sao chép' : 'Chép tên'}</span>
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              className="btn-outline"
-              onClick={() => onOpenCopilotQuery && onOpenCopilotQuery(`Tra cứu tóm tắt điều khoản trong tài liệu "${doc.title}"`)}
-              style={{ fontSize: '0.75rem', padding: '4px 10px' }}
-            >
-              <span>Hỏi Copilot</span>
-              <SparkleIcon style={{ width: 12, height: 12 }} />
-            </button>
-          </div>
+        <div className="knowledge-document-side">
+          <button
+            type="button"
+            className="knowledge-pdf-preview"
+            onClick={() => setViewingPdf({ title: doc.title, url: doc.file_url, filename: doc.filename })}
+            aria-label={`Mở PDF: ${doc.title}`}
+          >
+            <span className="knowledge-pdf-preview-icon"><FileTextIcon style={{ width: 40, height: 40 }} /></span>
+            <span className="knowledge-pdf-preview-label">Mở PDF</span>
+          </button>
+          <button
+            type="button"
+            className="btn-outline knowledge-document-copilot"
+            onClick={() => onOpenCopilotQuery && onOpenCopilotQuery(`Tra cứu tóm tắt điều khoản trong tài liệu "${doc.title}"`)}
+          >
+            Hỏi Copilot <SparkleIcon style={{ width: 13, height: 13 }} />
+          </button>
         </div>
       </div>
-    );
-  };
+    </article>
+  );
 
   // Component rendering a Required PDF Card
   const renderPdfItemCard = (pdf) => {
@@ -281,7 +198,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
     return (
       <div
         key={pdf.id}
-        className="card-white"
+        className="card-white knowledge-document-card knowledge-required-card"
         style={{
           padding: '20px 24px',
           display: 'flex',
@@ -437,7 +354,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="knowledge-page" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {sourceError && (
         <div
           role="alert"
@@ -466,15 +383,9 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
       )}
 
       {/* TOP HEADER & SEARCH */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+      <div className="knowledge-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5', padding: '4px 10px', borderRadius: 9999, marginBottom: 8 }}>
-            <BookIcon style={{ width: 13, height: 13, color: '#111111' }} />
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#111111' }}>
-              Kho Kiến thức & Cẩm nang Chuẩn hóa 2026
-            </span>
-          </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#111111', letterSpacing: '-0.02em' }}>
+          <h1 className="knowledge-page-title" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#111111', letterSpacing: '-0.02em' }}>
             Cẩm nang Sản phẩm, Chính sách & Biểu phí Bán hàng
           </h1>
           <p style={{ fontSize: '0.88rem', color: '#737373', marginTop: 4 }}>
@@ -483,7 +394,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
         </div>
 
         {/* SEARCH BAR */}
-        <div style={{ position: 'relative', width: 280 }}>
+        <div className="knowledge-search" style={{ position: 'relative', width: 280 }}>
           <SearchIcon style={{ position: 'absolute', left: 12, top: 12, width: 16, height: 16, color: '#888888' }} />
           <input
             type="text"
@@ -505,7 +416,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
 
       {/* STATUS OVERVIEW BANNER */}
       <div
-        className="card-white"
+        className="card-white knowledge-overview"
         style={{
           padding: '14px 18px',
           borderLeft: '4px solid #0F172A',
@@ -516,15 +427,10 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ display: 'inline-flex', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#0F172A' }} />
-            <strong style={{ fontSize: '0.88rem', color: '#0F172A' }}>
-              Kho dữ liệu tài liệu & chính sách VinFast 2026
-            </strong>
-          </div>
           <button
-            className="btn-outline"
+            className={`btn-outline knowledge-checklist-button${subTab === 'checklist' ? ' active' : ''}`}
             onClick={() => setSubTab('checklist')}
+            aria-pressed={subTab === 'checklist'}
             style={{ fontSize: '0.78rem', padding: '5px 12px', backgroundColor: '#FFFFFF', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
             <ChecklistIcon style={{ width: 13, height: 13 }} />
@@ -533,8 +439,8 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
-          <div style={{ padding: '10px 12px', backgroundColor: '#FFFFFF', borderRadius: 8, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="knowledge-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+          <button type="button" className={`knowledge-stat-button${subTab === 'policies' ? ' active' : ''}`} onClick={() => setSubTab('policies')} aria-pressed={subTab === 'policies'}>
             <div style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0F172A', flexShrink: 0 }}>
               <PolicyIcon style={{ width: 16, height: 16 }} />
             </div>
@@ -542,8 +448,8 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Chính sách & Hợp đồng</span>
               <strong style={{ fontSize: '0.98rem', color: '#0F172A' }}>{POLICIES.length} tệp</strong>
             </div>
-          </div>
-          <div style={{ padding: '10px 12px', backgroundColor: '#FFFFFF', borderRadius: 8, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 10 }}>
+          </button>
+          <button type="button" className={`knowledge-stat-button${subTab === 'fees' ? ' active' : ''}`} onClick={() => setSubTab('fees')} aria-pressed={subTab === 'fees'}>
             <div style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0F172A', flexShrink: 0 }}>
               <FeeIcon style={{ width: 16, height: 16 }} />
             </div>
@@ -551,8 +457,8 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Biểu phí & Bảng giá</span>
               <strong style={{ fontSize: '0.98rem', color: '#0F172A' }}>{PRICING_TARIFFS.length} tệp</strong>
             </div>
-          </div>
-          <div style={{ padding: '10px 12px', backgroundColor: '#FFFFFF', borderRadius: 8, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 10 }}>
+          </button>
+          <button type="button" className={`knowledge-stat-button${subTab === 'vehicles' ? ' active' : ''}`} onClick={() => setSubTab('vehicles')} aria-pressed={subTab === 'vehicles'}>
             <div style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0F172A', flexShrink: 0 }}>
               <CarIcon style={{ width: 16, height: 16 }} />
             </div>
@@ -560,8 +466,8 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Thông số xe</span>
               <strong style={{ fontSize: '0.98rem', color: '#0F172A' }}>{VEHICLES.length} dòng xe</strong>
             </div>
-          </div>
-          <div style={{ padding: '10px 12px', backgroundColor: '#FFFFFF', borderRadius: 8, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 10 }}>
+          </button>
+          <button type="button" className={`knowledge-stat-button${subTab === 'faq' ? ' active' : ''}`} onClick={() => setSubTab('faq')} aria-pressed={subTab === 'faq'}>
             <div style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0F172A', flexShrink: 0 }}>
               <FaqIcon style={{ width: 16, height: 16 }} />
             </div>
@@ -569,58 +475,15 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Hỏi đáp FAQ</span>
               <strong style={{ fontSize: '0.98rem', color: '#0F172A' }}>{FAQ_QUESTIONS.length} câu hỏi</strong>
             </div>
-          </div>
+          </button>
         </div>
-      </div>
-
-      {/* 4 CATEGORY TABS + SUMMARY CHECKLIST TAB */}
-      <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #E2E8F0', paddingBottom: 10, flexWrap: 'wrap' }}>
-        <button
-          className={`chip ${subTab === 'policies' ? 'active' : ''}`}
-          onClick={() => setSubTab('policies')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <PolicyIcon style={{ width: 14, height: 14 }} />
-          <span>Chính sách ({POLICIES.length})</span>
-        </button>
-        <button
-          className={`chip ${subTab === 'fees' ? 'active' : ''}`}
-          onClick={() => setSubTab('fees')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <FeeIcon style={{ width: 14, height: 14 }} />
-          <span>Biểu phí ({PRICING_TARIFFS.length})</span>
-        </button>
-        <button
-          className={`chip ${subTab === 'vehicles' ? 'active' : ''}`}
-          onClick={() => setSubTab('vehicles')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <CarIcon style={{ width: 14, height: 14 }} />
-          <span>Dòng xe ({VEHICLES.length})</span>
-        </button>
-        <button
-          className={`chip ${subTab === 'faq' ? 'active' : ''}`}
-          onClick={() => setSubTab('faq')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <FaqIcon style={{ width: 14, height: 14 }} />
-          <span>Hỏi đáp ({FAQ_QUESTIONS.length})</span>
-        </button>
-        <button
-          className={`chip ${subTab === 'checklist' ? 'active' : ''}`}
-          onClick={() => setSubTab('checklist')}
-          style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <ChecklistIcon style={{ width: 14, height: 14 }} />
-          <span>Danh mục ({TOTAL_REQUIRED_PDFS})</span>
-        </button>
       </div>
 
       {/* 1. POLICIES TAB: HIỂN THỊ CÁC TỆP PDF CHÍNH SÁCH THỰC TẾ */}
       {subTab === 'policies' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div
+            className="knowledge-section-heading"
             style={{
               padding: '16px 20px',
               borderRadius: 10,
@@ -637,16 +500,13 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircleIcon style={{ width: 18, height: 18, color: '#18181B' }} />
                 <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#18181B' }}>
-                  Chính sách & Hợp đồng ({POLICIES.length} tài liệu)
+                  Chính sách & Hợp đồng
                 </h3>
               </div>
               <p style={{ fontSize: '0.82rem', color: '#52525B', marginTop: 2 }}>
-                Dữ liệu lấy trực tiếp từ các file PDF văn bản pháp lý chính thức. Bấm nút "Xem trực tiếp PDF" để xem tài liệu.
+                Dữ liệu lấy trực tiếp từ các file PDF văn bản pháp lý chính thức.
               </p>
             </div>
-            <span style={{ fontSize: '0.78rem', color: '#18181B', fontWeight: 600 }}>
-              Hiển thị: {filteredPolicies.length} / {POLICIES.length} tệp
-            </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -673,6 +533,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
       {subTab === 'fees' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div
+            className="knowledge-section-heading"
             style={{
               padding: '16px 20px',
               borderRadius: 10,
@@ -689,16 +550,13 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircleIcon style={{ width: 18, height: 18, color: '#18181B' }} />
                 <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#18181B' }}>
-                  Biểu phí & Bảng giá ({PRICING_TARIFFS.length} tài liệu)
+                  Biểu phí & Bảng giá
                 </h3>
               </div>
               <p style={{ fontSize: '0.82rem', color: '#52525B', marginTop: 2 }}>
                 Dữ liệu lấy từ các văn bản bảng giá xe niêm yết, tùy chọn trang bị và biểu phí dịch vụ sạc V-GREEN.
               </p>
             </div>
-            <span style={{ fontSize: '0.78rem', color: '#18181B', fontWeight: 600 }}>
-              Hiển thị: {filteredFees.length} / {PRICING_TARIFFS.length} tệp
-            </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -726,6 +584,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {VEHICLES.length === 0 && renderEmptySectionNotice('Thông số xe & Trang bị kỹ thuật', REQUIRED_VEHICLE_PDFS.length, 'product_specs')}
           <div
+            className="knowledge-section-heading"
             style={{
               padding: '16px 20px',
               borderRadius: 10,
@@ -742,23 +601,20 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircleIcon style={{ width: 18, height: 18, color: '#18181B' }} />
                 <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#18181B' }}>
-                  Dải ô tô điện VinFast 2026 ({VEHICLES.length} dòng xe)
+                  Dải ô tô điện VinFast 2026
                 </h3>
               </div>
               <p style={{ fontSize: '0.82rem', color: '#52525B', marginTop: 2 }}>
                 Thông số kỹ thuật chuẩn hóa, giá niêm yết, pin và trang bị ADAS phục vụ tư vấn khách hàng.
               </p>
             </div>
-            <span style={{ fontSize: '0.78rem', color: '#18181B', fontWeight: 600 }}>
-              Hiển thị: {filteredVehicles.length} / {VEHICLES.length} dòng xe
-            </span>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20 }}>
             {filteredVehicles.map((v) => (
               <div
                 key={v.id}
-                className="card-white"
+                className="card-white knowledge-vehicle-card"
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -897,6 +753,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {FAQ_QUESTIONS.length === 0 && renderEmptySectionNotice('Câu hỏi thường gặp FAQ', REQUIRED_FAQ_PDFS.length, 'faq')}
           <div
+            className="knowledge-section-heading"
             style={{
               padding: '16px 20px',
               borderRadius: 10,
@@ -913,16 +770,13 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircleIcon style={{ width: 18, height: 18, color: '#18181B' }} />
                 <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#18181B' }}>
-                  Ngân hàng Câu hỏi thường gặp FAQ VinFast 2026 ({FAQ_QUESTIONS.length} câu hỏi đã đồng bộ từ data/knowledge/faq.json)
+                  Ngân hàng Câu hỏi thường gặp FAQ VinFast 2026
                 </h3>
               </div>
               <p style={{ fontSize: '0.82rem', color: '#52525B', marginTop: 2 }}>
                 Giải đáp chi tiết thắc mắc khách hàng theo từng dòng xe, pin & trạm sạc V-GREEN, bảo hành và tiện ích thông minh.
               </p>
             </div>
-            <span style={{ fontSize: '0.78rem', color: '#18181B', fontWeight: 600 }}>
-              Hiển thị: {filteredFaqs.length} / {FAQ_QUESTIONS.length} câu hỏi
-            </span>
           </div>
 
           {/* Model filter chips */}
@@ -954,7 +808,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
               return (
                 <div
                   key={f.id}
-                  className="card-white"
+                  className="card-white knowledge-faq-card"
                   style={{
                     padding: '18px 22px',
                     display: 'flex',
