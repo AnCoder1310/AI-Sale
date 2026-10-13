@@ -60,19 +60,15 @@ async def query_copilot(request: CopilotQueryRequest) -> CopilotQueryResponse:
 
 @router.get("/sources/{document_id}")
 async def get_source_document(document_id: str) -> dict[str, Any]:
-    paths = [Path("data/knowledge/corpus.json"), Path("data/knowledge/faq.json")]
-    found_any = False
-    for path in paths:
-        if not path.exists():
-            continue
-        found_any = True
-        try:
-            items = json.loads(await asyncio.to_thread(path.read_text, encoding="utf-8"))
-            for item in items:
-                if item.get("document_id") == document_id:
-                    return item
-        except Exception as exc:
-            logger.warning("Source lookup failed in %s (%s)", path, type(exc).__name__)
-    if not found_any:
+    path = Path("data/knowledge/corpus.json")
+    if not path.exists():
         raise HTTPException(status_code=404, detail="Không tìm thấy kho tài liệu.")
+    try:
+        items = json.loads(await asyncio.to_thread(path.read_text, encoding="utf-8"))
+        for item in items:
+            if item.get("document_id") == document_id:
+                return item
+    except Exception as exc:
+        logger.warning("Source lookup failed (%s)", type(exc).__name__)
+        raise HTTPException(status_code=500, detail="Không thể đọc tài liệu lúc này.") from None
     raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu.")

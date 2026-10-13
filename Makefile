@@ -21,12 +21,3 @@ clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type d -name .pytest_cache -exec rm -rf {} +
 	find . -type d -name .ruff_cache -exec rm -rf {} +
-
-deploy:
-	./scripts/deploy_to_server.sh
-
-deploy-be:
-	./scripts/deploy_to_server.sh backend
-
-deploy-fe:
-	./scripts/deploy_to_server.sh frontend

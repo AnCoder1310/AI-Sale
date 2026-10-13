@@ -25,6 +25,8 @@ def required_password(variable_name: str) -> str:
 
 async def seed() -> None:
     settings = get_settings()
+    if settings.app_env == "production":
+        raise RuntimeError("Demo account seeding is only allowed outside production")
     service = AuthService(SQLAuthRepository(settings.database_url))
     accounts = (
         ("advisor-demo", "advisor.demo", "Tư vấn viên Demo", UserRole.ADVISOR, "DEMO_ADVISOR_PASSWORD"),
