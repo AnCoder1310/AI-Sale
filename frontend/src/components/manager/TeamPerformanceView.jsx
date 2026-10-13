@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { managerApi } from '../../api/managerApi';
+import { AlertCircleIcon, TrophyIcon } from '../common/Icons';
 
 const SKILLS = {
   need_discovery: 'Khám phá nhu cầu',
@@ -61,7 +62,7 @@ export function TeamPerformanceView({ onNavigateTab }) {
 
       {status === 'ready' && advisors.length === 0 && (
         <div className="manager-banner-warning">
-          <span>⚠️ Hiện chưa có tài khoản Advisor nào trong hệ thống.</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><AlertCircleIcon style={{ width: 14, height: 14 }} /> Hiện chưa có tài khoản Advisor nào trong hệ thống.</span>
           {onNavigateTab && (
             <button
               type="button"
@@ -116,7 +117,7 @@ export function TeamPerformanceView({ onNavigateTab }) {
                   <small style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 600 }}>
                     {advisor.rank == null
                       ? `Chưa đủ điều kiện xếp hạng (${advisor.scored_sessions}/3 phiên)`
-                      : `🏆 Xếp hạng: #${advisor.rank}`}
+                      : <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><TrophyIcon style={{ width: 12, height: 12 }} /> Xếp hạng: #{advisor.rank}</span>}
                   </small>
                 </div>
               </div>

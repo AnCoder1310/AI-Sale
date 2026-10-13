@@ -238,7 +238,7 @@ export function ManagerReviewModal({ detail, onClose, onApprove }) {
             <footer className="review-modal-actions">
               <button type="button" className="review-secondary" onClick={onClose}>Hủy</button>
               {canReview && <button type="submit" className="review-approve" disabled={status !== 'idle'}>
-                {status === 'saving' ? 'Đang lưu…' : '✓ Phê duyệt & lưu'}
+                {status === 'saving' ? 'Đang lưu…' : 'Phê duyệt & lưu'}
               </button>}
             </footer>
           </div>

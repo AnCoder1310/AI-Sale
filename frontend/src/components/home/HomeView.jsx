@@ -23,6 +23,7 @@ export function HomeView({
       <div className="card-dark" style={{ position: 'relative', overflow: 'hidden' }}>
         {/* Subtle Hero Vehicle Visual Accent */}
         <div
+          className="hero-banner-vehicle-bg"
           style={{
             position: 'absolute',
             right: 0,
@@ -47,7 +48,7 @@ export function HomeView({
           </div>
 
           <h1 style={{ fontSize: '2.2rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#FFFFFF', lineHeight: 1.2 }}>
-            Chào buổi sáng, {advisorProfile.name.split(' ').slice(-1)[0]}! 👋
+            Chào buổi sáng, {advisorProfile.name.split(' ').slice(-1)[0]}!
           </h1>
 
           <p style={{ fontSize: '0.98rem', color: '#A3A3A3', lineHeight: 1.5 }}>
@@ -167,7 +168,7 @@ export function HomeView({
       </div>
 
       {/* 2-COLUMN SECTION: RECOMMENDED SCENARIOS + COMPETENCY */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, 380px)', gap: 24, alignItems: 'start' }}>
+      <div className="home-two-col-layout">
         {/* LEFT COLUMN: SCENARIOS */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
