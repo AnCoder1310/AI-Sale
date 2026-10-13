@@ -102,10 +102,6 @@ export function App() {
     }
   };
 
-  const handleStartScenarioFromHome = () => {
-    setCurrentTab('roleplay');
-  };
-
   const handleConsultCopilot = (query) => {
     setCopilotQuery(query);
     setCurrentTab('copilot');
@@ -139,7 +135,7 @@ export function App() {
   };
 
   return (
-    <div className="app-container">
+    <div className={`app-container${currentTab === 'home' ? ' home-app-container' : ''}${currentTab === 'copilot' ? ' copilot-app-container' : ''}${currentTab === 'knowledge' ? ' knowledge-app-container' : ''}`}>
       {/* GLOBAL TOP HEADER */}
       <Header
         currentTab={currentTab}
@@ -154,13 +150,16 @@ export function App() {
       />
 
       {/* MAIN CONTENT AREA */}
-      <main className="main-content">
+      <main className={`main-content${currentTab === 'home' ? ' home-main-content' : ''}${currentTab === 'copilot' ? ' copilot-main-content' : ''}${currentTab === 'knowledge' ? ' knowledge-main-content' : ''}`}>
         {currentTab === 'home' && (
           <HomeView
-            advisorProfile={advisorProfile}
             scenarios={scenarios}
+            scenarioStatus={scenarioStatus}
+            onRetryScenarios={() => {
+              setScenarioStatus('loading');
+              setScenarioReloadToken((value) => value + 1);
+            }}
             onNavigate={(tab) => setCurrentTab(tab)}
-            onStartScenario={handleStartScenarioFromHome}
           />
         )}
 
