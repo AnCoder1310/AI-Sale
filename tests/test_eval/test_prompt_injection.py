@@ -16,7 +16,8 @@ from eval.prompt_injection.run import (
 
 
 def test_attack_suite_covers_three_untrusted_surfaces_without_real_corpus():
-    assert len(SOURCE_ATTACKS) == len(DIRECT_QUERY_ATTACKS) == len(ADVISOR_ATTACKS) == 3
+    assert len(SOURCE_ATTACKS) == len(DIRECT_QUERY_ATTACKS) == 3
+    assert len(ADVISOR_ATTACKS) == 7
     hit = synthetic_hit("synthetic content")
     assert hit["document_id"] == "INJECTION_TEST_SOURCE"
     assert hit["content"] == "synthetic content"
