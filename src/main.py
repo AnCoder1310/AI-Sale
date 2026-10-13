@@ -12,9 +12,11 @@ from src.api.routes import router
 from src.config import get_settings
 from src.integrations.practice_records import SQLPracticeRecordsRepository
 from src.integrations.practice_runtime import build_practice_service
+from src.integrations.voice_usage import SQLVoiceUsageRepository
 from src.knowledge.retrieval_service import get_retrieval_service
 from src.models.auth import UserRole
 from src.services.recorded_practice import RecordedPracticeService
+from src.services.voice import VoiceService
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +79,8 @@ recorded_practice = RecordedPracticeService(
     SQLPracticeRecordsRepository(settings.database_url),
     auth_service,
 )
-practice_router, manager_router = create_recorded_practice_routers(recorded_practice, current_user)
+voice_service = VoiceService(recorded_practice, SQLVoiceUsageRepository(settings.database_url), settings)
+practice_router, manager_router = create_recorded_practice_routers(recorded_practice, current_user, voice_service)
 app.include_router(create_auth_router(auth_service, settings), prefix="/api/v1")
 app.include_router(copilot_router, prefix="/api/v1", dependencies=[Depends(require_advisor_for_copilot)])
 app.include_router(practice_router, prefix="/api/v1")

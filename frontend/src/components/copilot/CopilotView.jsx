@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  SparkleIcon,
   RefreshIcon,
   CopyIcon,
   SendIcon,
@@ -10,6 +9,7 @@ import {
   LightbulbIcon,
   ArrowRight,
 } from '../common/Icons';
+import { CopilotLogo } from '../common/CopilotLogo';
 import { Badge } from '../common/Badge';
 import { Modal } from '../common/Modal';
 import { copilotApi } from '../../api/copilotApi';
@@ -125,7 +125,6 @@ const WELCOME_MESSAGE = {
 
 export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = null }) {
   const storageKey = `${STORAGE_KEY_PREFIX}${currentUser?.username || 'advisor'}`;
-  const [filterDomain, setFilterDomain] = useState('all');
   const [inputMessage, setInputMessage] = useState(initialQuery || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -173,15 +172,6 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
   }, [messages, storageKey]);
 
   const messagesEndRef = useRef(null);
-
-  const filterChips = [
-    { id: 'all', label: 'Tất cả lĩnh vực' },
-    { id: 'specs', label: 'Thông số & Công nghệ' },
-    { id: 'policy', label: 'Chính sách & Ưu đãi' },
-    { id: 'charging', label: 'Pin & Trạm sạc V-GREEN' },
-    { id: 'competitor', label: 'So sánh đối thủ' },
-    { id: 'calculator', label: 'Máy tính Trả góp' },
-  ];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -256,22 +246,22 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
       {/* LEFT MAIN CHAT CARD */}
       <div className="card-white copilot-chat-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
         {/* HEADER */}
-        <div style={{ padding: '18px 24px', borderBottom: '1px solid #E5E5E5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: '#111111', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <SparkleIcon style={{ width: 18, height: 18 }} />
+        <div className="copilot-chat-header">
+          <div className="copilot-chat-identity">
+            <div className="copilot-chat-mark">
+              <CopilotLogo style={{ width: 23, height: 23 }} />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111111' }}>
+                <h2 className="copilot-chat-title">
                   VinFast AI Copilot
                 </h2>
-                <Badge variant="default" style={{ backgroundColor: '#F4F4F2', border: '1px solid #E0E0DD' }}>
-                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#111111', marginRight: 4 }} />
+                <Badge variant="default" className="copilot-grounded-badge">
+                  <span className="copilot-grounded-dot" />
                   RAG Grounded
                 </Badge>
               </div>
-              <p style={{ fontSize: '0.78rem', color: '#737373' }}>
+              <p className="copilot-chat-subtitle">
                 Truy vấn tài liệu chính thức, thông số kỹ thuật và chính sách 2026
               </p>
             </div>
@@ -279,8 +269,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
 
           <button
             onClick={handleResetChat}
-            className="btn-ghost"
-            style={{ fontSize: '0.8rem', color: '#737373' }}
+            className="copilot-reset-button"
             title="Làm mới phiên chat"
           >
             <RefreshIcon style={{ width: 14, height: 14 }} />
@@ -288,21 +277,8 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
           </button>
         </div>
 
-        {/* DOMAIN FILTER CHIPS */}
-        <div style={{ padding: '10px 24px', borderBottom: '1px solid #F0F0EE', display: 'flex', gap: 8, overflowX: 'auto', backgroundColor: '#FAFAFA' }}>
-          {filterChips.map((chip) => (
-            <button
-              key={chip.id}
-              className={`chip ${filterDomain === chip.id ? 'active' : ''}`}
-              onClick={() => setFilterDomain(chip.id)}
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
-
         {/* CHAT MESSAGES AREA */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="copilot-messages">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -321,11 +297,11 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
                   </div>
                 </div>
               ) : (
-                <div className="chat-bubble-ai" style={{ width: '100%' }}>
+                <div className="chat-bubble-ai copilot-assistant-message" style={{ width: '100%' }}>
                   {/* AI header */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                    <div style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: '#111111', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <SparkleIcon style={{ width: 13, height: 13 }} />
+                    <div className="copilot-message-mark">
+                      <CopilotLogo style={{ width: 16, height: 16 }} />
                     </div>
                     <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#111111' }}>
                       VinFast Sales Copilot
@@ -445,10 +421,10 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
           ))}
 
           {loading && (
-            <div className="chat-bubble-ai" style={{ width: '80%' }}>
+            <div className="chat-bubble-ai copilot-assistant-message" style={{ width: '80%' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <div style={{ width: 20, height: 20, borderRadius: 6, backgroundColor: '#111111', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <SparkleIcon style={{ width: 12, height: 12 }} />
+                <div className="copilot-message-mark">
+                  <CopilotLogo style={{ width: 15, height: 15 }} />
                 </div>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#111111' }}>
                   Copilot đang truy vấn tài liệu chính thức...
@@ -466,21 +442,13 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
         </div>
 
         {/* BOTTOM INPUT BAR */}
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #E5E5E5', backgroundColor: '#FFFFFF' }}>
+        <div className="copilot-composer">
           {error && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{error}</p>}
           <form
+            className="copilot-composer-form"
             onSubmit={(e) => {
               e.preventDefault();
               handleSend();
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              backgroundColor: '#F7F7F5',
-              border: '1px solid #E5E5E5',
-              borderRadius: 9999,
-              padding: '6px 12px 6px 20px',
             }}
           >
             <input
@@ -500,19 +468,9 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
             />
 
             <button
+              className="copilot-send-button"
               type="submit"
               disabled={!inputMessage.trim() || loading}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                backgroundColor: inputMessage.trim() ? '#111111' : '#D1D1CE',
-                color: '#FFFFFF',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s',
-              }}
               title="Gửi câu hỏi"
             >
               <SendIcon style={{ width: 16, height: 16 }} />
@@ -522,16 +480,16 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
       </div>
 
       {/* RIGHT SIDEBAR: FAQ + QUICK CHEAT-SHEET */}
-      <div className="copilot-sidebar-column" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="copilot-sidebar-column">
         {/* CARD: CÂU HỎI THƯỜNG GẶP */}
-        <div className="card-white" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ borderBottom: '1px solid #F0F0EE', paddingBottom: 12 }}>
-            <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#111111', letterSpacing: '0.04em' }}>
-              ? CÂU HỎI THƯỜNG GẶP
+        <div className="card-white copilot-faq-card">
+          <div className="copilot-sidebar-heading">
+            <h3>
+              Câu hỏi thường gặp
             </h3>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="copilot-faq-list">
             {FAQ_QUESTIONS.length === 0 ? (
               <div style={{ padding: '12px 14px', borderRadius: 8, backgroundColor: '#F9FAFB', border: '1px dashed #D1D5DB', fontSize: '0.8rem', color: '#6B7280' }}>
                 <span style={{ fontWeight: 600, color: '#374151', display: 'block', marginBottom: 2 }}>
@@ -541,41 +499,24 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
               </div>
             ) : (
               FAQ_QUESTIONS.slice(0, 6).map((item) => (
-              <div
+              <button
+                type="button"
+                className="copilot-faq-question"
                 key={item.id}
                 onClick={() => handleSend(item.query)}
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  border: '1px solid #EAEAE6',
-                  backgroundColor: '#FFFFFF',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: 10,
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F7F7F5';
-                  e.currentTarget.style.borderColor = '#D0D0CB';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                  e.currentTarget.style.borderColor = '#EAEAE6';
-                }}
+                disabled={loading}
               >
-                <span style={{ fontSize: '0.82rem', fontWeight: 500, color: '#222222', lineHeight: 1.35 }}>
+                <span>
                   {item.question}
                 </span>
-                <ChevronRight style={{ width: 14, height: 14, color: '#888888', flexShrink: 0 }} />
-              </div>
+                <ChevronRight aria-hidden="true" />
+              </button>
             )))}
           </div>
         </div>
 
         {/* CARD: QUICK CHEAT-SHEET 2026 */}
-        <div className="card-dark" style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="card-dark copilot-cheat-card" style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'inline-block', backgroundColor: 'rgba(255, 255, 255, 0.1)', padding: '3px 8px', borderRadius: 4, width: 'fit-content' }}>
             <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#E0E0E0', letterSpacing: '0.05em' }}>
               {CHEAT_SHEET_DATA.title}

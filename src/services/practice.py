@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Protocol
 from uuid import uuid4
 
@@ -71,6 +71,7 @@ class PracticeSessionView(BaseModel):
     conversation_stage: ConversationStage
     turn_count: int
     max_turns: int = 10
+    pending_customer_reply: bool = False
     visible_context: str
     termination_status: TerminationStatus
     termination_reason: str | None = None
@@ -135,9 +136,19 @@ class PracticeService:
             result = await self._graph.continue_session(session_id, advisor_message)
             return PracticeSessionView.model_validate(result)
 
-    async def finish_session(self, session_id: str) -> PracticeResultView:
+    async def retry_customer_reply(self, session_id: str) -> PracticeSessionView:
         async with self._lock_for(session_id):
+            result = await self._graph.retry_customer_reply(session_id)
+            return PracticeSessionView.model_validate(result)
+
+    async def finish_session(
+        self, session_id: str, *, on_saved: Callable[[], Awaitable[None]] | None = None
+    ) -> PracticeResultView:
+        async with self._lock_for(session_id):
+            # finish_session commits the frozen transcript before evaluation starts.
             state = await self._graph.finish_session(session_id)
+            if on_saved is not None:
+                await on_saved()
             if state.evaluation_result is not None:
                 return self._result_view(state)
 

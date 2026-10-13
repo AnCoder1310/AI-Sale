@@ -295,10 +295,11 @@ async def test_finish_accepts_session_already_ended_by_turn_limit():
 
 @pytest.mark.asyncio
 async def test_customer_provider_failure_does_not_lose_advisor_turn():
-    graph, checkpoint, _, _ = build_graph(
+    graph, checkpoint, _, analysis_model = build_graph(
         [
             {"reply": "Anh muốn tìm hiểu xe."},
             {"reply": "", "unexpected": "field"},
+            {"reply": "Anh muốn biết thêm về xe."},
         ],
         [{}],
     )
@@ -311,6 +312,19 @@ async def test_customer_provider_failure_does_not_lose_advisor_turn():
     assert saved.turn_count == 1
     assert saved.messages[-1].role == "advisor"
     assert saved.messages[-1].content == "Anh cần em tư vấn thêm."
+    assert saved.pending_customer_reply
+    with pytest.raises(RoleplaySessionConflictError, match="pending"):
+        await graph.continue_session("session-1", "Một câu mới")
+    with pytest.raises(RoleplaySessionConflictError, match="pending"):
+        await graph.finish_session("session-1")
+
+    recovered = await graph.retry_customer_reply("session-1")
+    assert recovered["pending_customer_reply"] is False
+    assert recovered["turn_count"] == 1
+    assert [message["role"] for message in recovered["messages"]] == ["customer", "advisor", "customer"]
+    assert analysis_model.calls == ["Anh cần em tư vấn thêm."]
+    with pytest.raises(RoleplaySessionConflictError, match="no customer reply"):
+        await graph.retry_customer_reply("session-1")
 
 
 @pytest.mark.asyncio

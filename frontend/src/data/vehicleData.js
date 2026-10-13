@@ -28,13 +28,13 @@ export function resolveVehicleImage(path) {
 }
 
 export const MODEL_IMAGE_MAP = {
-  vf3: resolveVehicleImage('/vehicles/vf-3-transparent.png'),
-  vf5: resolveVehicleImage('/vehicles/vf-5-transparent.png'),
-  vf6: resolveVehicleImage('/vehicles/vf-6-transparent.png'),
-  vf7: resolveVehicleImage('/vehicles/vinfast-vf-7-250529-03cb.png'),
-  vf8: resolveVehicleImage('/vehicles/vf-8-transparent.png'),
-  vf9: resolveVehicleImage('/vehicles/vf-9-transparent.png'),
-  vfwild: resolveVehicleImage('/vehicles/vf-wild-transparent.png'),
+  vf3: resolveVehicleImage('/vehicles/vf-3.jpg'),
+  vf5: resolveVehicleImage('/vehicles/vf-5.jpg'),
+  vf6: resolveVehicleImage('/vehicles/vf-6.jpg'),
+  vf7: resolveVehicleImage('/vehicles/vf-7.jpg'),
+  vf8: resolveVehicleImage('/vehicles/vf-8.jpg'),
+  vf9: resolveVehicleImage('/vehicles/vf-9.jpg'),
+  vfwild: resolveVehicleImage('/vehicles/vf-wild.jpg'),
 };
 
 export const MODEL_SVG_MAP = {
@@ -718,13 +718,9 @@ export function getVehicleByModel(modelName) {
   );
 }
 
-export function getVehicleImage(modelOrId, fallback = '/vehicles/vinfast-vf-7-250529-03cb.png') {
+export function getVehicleImage(modelOrId, fallback = '/vehicles/vf-7.jpg') {
   const resolvedFallback = resolveVehicleImage(fallback);
   if (!modelOrId) return resolvedFallback;
-  const v = getVehicleById(modelOrId) || getVehicleByModel(modelOrId);
-  if (v?.image) return resolveVehicleImage(v.image);
-
-  // Fallback to static synchronized image map
   const normalized = String(modelOrId).toLowerCase().replace(/[^a-z0-9]/g, '');
   if (normalized.includes('wild')) return MODEL_IMAGE_MAP.vfwild;
   if (normalized.includes('9')) return MODEL_IMAGE_MAP.vf9;
@@ -734,6 +730,8 @@ export function getVehicleImage(modelOrId, fallback = '/vehicles/vinfast-vf-7-25
   if (normalized.includes('5')) return MODEL_IMAGE_MAP.vf5;
   if (normalized.includes('3')) return MODEL_IMAGE_MAP.vf3;
 
+  const v = getVehicleById(modelOrId) || getVehicleByModel(modelOrId);
+  if (v?.image) return resolveVehicleImage(v.image);
   return resolvedFallback;
 }
 
