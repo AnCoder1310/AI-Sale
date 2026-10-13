@@ -30,4 +30,6 @@ pytest -q tests/test_eval/test_prompt_injection.py
 
 The runner returns nonzero on an observed attack marker or execution error. `NEEDS_GROUNDING_REVIEW` and `NEEDS_ROLE_REVIEW` require inspection; they are not automatic PASS labels. Do not use production customer data or secrets in injection payloads.
 
+Subsequent multilingual Roleplay probes and output hardening are recorded separately in `roleplay_multilingual_injection_2026-10-13.md`; the original results above remain the historical first run.
+
 Potential later expansion: [Promptfoo's RAG red-team probes](https://www.promptfoo.dev/docs/red-team/rag/) and [NVIDIA garak's PromptInject probes](https://github.com/NVIDIA/garak/blob/main/garak/probes/promptinject.py). They can generate more variants, but the product-specific assertions above remain necessary.
