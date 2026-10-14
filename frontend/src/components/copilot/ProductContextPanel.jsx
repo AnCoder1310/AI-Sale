@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { VEHICLES } from '../../data/vehicleData';
 import { BookIcon, CopyIcon, CheckIcon, ChevronRight } from '../common/Icons';
 
 export function ProductContextPanel({
@@ -70,12 +69,12 @@ export function ProductContextPanel({
 
   return (
     <div
-      className="card-white"
+      className="card-white copilot-insights-card"
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 140px)',
-        minHeight: 600,
+        height: '100%',
+        minHeight: 0,
         padding: 0,
         overflow: 'hidden',
         backgroundColor: '#FFFFFF',
@@ -110,7 +109,7 @@ export function ProductContextPanel({
             </h3>
             <span style={{ fontSize: '0.7rem', color: '#6B7280' }}>
               {isConsultationMode
-                ? 'Nội dung có nguồn chưa nêu trong câu trả lời'
+                ? 'Thông tin sản phẩm và chính sách theo ngày đối chiếu'
                 : 'Chọn xe và chủ đề để bắt đầu chuẩn bị tư vấn'}
             </span>
           </div>
@@ -199,7 +198,7 @@ export function ProductContextPanel({
                 <strong>Ngữ cảnh:</strong> {currentActiveModel}
               </span>
               <span>
-                {resolvedDate ? `Đối chiếu: ${resolvedDate}` : 'Cập nhật tài liệu 2026'}
+                {resolvedDate ? `Đối chiếu: ${resolvedDate}` : 'Theo tài liệu của phiên tư vấn'}
               </span>
             </div>
 
@@ -261,15 +260,15 @@ export function ProductContextPanel({
               >
                 <span style={{ fontSize: '1.4rem', display: 'block', marginBottom: 6 }}>✅</span>
                 <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#374151', margin: '0 0 4px 0' }}>
-                  Đã bao phủ đầy đủ nội dung
+                  Chưa có thông tin nổi bật bổ sung
                 </p>
                 <p style={{ fontSize: '0.75rem', color: '#6B7280', margin: 0 }}>
-                  Các nội dung chính sách và trang bị liên quan đã được đối chiếu trong câu trả lời.
+                  Bạn có thể hỏi thêm về thông số, trang bị hoặc chính sách của xe để đối chiếu tài liệu.
                 </p>
               </div>
             )}
 
-            {insights.map((insight, idx) => {
+            {(loading ? [] : insights).map((insight, idx) => {
               const isPolicy = insight.category === 'policy';
               const copyKey = `card-${originMessageId || 'curr'}-${idx}`;
               const sourceTag = insight.citation?.title ? ` [Nguồn: ${insight.citation.title}]` : '';
@@ -307,7 +306,7 @@ export function ProductContextPanel({
                           color: isPolicy ? '#166534' : '#1D4ED8',
                         }}
                       >
-                        {isPolicy ? '🎁 Chính sách ưu đãi' : '💡 Điểm nổi bật'}
+                        {isPolicy ? '📜 Chính sách áp dụng' : '💡 Điểm nổi bật'}
                       </span>
                       <span
                         style={{
@@ -364,6 +363,13 @@ export function ProductContextPanel({
                     </p>
                   </div>
 
+                  {isPolicy && insight.citation?.effective_from && (
+                    <p style={{ margin: 0, fontSize: '0.7rem', color: '#4B5563' }}>
+                      Hiệu lực từ {insight.citation.effective_from}
+                      {insight.citation.effective_to ? ` đến ${insight.citation.effective_to}` : ''}
+                    </p>
+                  )}
+
                   {/* Clickable Source Provenance Pill */}
                   {insight.citation && onCitationClick && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
@@ -419,13 +425,6 @@ export function ProductContextPanel({
                       }}
                     >
                       <strong>Điều kiện áp dụng:</strong> {insight.essential_conditions}
-                    </div>
-                  )}
-
-                  {/* Advisory hint (how to pitch) */}
-                  {insight.advisory_hint && (
-                    <div style={{ fontSize: '0.72rem', color: '#4B5563', fontStyle: 'italic' }}>
-                      💡 <em>{insight.advisory_hint}</em>
                     </div>
                   )}
 

@@ -76,10 +76,10 @@ async def query_copilot(
     readiness_loader=None,
     progress_queue=None,
 ) -> CopilotQueryResponse:
+    request_id = request_id or uuid4().hex
+    started = time.perf_counter()
     try:
         runtime = runtime or RuntimeBudget.create(get_settings())
-        request_id = request_id or uuid4().hex
-        started = time.perf_counter()
         result = await asyncio.wait_for(
             copilot_agent.ainvoke(
                 {
@@ -134,11 +134,36 @@ async def query_copilot(
         return CopilotQueryResponse(**{**final.model_dump(), "request_id": request_id})
     except (CopilotDependencyError, BudgetExhaustedError, IndexNotReadyError, TimeoutError) as exc:
         annotate(error_type=type(exc).__name__)
-        raise HTTPException(
-            status_code=503, detail="Dịch vụ tra cứu tạm thời không khả dụng. Vui lòng thử lại."
-        ) from exc
+        failures = [event for event in reversed(runtime.events) if event.get("error_type")]
+        failure = next((event for event in failures if event.get("llm")), failures[0] if failures else {})
+        cause = exc.__cause__ or exc
+        provider_status = failure.get("provider_status") or getattr(cause, "status_code", None)
+        logger.error(
+            "Copilot dependency failed",
+            extra={"telemetry": {
+                "event": "copilot_dependency_failure",
+                "request_id": request_id,
+                "error_type": type(exc).__name__,
+                "cause_type": type(cause).__name__,
+                "failure_stage": failure.get("failure_stage") or failure.get("node") or "readiness",
+                "failure_kind": failure.get("failure_kind"),
+                "provider_status": provider_status,
+                "provider_error_kind": failure.get("provider_error_kind"),
+                "elapsed_seconds": round(time.perf_counter() - started, 3),
+            }},
+        )
+        detail = (
+            "Hạn mức dịch vụ AI không đủ để tạo câu trả lời. Vui lòng liên hệ quản trị viên."
+            if provider_status == 402
+            else "Dịch vụ tra cứu tạm thời không khả dụng. Vui lòng thử lại."
+        )
+        raise HTTPException(status_code=503, detail=detail) from exc
     except Exception as exc:
-        logger.warning("Copilot request failed (%s)", type(exc).__name__)
+        logger.error("Copilot request failed", extra={"telemetry": {
+            "event": "copilot_internal_failure", "request_id": request_id,
+            "error_type": type(exc).__name__,
+            "failure_stage": runtime.events[-1].get("node") if getattr(runtime, "events", None) else "initialization",
+        }})
         raise HTTPException(status_code=500, detail="Không thể xử lý câu hỏi lúc này.") from None
 
 

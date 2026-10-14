@@ -10,7 +10,6 @@ import {
   ChatIcon,
   TrashIcon,
 
-  LightbulbIcon,
   ArrowRight,
 
 } from '../common/Icons';
@@ -22,7 +21,6 @@ import { ProductContextPanel } from './ProductContextPanel';
 import { createId, getCurrentTimeString } from '../../lib/id';
 import { copilotReason } from '../../lib/copilotStatus';
 import { SourceViewerModal } from './SourceViewerModal';
-import { FAQ_QUESTIONS, CHEAT_SHEET_DATA } from '../../data/faqData';
 
 const STORAGE_KEY_PREFIX = 'vinfast_copilot_chat_';
 
@@ -358,7 +356,6 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
   }, [messages, storageKey]);
 
 
-  const messagesEndRef = useRef(null);
   const chatScrollContainerRef = useRef(null);
   const isNearBottomRef = useRef(true);
   const textareaRef = useRef(null);
@@ -381,7 +378,8 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
 
   const scrollToBottomIfNeeded = useCallback(() => {
     if (isNearBottomRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      const container = chatScrollContainerRef.current;
+      if (container) container.scrollTop = container.scrollHeight;
     }
   }, []);
 
@@ -413,25 +411,11 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
         setCurrentSessionId(sessionId);
         localStorage.setItem('copilot_active_session_id', sessionId);
 
-        const lastWithInsights = [...data.messages].reverse().find(
-          (m) => m.product_insights && m.product_insights.length > 0
-        );
-        if (lastWithInsights) {
-          const detectedModel = lastWithInsights.product_insights[0]?.product_model;
-          setResolvedContext({
-            model: detectedModel === 'ALL' ? 'VinFast' : detectedModel,
-            date: targetDate || '2026',
-            originMessageId: lastWithInsights.id,
-            insights: lastWithInsights.product_insights,
-          });
-        } else {
-          setResolvedContext({
-            model: null,
-            date: null,
-            originMessageId: null,
-            insights: [],
-          });
-        }
+        const lastAnswer = [...data.messages].reverse().find((message) => message.role === 'assistant');
+        const savedInsights = lastAnswer?.product_insights || [];
+        const models = [...new Set(savedInsights.map((item) => item.product_model).filter((model) => model && model !== 'ALL'))];
+        setResolvedContext({ model: models.join(' / ') || (savedInsights.length ? 'VinFast' : null),
+          date: lastAnswer?.insight_date || '', originMessageId: lastAnswer?.id, insights: savedInsights });
       }
     } catch (err) {
       console.warn('Failed to load session', err);
@@ -501,6 +485,11 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
           const detail = await copilotApi.getSessionDetail(savedSessionId);
           if (isMounted && detail && detail.messages && detail.messages.length > 0) {
             setMessages(detail.messages);
+            const lastAnswer = [...detail.messages].reverse().find((message) => message.role === 'assistant');
+            const savedInsights = lastAnswer?.product_insights || [];
+            const savedModels = [...new Set(savedInsights.map((item) => item.product_model).filter((model) => model && model !== 'ALL'))];
+            setResolvedContext({ model: savedModels.join(' / ') || (savedInsights.length ? 'VinFast' : null),
+              date: lastAnswer?.insight_date || '', originMessageId: lastAnswer?.id, insights: savedInsights });
             setCustomerContext(detail.customer_context || '');
             sessionIdRef.current = savedSessionId;
             setCurrentSessionId(savedSessionId);
@@ -531,7 +520,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
   const handleFillDraft = (text) => {
     setInputMessage(text);
     if (textareaRef.current) {
-      textareaRef.current.focus();
+      textareaRef.current.focus({ preventScroll: true });
     }
   };
 
@@ -594,17 +583,6 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
               });
             }
           },
-          onInsights: (data) => {
-            if (data?.product_insights && data.product_insights.length > 0) {
-              const detected = data.product_insights[0]?.product_model;
-              setResolvedContext({
-                model: detected === 'ALL' ? 'VinFast' : detected,
-                date: targetDate || '2026',
-                originMessageId: tempAiId,
-                insights: data.product_insights,
-              });
-            }
-          },
           onFinal: (response) => {
             if (!response.answer && !accumulatedText) {
               throw new Error('Copilot chưa trả lời được câu hỏi này.');
@@ -616,15 +594,14 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
               fetchSessions();
             }
 
-            if (response.product_insights && response.product_insights.length > 0) {
-              const detected = response.product_insights[0]?.product_model;
-              setResolvedContext({
-                model: detected === 'ALL' ? 'VinFast' : detected,
-                date: targetDate || '2026',
-                originMessageId: tempAiId,
-                insights: response.product_insights,
-              });
-            }
+            const responseInsights = response.product_insights || [];
+            const models = [...new Set(responseInsights.map((item) => item.product_model).filter((model) => model && model !== 'ALL'))];
+            setResolvedContext({
+              model: models.join(' / ') || (responseInsights.length ? 'VinFast' : null),
+              date: targetDate || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }),
+              originMessageId: tempAiId,
+              insights: responseInsights,
+            });
 
             const finalAiMsg = {
               id: tempAiId,
@@ -633,6 +610,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
               content: response.answer || accumulatedText,
               citations: response.citations || [],
               product_insights: response.product_insights || [],
+              insight_date: targetDate || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }),
               talking_points: response.talking_points || [],
               status: response.status || 'answered',
               reason_code: response.reason_code,
@@ -683,14 +661,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
   };
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: showSidebar ? '260px minmax(0, 1fr) 340px' : 'minmax(0, 1fr) 360px',
-        gap: 20,
-        alignItems: 'start',
-      }}
-    >
+    <div className={`copilot-grid-layout${showSidebar ? ' copilot-with-history' : ''}`}>
       {/* SESSIONS SIDEBAR */}
       {showSidebar && (
         <div
@@ -698,8 +669,8 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
           style={{
             display: 'flex',
             flexDirection: 'column',
-            height: 'calc(100vh - 140px)',
-            minHeight: 600,
+            height: '100%',
+            minHeight: 0,
             padding: 0,
             overflow: 'hidden',
           }}
@@ -845,12 +816,12 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
 
       {/* LEFT MAIN CHAT CARD */}
       <div
-        className="card-white"
+        className="card-white copilot-chat-card"
         style={{
           display: 'flex',
           flexDirection: 'column',
-          height: 'calc(100vh - 140px)',
-          minHeight: 600,
+          height: '100%',
+          minHeight: 0,
           padding: 0,
           overflow: 'hidden',
         }}
@@ -1065,41 +1036,6 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
                   )}
 
                   {/* Talking points recommendation box */}
-                  {msg.talking_points && msg.talking_points.length > 0 && (
-                    <div
-                      style={{
-                        marginTop: 16,
-                        padding: '14px 18px',
-                        backgroundColor: '#F9F9F7',
-                        border: '1px solid #EAEAE6',
-                        borderRadius: 10,
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: '0.82rem',
-                          fontWeight: 700,
-                          color: '#111111',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          marginBottom: 8,
-                        }}
-                      >
-                        <LightbulbIcon style={{ width: 14, height: 14, color: '#0F172A' }} />
-                        <span>Gợi ý luận điểm thuyết phục khách hàng:</span>
-                      </div>
-                      <ul style={{ listStyle: 'none', paddingLeft: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {msg.talking_points.map((point, pIdx) => (
-                          <li key={pIdx} style={{ fontSize: '0.82rem', color: '#444444', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                            <span style={{ color: '#111111', fontWeight: 700 }}>•</span>
-                            <span>{point}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
                   {/* Citations / Evidence Sources */}
                   {msg.citations && msg.citations.length > 0 && (
                     <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #F0F0EE' }}>
@@ -1260,7 +1196,6 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
             </div>
           )}
 
-          <div ref={messagesEndRef} />
         </div>
 
 
@@ -1336,69 +1271,6 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
         />
 
 
-        {/* CARD: CÂU HỎI THƯỜNG GẶP */}
-        <div className="card-white copilot-faq-card">
-          <div className="copilot-sidebar-heading">
-            <h3>
-              Câu hỏi thường gặp
-            </h3>
-          </div>
-
-          <div className="copilot-faq-list">
-            {FAQ_QUESTIONS.length === 0 ? (
-              <div style={{ padding: '12px 14px', borderRadius: 8, backgroundColor: '#F9FAFB', border: '1px dashed #D1D5DB', fontSize: '0.8rem', color: '#6B7280' }}>
-                <span style={{ fontWeight: 600, color: '#374151', display: 'block', marginBottom: 2 }}>
-                  Chờ nạp tài liệu FAQ thực tế
-                </span>
-                Cần 6 tệp PDF câu hỏi thường gặp theo dải xe (VF 3 – VF 9) từ thư mục <code>data/knowledge/</code>.
-              </div>
-            ) : (
-              FAQ_QUESTIONS.slice(0, 6).map((item) => (
-              <button
-                type="button"
-                className="copilot-faq-question"
-                key={item.id}
-                onClick={() => handleSend(item.query)}
-                disabled={loading}
-              >
-                <span>
-                  {item.question}
-                </span>
-                <ChevronRight aria-hidden="true" />
-              </button>
-            )))}
-          </div>
-        </div>
-
-        {/* CARD: QUICK CHEAT-SHEET 2026 */}
-        <div className="card-dark copilot-cheat-card" style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'inline-block', backgroundColor: 'rgba(255, 255, 255, 0.1)', padding: '3px 8px', borderRadius: 4, width: 'fit-content' }}>
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#E0E0E0', letterSpacing: '0.05em' }}>
-              {CHEAT_SHEET_DATA.title}
-            </span>
-          </div>
-
-          <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#FFFFFF' }}>
-            {CHEAT_SHEET_DATA.subtitle}
-          </h4>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-            {CHEAT_SHEET_DATA.items.length === 0 ? (
-              <div style={{ fontSize: '0.8rem', color: '#9CA3AF', lineHeight: 1.4 }}>
-                Đang để trống — Sẽ tự động trích xuất thông số khi nạp các tệp PDF thông số xe & chính sách bảo hành.
-              </div>
-            ) : (
-              CHEAT_SHEET_DATA.items.map((item, idx) => (
-              <div key={idx} style={{ fontSize: '0.82rem', color: '#D4D4D4', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                <span style={{ color: '#FFFFFF' }}>•</span>
-                <div>
-                  <span style={{ color: '#999999' }}>{item.label}: </span>
-                  <span style={{ fontWeight: 600, color: '#FFFFFF' }}>{item.value}</span>
-                </div>
-              </div>
-            )))}
-          </div>
-        </div>
       </div>
       {/* SOURCE CITATION DOCUMENT MODAL */}
       <Modal

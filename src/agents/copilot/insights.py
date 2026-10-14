@@ -9,13 +9,14 @@ import re
 from typing import Literal
 
 from src.agents.copilot.state import Citation, ProductInsight
+from src.knowledge.validity import is_document_retrievable, parse_target_date, today_in_vietnam
 
 
 def _resolve_category(document_type: str | None) -> Literal["highlight", "policy"]:
     if not document_type:
         return "highlight"
     doc_type_lower = document_type.strip().lower()
-    if doc_type_lower in {"policy", "promotion"}:
+    if doc_type_lower in {"policy", "promotion", "price_list"}:
         return "policy"
     return "highlight"
 
@@ -37,11 +38,19 @@ def _extract_sentences(raw_text: str) -> list[str]:
             continue
 
         # Protect numbers with decimal or comma separators (e.g. 3.858, 160.000, 7,5) and dates
-        protected = re.sub(r"(\d+)[\.,](\d+)", r"\1__NUM__\2", line)
+        numbers = []
+
+        def protect_number(match):
+            numbers.append(match[0])
+            return f"__NUM{len(numbers) - 1}__"
+
+        protected = re.sub(r"\d+(?:[.,]\d+)+", protect_number, line)
         parts = re.split(r"(?<=[.!?])\s+", protected)
         for p in parts:
-            restored = p.replace("__NUM__", ".").strip()
-            restored = re.sub(r"^[-•+*o\d\.]+\s*", "", restored).strip()
+            restored = p.strip()
+            for index, number in enumerate(numbers):
+                restored = restored.replace(f"__NUM{index}__", number)
+            restored = re.sub(r"^(?:[-•+*]\s+|o\s*[|]\s*|\d+[.)]\s+)", "", restored).strip()
             restored = re.sub(r"^\|\s*|\s*\|$", "", restored).strip()
             if len(restored) >= 10:
                 raw_sentences.append(restored)
@@ -54,7 +63,7 @@ def _score_sentence(s: str, category: str) -> float:
     score = 0.0
     s_lower = s.lower()
 
-    if "(*) lưu ý" in s_lower or "điều kiện" in s_lower or "chưa có sẵn" in s_lower:
+    if category == "policy" and ("(*) lưu ý" in s_lower or "điều kiện" in s_lower or "chưa có sẵn" in s_lower):
         score += 3.5
 
     if re.search(
@@ -95,6 +104,13 @@ def _clean_summary(excerpt: str | None, title: str | None, category: str = "high
     raw = re.sub(r"Vui lòng để lại thông tin[^\.\n]*[\.\n]?", "", raw, flags=re.I)
     raw = re.sub(r"Các thông tin sản phẩm có thể thay đổi[^\.\n]*[\.\n]?", "", raw, flags=re.I)
     raw = re.sub(r"Nguồn:\s*https?://\S+", "", raw, flags=re.I)
+
+    # Website specs often put the label and value on separate lines.
+    raw = re.sub(
+        r"^((?:Quãng đường[^\n.!?:]{0,60}|Công suất[^\n.!?:]{0,60}|Mô[- ]?men[^\n.!?:]{0,60}|Dung lượng pin[^\n.!?:]{0,60}|"
+        r"Thời gian nạp pin[^\n.!?:]{0,60}|Số ghế[^\n.!?:]{0,60}|Túi khí))\n+([^\n]+)",
+        r"\1: \2.", raw, flags=re.I | re.M,
+    )
 
     sentences = _extract_sentences(raw)
     if not sentences:
@@ -155,13 +171,11 @@ def _clean_model(citation_model: str | None, state_models: list[str]) -> str:
 def _extract_essential_conditions(raw_text: str | None, category: str) -> str | None:
     if not raw_text:
         return None
-    matches = re.findall(
-        r"(?:\(\*\)\s*Lưu ý:[^.\n]+|Điều kiện:[^.\n]+|Áp dụng cho[^.\n]+|Một số tính năng sẽ chưa có sẵn[^.\n]+|Thời hạn[^.\n]+)",
-        raw_text,
-        re.I,
-    )
+    matches = [sentence for sentence in _extract_sentences(raw_text) if re.search(
+        r"lưu ý|điều kiện|áp dụng cho|đối tượng áp dụng|xe biển vàng|chưa có sẵn|thời hạn|tùy điều kiện|tùy đối tượng", sentence, re.I
+    )]
     if matches:
-        return "; ".join(m.strip() for m in matches[:2])
+        return "; ".join(list(dict.fromkeys(m.strip() for m in matches))[:2])
     if category == "policy":
         return "Cần đối chiếu điều kiện áp dụng cho từng đối tượng khách hàng."
     return None
@@ -196,6 +210,78 @@ def _is_semantically_covered(candidate_text: str, answer_text: str) -> bool:
             return True
 
     return False
+
+
+def _models_in_text(text: str) -> set[str]:
+    return {f"VF {number}" for number in re.findall(r"\bVF\s*([2-9])\b", text, re.I)}
+
+
+def _scope_excerpt(citation: Citation, models: list[str]) -> str:
+    raw = citation.excerpt or ""
+    if not models:
+        return raw
+    mentioned = _models_in_text(raw)
+    if not mentioned - set(models):
+        return raw
+    # A table spanning several cars is not a safe product card. Retain only
+    # self-contained rows naming the chosen car, together with their headings.
+    lines = [line.strip() for line in raw.splitlines() if line.strip()]
+    selected = [line for line in lines if _models_in_text(line) and _models_in_text(line) <= set(models)]
+    if citation.document_type in {"policy", "promotion"} and citation.product_model == "ALL":
+        general_terms = [line for line in lines if "Các dòng xe khác:" in line]
+        if general_terms:
+            selected.extend(general_terms)
+            # Keep the purchase-date cohort and flag customer-specific restrictions.
+            selected.extend(line for line in lines if re.search(r"Đối tượng áp dụng: Các xe mua|Với Khách hàng xe biển vàng", line, re.I))
+    if not selected:
+        return ""
+    headers = [line for line in lines if not _models_in_text(line) and re.search(
+        r"MSRP|bao gồm VAT|đã gồm VAT|Điều kiện:|Thời gian áp dụng:|Áp dụng cho", line, re.I
+    )]
+    return "\n".join([*headers, *selected])
+
+
+def _snapshot_citations(state: dict, models: list[str]) -> list[Citation]:
+    """Read extra product facts from the same audited corpus, without another model call."""
+    snapshot = state.get("snapshot")
+    if not snapshot or not models:
+        return []
+    date = parse_target_date(state.get("resolved_date")) or today_in_vietnam()
+    citations = []
+    seen_documents = set()
+    documents = {document.document_id: document for document in getattr(snapshot, "documents", [])}
+    for chunk in getattr(snapshot, "chunks", {}).values():
+        metadata = chunk.metadata
+        if metadata.document_id in seen_documents:
+            continue
+        document = documents.get(metadata.document_id)
+        content = document.content if document else chunk.content
+        if metadata.document_type not in {"product_specs", "policy", "promotion"}:
+            continue
+        if metadata.product_model not in {*models, "ALL"}:
+            continue
+        if not is_document_retrievable(metadata, date):
+            continue
+        # A generic policy is useful only when its actual terms concern this car
+        # or apply to cars generally. Exclude unrelated models and legal templates.
+        if metadata.product_model == "ALL":
+            mentioned = _models_in_text(content)
+            if mentioned and not mentioned.intersection(models) and "Các dòng xe khác:" not in content:
+                continue
+            if re.search(r"mẫu hợp đồng|điều khoản.*dịch vụ phần mềm", metadata.title, re.I):
+                continue
+        seen_documents.add(metadata.document_id)
+        citations.append(Citation(
+            citation_id=f"C{len(citations) + 1}", chunk_id=chunk.chunk_id,
+            document_id=metadata.document_id, title=metadata.title,
+            section=None if document else metadata.section_title,
+            effective_from=str(metadata.effective_date),
+            effective_to=str(metadata.expiry_date) if metadata.expiry_date else None,
+            source_uri=metadata.source, product_model=metadata.product_model,
+            document_type=metadata.document_type, version=metadata.version,
+            excerpt=content,
+        ))
+    return citations
 
 
 def build_product_insights(
@@ -238,35 +324,72 @@ def build_product_insights(
             existing_chunk_ids.add(chunk_id)
             cid_counter += 1
 
-    if not citations:
-        return []
-
-    state_models = state.get("product_models") or []
+    state_models = [model for model in state.get("product_models", []) if model != "ALL"]
+    if not state_models:
+        state_models = list(dict.fromkeys(c.product_model for c in citations if c.product_model and c.product_model != "ALL"))
+    for citation in _snapshot_citations(state, state_models):
+        citations.append(citation.model_copy(update={"citation_id": f"C{len(citations) + 1}"}))
+    # Prioritize useful specs and commercial terms over general document headings.
+    citations.sort(key=lambda c: (
+        c.document_type == "price_list",
+        _resolve_category(c.document_type) == "policy",
+        -_score_sentence(_scope_excerpt(c, state_models), _resolve_category(c.document_type)),
+    ))
     seen_keys: set[str] = set()
+    seen_summaries: set[str] = set()
+    seen_policy_documents: set[str] = set()
     insights: list[ProductInsight] = []
+    lookup_date = parse_target_date(state.get("resolved_date")) or today_in_vietnam()
 
     for c in citations:
         dedup_key = c.chunk_id or c.citation_id or c.title
         if dedup_key in seen_keys:
             continue
         seen_keys.add(dedup_key)
+        if c.product_model and c.product_model not in {*state_models, "ALL", "VinFast"} and state_models:
+            continue
+        if c.document_type == "battlecard":
+            continue
+        try:
+            start, end = parse_target_date(c.effective_from), parse_target_date(c.effective_to)
+        except ValueError:
+            continue
+        if (start and start > lookup_date) or (end and end < lookup_date):
+            continue
+        excerpt = _scope_excerpt(c, state_models)
+        if not excerpt.strip():
+            continue
 
         category = _resolve_category(c.document_type)
+        if category == "policy" and c.document_id in seen_policy_documents:
+            continue
         title = _clean_title(c.section, c.title)
-        summary = _clean_summary(c.excerpt, c.title, category=category)
+        summary_excerpt = excerpt
+        if category == "highlight":
+            # A product page can contain a marketing price unrelated to the current
+            # price list. Keep commercial figures in policy cards only.
+            summary_excerpt = "\n".join(line for line in excerpt.splitlines() if not re.search(r"VNĐ|VND|triệu đồng|giá bán", line, re.I))
+        summary = _clean_summary(summary_excerpt, c.title, category=category)
         product_model = _clean_model(c.product_model, state_models)
+        if product_model == "ALL" and len(state_models) == 1 and _models_in_text(excerpt) == set(state_models):
+            product_model = state_models[0]
+        if _score_sentence(summary, category) <= 0:
+            continue
+        normalized_summary = re.sub(r"\s+", " ", summary.casefold())
+        if normalized_summary in seen_summaries:
+            continue
 
         # Check semantic novelty against answer_text when requested: omit cards whose facts are already in answer
         if filter_novelty and answer_text and _is_semantically_covered(summary, answer_text):
             continue
+        if sum(item.category == category for item in insights) >= 2:
+            continue
+        seen_summaries.add(normalized_summary)
+        if category == "policy":
+            seen_policy_documents.add(c.document_id)
 
-        raw_source = (c.excerpt or "") + " " + summary
+        raw_source = excerpt + " " + summary
         conditions = _extract_essential_conditions(raw_source, category)
-        advisory_hint = (
-            "Điểm nổi bật hữu ích để chia sẻ thêm khi khách tìm hiểu trang bị và tính năng."
-            if category == "highlight"
-            else "Lưu ý làm rõ điều kiện và thời hạn áp dụng khi tư vấn ưu đãi cho khách."
-        )
         applicability = "conditional" if category == "policy" or product_model == "ALL" else "confirmed"
 
         stable_id = f"ins-{hashlib.md5((dedup_key + title).encode()).hexdigest()[:8]}"
@@ -280,7 +403,6 @@ def build_product_insights(
                 citation=c,
                 insight_id=stable_id,
                 essential_conditions=conditions,
-                advisory_hint=advisory_hint,
                 applicability=applicability,
             )
         )

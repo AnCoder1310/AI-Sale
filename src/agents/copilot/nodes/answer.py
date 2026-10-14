@@ -85,9 +85,9 @@ async def finalize_response(state):
         fallback_reason = state.get("fallback_reason")
         reason_code = (fallback_reason if fallback_reason else snapshot.reason_code) if status != "answered" else None
 
-        from src.agents.copilot.insights import build_product_insights
+        from src.agents.copilot.insights import build_complementary_insights
 
-        product_insights = build_product_insights(state, answer, existing_citations=citations)
+        product_insights = build_complementary_insights(state, answer, existing_citations=citations)
 
         # Snapshot strictly owns all published suggestions; never leak from later drafts/state
         suggested_message = getattr(snapshot, "suggested_message", None)
@@ -170,9 +170,9 @@ async def finalize_response(state):
     else:
         status = "partial" if missing else "answered"
 
-    from src.agents.copilot.insights import build_product_insights
+    from src.agents.copilot.insights import build_complementary_insights
 
-    product_insights = build_product_insights(state, answer, existing_citations=canonical_citations)
+    product_insights = build_complementary_insights(state, answer, existing_citations=canonical_citations)
 
     suggestions_safe = getattr(self_check, "suggestions_safe", True)
     suggested_message = state.get("suggested_message") if suggestions_safe else None

@@ -1,6 +1,7 @@
 """Tests for simplified Copilot Agent: direct Markdown generation and self-check."""
 
 from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from src.agents.copilot.nodes.answer import finalize_response, generate_answer
@@ -169,17 +170,12 @@ async def test_finalize_response_attaches_citations_and_excerpt():
     assert len(final.citations) == 1
     assert final.citations[0].citation_id == "C1"
     assert final.citations[0].excerpt == "VF 8 Thế hệ mới có giá niêm yết 899 triệu đồng."
-    assert len(final.product_insights) == 1
-    assert final.product_insights[0].category == "highlight"
-    assert final.product_insights[0].product_model == "VF 8"
-    assert final.product_insights[0].citation is not None
-    assert final.product_insights[0].citation.citation_id == "C1"
-    assert final.product_insights[0].summary == "VF 8 Thế hệ mới có giá niêm yết 899 triệu đồng."
+    # A price already stated in the answer is not a complementary product highlight.
+    assert final.product_insights == []
 
 
 def test_build_product_insights_strictly_from_snapshot_citations():
     from src.agents.copilot.insights import build_product_insights
-    from src.agents.copilot.state import Citation
 
     # Empty citations returns empty insights
     assert build_product_insights({"product_models": ["VF 3"]}, "text", []) == []
@@ -215,12 +211,13 @@ def test_build_product_insights_strictly_from_snapshot_citations():
         existing_citations=citations,
     )
     assert len(insights) == 2
-    assert insights[0].category == "highlight"
-    assert insights[0].product_model == "VF 3"
-    assert "296 triệu" in insights[0].summary
-    assert insights[1].category == "policy"
-    assert insights[1].product_model == "ALL"
-    assert "Miễn phí sạc" in insights[1].summary
+    by_source = {insight.citation.citation_id: insight for insight in insights}
+    assert by_source["C1"].category == "policy"
+    assert by_source["C1"].product_model == "VF 3"
+    assert "296 triệu" in by_source["C1"].summary
+    assert by_source["C2"].category == "policy"
+    assert by_source["C2"].product_model == "ALL"
+    assert "Miễn phí sạc" in by_source["C2"].summary
     assert all(i.citation is not None for i in insights)
 
 

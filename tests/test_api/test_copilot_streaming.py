@@ -1,6 +1,7 @@
 """Tests for Copilot SSE Streaming endpoint."""
 
 from types import SimpleNamespace
+
 import pytest
 
 from src.agents.copilot.runtime import CopilotAdmission
@@ -74,3 +75,25 @@ async def test_stream_returns_sse_events(client, sessions, owner, monkeypatch):
     assert "event: final" in body
     assert "event: done" in body
     assert "496 triệu đồng" in body
+
+
+@pytest.mark.asyncio
+async def test_stream_logs_dependency_stage_without_private_provider_details(client, sessions, owner, monkeypatch, caplog):
+    from src.agents.copilot.runtime import CopilotDependencyError
+
+    async def unavailable(state, **kwargs):
+        state["runtime"].events.append({
+            "node": "analyze_and_route", "failure_stage": "analyze_and_route",
+            "error_type": "TimeoutError", "failure_kind": "provider", "provider_status": None,
+        })
+        raise CopilotDependencyError("analyze_and_route unavailable") from TimeoutError("private provider detail")
+
+    monkeypatch.setattr("src.api.copilot.copilot_agent.ainvoke", unavailable)
+    response = await client.post("/api/v1/copilot/query/stream", json={"query": "VF 5 Plus?"})
+    assert response.status_code == 200  # The stream has started before the worker fails.
+    assert "event: error" in response.text and "event: final" not in response.text
+    failure = next(record.telemetry for record in caplog.records if hasattr(record, "telemetry"))
+    assert failure["failure_stage"] == "analyze_and_route"
+    assert failure["cause_type"] == "TimeoutError"
+    assert len(failure["request_id"]) == 32
+    assert "private provider detail" not in caplog.text + response.text
