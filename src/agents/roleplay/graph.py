@@ -65,7 +65,16 @@ def build_roleplay_turn_graph(
             state["advisor_message"],
             state["analysis"],
         )
+        updated.pending_next_step_attempted = (
+            state["analysis"].next_step_attempted if updated.termination_status is TerminationStatus.ACTIVE else False
+        )
         return {"roleplay_state": updated}
+
+    async def route_pending_turn(state: RoleplayRuntimeState) -> RoleplayRuntimeState:
+        return {}
+
+    async def route_after_pending_check(state: RoleplayRuntimeState) -> str:
+        return "customer_turn" if state["roleplay_state"].pending_customer_reply else "analyze_advisor_turn"
 
     async def persist_advisor_turn(state: RoleplayRuntimeState) -> RoleplayRuntimeState:
         await _save_state(checkpoint, state["roleplay_state"])
@@ -84,15 +93,16 @@ def build_roleplay_turn_graph(
             state["scenario"],
             prior,
             mode="response",
-            consider_next_step=state["analysis"].next_step_attempted,
+            consider_next_step=prior.pending_next_step_attempted,
         )
         message = turn.message
         updated = prior.model_copy(deep=True)
         updated.messages.append(message)
+        updated.pending_next_step_attempted = False
         for rule in pending:
             if rule.revealed_statement in message.content:
                 updated.spoken_fact_message_ids[rule.fact_key] = message.message_id
-        if turn.accepted_next_step and state["analysis"].next_step_attempted:
+        if turn.accepted_next_step and prior.pending_next_step_attempted:
             accepted_id = focus_id or next(iter(updated.active_objections), None)
             if accepted_id is not None:
                 objection_id = accepted_id
@@ -126,12 +136,14 @@ def build_roleplay_turn_graph(
         return {}
 
     graph = StateGraph(RoleplayRuntimeState)
+    graph.add_node("route_pending_turn", route_pending_turn)
     graph.add_node("analyze_advisor_turn", analyze_advisor_turn)
     graph.add_node("update_customer_state", update_customer_state)
     graph.add_node("persist_advisor_turn", persist_advisor_turn)
     graph.add_node("customer_turn", customer_turn)
     graph.add_node("persist_customer_turn", persist_customer_turn)
-    graph.set_entry_point("analyze_advisor_turn")
+    graph.set_entry_point("route_pending_turn")
+    graph.add_conditional_edges("route_pending_turn", route_after_pending_check)
     graph.add_edge("analyze_advisor_turn", "update_customer_state")
     graph.add_edge("update_customer_state", "persist_advisor_turn")
     graph.add_conditional_edges("persist_advisor_turn", route_after_advisor_turn)
@@ -207,6 +219,17 @@ class RoleplayGraph:
         state = self._validate_checkpoint(checkpoint_data, session_id)
         if state.termination_status is not TerminationStatus.ACTIVE:
             raise RoleplaySessionConflictError("cannot continue a finished practice session")
+        if state.pending_customer_reply:
+            raise RoleplaySessionConflictError("customer reply is pending; retry it before sending another message")
+        return await self._run_turn(state, advisor_message)
+
+    async def retry_customer_reply(self, session_id: str) -> dict:
+        state = await self.get_session_state(session_id)
+        if not state.pending_customer_reply:
+            raise RoleplaySessionConflictError("no customer reply is pending")
+        return await self._run_turn(state, state.messages[-1].content)
+
+    async def _run_turn(self, state: RoleplayState, advisor_message: str) -> dict:
         try:
             scenario = self._repository.get(state.scenario_id)
         except ScenarioNotFoundError as exc:
@@ -234,6 +257,8 @@ class RoleplayGraph:
 
     async def finish_session(self, session_id: str) -> RoleplayState:
         state = await self.get_session_state(session_id)
+        if state.pending_customer_reply:
+            raise RoleplaySessionConflictError("customer reply is pending; retry it before finishing")
         if state.termination_status is TerminationStatus.ACTIVE:
             state.termination_status = TerminationStatus.ADVISOR_ENDED
             state.termination_reason = "Advisor ended the practice session."

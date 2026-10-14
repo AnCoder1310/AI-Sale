@@ -1,10 +1,12 @@
 # P-043 — AI Sales Coach cho tư vấn viên VinFast
 
-MVP gồm **Copilot** tra cứu kiến thức xe/chính sách có trích nguồn và **Practice Room** trò chuyện nhiều lượt với AI Customer, nhận đánh giá có dẫn chứng từ transcript. Advisor xem lịch sử; manager xem hàng đợi, transcript và duyệt/sửa đánh giá. Đây là sản phẩm học tập dùng corpus công khai và khách hàng giả lập, không phải kênh công bố chính sách chính thức của VinFast.
+MVP gồm **Copilot** tra cứu kiến thức xe/chính sách có trích nguồn và **Practice Room** trò chuyện nhiều lượt với AI Customer, nhận đánh giá có dẫn chứng từ transcript. Advisor xem lịch sử và bài được giao; manager giao kịch bản, xem hàng đợi, transcript, duyệt/sửa đánh giá và theo dõi năng lực đội ngũ từ các bài đã duyệt. Đây là sản phẩm học tập dùng corpus công khai và khách hàng giả lập, không phải kênh công bố chính sách chính thức của VinFast.
 
 ## Chạy local
 
 **Docker:** `docker compose up --build` chạy frontend, backend và PostgreSQL + pgvector local. Xem [hướng dẫn Docker](docs/local-docker.md) để seed tài khoản và lưu dữ liệu. Mỗi máy có database riêng; muốn chia sẻ dữ liệu cần triển khai backend dùng chung với PostgreSQL hosted.
+
+Nhánh triển khai Neon dùng Render cho backend và Vercel cho frontend; xem [hướng dẫn triển khai](docs/deployment.md). Chỉ mở PR vào `develop` sau khi kiểm tra deployment thật.
 
 Cần Python 3.11, Node.js tương thích Vite 8, npm và OpenRouter API key có quyền gọi chat/embedding. Lời gọi thật có thể phát sinh phí.
 
@@ -23,7 +25,7 @@ Trong `.env`, đặt `DEMO_ADVISOR_PASSWORD` và `DEMO_MANAGER_PASSWORD` riêng,
 python -c 'import asyncio; from dotenv import load_dotenv; load_dotenv(); from scripts.seed_demo_users import seed; asyncio.run(seed())'
 ```
 
-Đăng nhập bằng `advisor.demo` và `manager.demo`. Seed script cập nhật hai tài khoản demo cố định khi chạy lại; không dùng với tài khoản thật. Tính năng manager tạo Advisor mới đang ở nhánh riêng, **chưa thuộc `develop`**.
+Đăng nhập bằng `advisor.demo` và `manager.demo`. Seed script cập nhật hai tài khoản demo cố định khi chạy lại; không dùng với tài khoản thật. Trên nhánh triển khai này, manager có thể tạo tài khoản Advisor trong tab **Tài khoản**; môi trường production dùng bootstrap manager và bắt buộc đổi mật khẩu khởi tạo.
 
 Chạy hai terminal từ thư mục gốc repo:
 
@@ -42,9 +44,14 @@ Mở <http://localhost:3000>. Vite proxy `/api` và `/health` sang cổng 8000; 
 
 ## Luồng demo và câu hỏi mẫu
 
+Practice Room có **Chế độ nói** tùy chọn: giữ micro để nói tiếng Việt, sửa bản chép rồi gửi, nghe phản hồi của AI Customer bằng giọng WaveNet. Xem [cấu hình Voice Mode](docs/voice-mode.md); Text Mode vẫn chạy khi chưa có key giọng nói.
+
 1. Đăng nhập Advisor. Hỏi Copilot: **“Giá niêm yết VF 8 Thế hệ mới theo bảng giá VinFast là bao nhiêu?”** Mở citation. Câu ngoài kho: **“Giá bảo hiểm chính xác của đại lý X ngày mai là bao nhiêu?”** phải không tự bịa.
 2. Vào Practice Room, chọn **VF 5 Plus — khách chạy dịch vụ**. Hỏi quãng đường/ngày, tiền xăng Vios thực tế và giờ nghỉ/sạc; xử lý lo ngại chi phí, tránh cam kết tiết kiệm khi chưa đủ dữ liệu. Kết thúc để xem điểm AI dự thảo, transcript evidence và lịch sử.
-3. Đăng xuất, đăng nhập Manager. Xem hàng đợi và transcript, nhập lý do nếu chỉnh điểm, duyệt; đăng nhập lại Advisor để xem kết quả đã duyệt.
+3. Đăng xuất, đăng nhập Manager. Vào **Giao bài**, chọn Advisor và kịch bản rồi đặt hạn. Đăng nhập lại Advisor, bắt đầu bài trong Practice Room và hoàn thành phiên. Đăng nhập Manager để thấy trạng thái hoàn thành.
+4. Manager xem hàng đợi và transcript, nhập lý do khi duyệt; vào **Năng lực** để xem điểm kỹ năng từ các phiên đã duyệt. Advisor chưa có ít nhất 3 phiên được duyệt và có điểm sẽ chưa được xếp hạng.
+
+Bài được giao chỉ hoàn thành khi một phiên Practice bắt đầu từ chính bài đó được đánh giá thành công. Một phiên tự luyện cùng kịch bản không tự hoàn thành bài được giao. Dữ liệu bài tập và điểm đội ngũ lưu trong database; không có hồ sơ hoặc điểm giả trên màn hình.
 
 Không biến giá niêm yết thành “giá lăn bánh” hay tự suy ra mọi VF 5 phải thuê pin. Nếu provider lỗi, UI cần cho retry; không mô tả sai là “không có tài liệu”.
 

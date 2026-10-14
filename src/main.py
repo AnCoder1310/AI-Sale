@@ -14,10 +14,12 @@ from src.config import get_settings
 from src.integrations.copilot_sessions import SQLCopilotSessionsRepository
 from src.integrations.practice_records import SQLPracticeRecordsRepository
 from src.integrations.practice_runtime import build_practice_service
+from src.integrations.voice_usage import SQLVoiceUsageRepository
 from src.knowledge.index_readiness import check_copilot_index
 from src.knowledge.retrieval_service import get_retrieval_service
 from src.observability import CopilotTelemetryMiddleware, TelemetryService, configure_logging
 from src.services.recorded_practice import RecordedPracticeService
+from src.services.voice import VoiceService
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,24 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     configure_logging(settings.log_level)
     logger.info("Application starting env=%s", settings.app_env)
+    if settings.app_env == "production":
+        created = await auth_service.bootstrap_manager(
+            username=settings.bootstrap_manager_username,
+            display_name=settings.bootstrap_manager_display_name,
+            password=settings.bootstrap_manager_password,
+        )
+        if created:
+            logger.info("Created the initial manager account")
+    try:
+        # Existing data is reused. Replacing an index is an explicit ingestion action.
+        retriever = get_retrieval_service()
+        if retriever.vector_store.count() == 0:
+            count = await asyncio.to_thread(retriever.ingest_corpus, reset=False)
+            logger.info("Initialized empty knowledge index with %d chunks", count)
+    except Exception:
+        logger.exception("Knowledge startup failed")
+        if settings.app_env == "production":
+            raise
     try:
         await bounded_io(app.state.copilot_readiness, 45)
         logger.info("Copilot index is ready")
@@ -75,11 +95,15 @@ app.state.copilot_sessions = SQLCopilotSessionsRepository(
     settings.database_url,
     ttl_hours=settings.copilot_session_ttl_hours,
 )
+
+
 recorded_practice = RecordedPracticeService(
     build_practice_service(retrieval_service=LazyKnowledgeRetriever()),
     SQLPracticeRecordsRepository(settings.database_url),
+    auth_service,
 )
-practice_router, manager_router = create_recorded_practice_routers(recorded_practice, current_user)
+voice_service = VoiceService(recorded_practice, SQLVoiceUsageRepository(settings.database_url), settings)
+practice_router, manager_router = create_recorded_practice_routers(recorded_practice, current_user, voice_service)
 app.include_router(create_auth_router(auth_service, settings), prefix="/api/v1")
 app.include_router(copilot_router, prefix="/api/v1")
 app.include_router(practice_router, prefix="/api/v1")

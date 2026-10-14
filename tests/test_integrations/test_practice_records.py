@@ -5,7 +5,13 @@ from pydantic import ValidationError
 
 from src.integrations.practice_records import SQLPracticeRecordsRepository
 from src.models.evaluation import CriterionType, ReviewStatus, SessionEvaluationResult
-from src.services.practice_records import AttemptNotFoundError, ManagerReviewDecision, ReviewConflictError
+from src.services.practice_records import (
+    AssignmentConflictError,
+    AttemptNotFoundError,
+    CreateAssignmentInput,
+    ManagerReviewDecision,
+    ReviewConflictError,
+)
 
 
 def draft(session_id: str, scenario_id: str = "scenario-1") -> SessionEvaluationResult:
@@ -54,6 +60,26 @@ async def test_history_is_scoped_to_advisor_and_retains_every_attempt(tmp_path):
     assert (await reopened.owned_attempt("attempt-1", "advisor-a")).session_id == "attempt-1"
     with pytest.raises(AttemptNotFoundError):
         await reopened.owned_attempt("attempt-1", "advisor-b")
+
+
+@pytest.mark.asyncio
+async def test_saved_pending_attempt_survives_repository_restart_and_can_be_retried(tmp_path):
+    url = f"sqlite:///{tmp_path / 'records.db'}"
+    records = SQLPracticeRecordsRepository(url)
+    await records.register("attempt-1", "scenario-1", "advisor-a")
+    await records.mark_evaluation_pending("attempt-1")
+
+    reopened = SQLPracticeRecordsRepository(url)
+    history = await reopened.history("advisor-a")
+    assert len(history) == 1
+    assert history[0].completed_at is not None
+    assert history[0].evaluation_status.value == "pending"
+
+    await reopened.mark_evaluation_failed("attempt-1")
+    assert (await reopened.history("advisor-a"))[0].evaluation_status.value == "failed"
+    await reopened.mark_evaluation_pending("attempt-1")
+    await reopened.complete("attempt-1", draft("attempt-1"))
+    assert (await reopened.history("advisor-a"))[0].evaluation_status.value == "complete"
 
 
 @pytest.mark.asyncio
@@ -154,3 +180,29 @@ def test_review_decision_rejects_invalid_scores_and_blank_reason():
         ManagerReviewDecision(score_overrides={CriterionType.NEED_DISCOVERY: 4}, change_reason="Reviewed.")
     with pytest.raises(ValidationError):
         ManagerReviewDecision(change_reason="   ")
+
+
+@pytest.mark.asyncio
+async def test_assignment_link_and_status_survive_repository_reopen(tmp_path):
+    url = f"sqlite:///{tmp_path / 'assignments.db'}"
+    records = SQLPracticeRecordsRepository(url)
+    assignment = await records.create_assignment(
+        "manager-a", CreateAssignmentInput(advisor_id="advisor-a", scenario_id="scenario-1", title="Practice scenario")
+    )
+    with pytest.raises(AssignmentConflictError):
+        await records.register("wrong", "scenario-1", "advisor-b", assignment.assignment_id)
+    assert await records.assignments("advisor-b") == []
+    assert (await records.assignments("advisor-a"))[0].status == "assigned"
+    await records.register("attempt-1", "scenario-1", "advisor-a", assignment.assignment_id)
+    assert (await records.assignments("advisor-a"))[0].status == "in_progress"
+    await records.complete("attempt-1", draft("attempt-1"))
+    reopened = SQLPracticeRecordsRepository(url)
+    saved = (await reopened.assignments("advisor-a"))[0]
+    assert (saved.status, saved.session_id) == ("completed", "attempt-1")
+    with pytest.raises(AssignmentConflictError, match="already completed"):
+        await reopened.register("attempt-2", "scenario-1", "advisor-a", assignment.assignment_id)
+    assert (await reopened.advisor_performance())["advisor-a"].average_score is None
+    await reopened.approve("attempt-1", "manager-a", ManagerReviewDecision(change_reason="Evidence checked."))
+    performance = (await reopened.advisor_performance())["advisor-a"]
+    assert (performance.completed_sessions, performance.approved_sessions, performance.scored_sessions) == (1, 1, 1)
+    assert performance.average_score == 3

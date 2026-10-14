@@ -7,7 +7,10 @@ from src.config import Settings
 from src.services import llm
 
 
-def test_defaults_use_openrouter_models_without_hash():
+def test_defaults_use_openrouter_models_without_hash(monkeypatch):
+    for variable in ("LLM_PROVIDER", "MODEL_NAME", "OPENROUTER_MODEL_NAME",
+                     "EMBEDDING_PROVIDER", "EMBEDDING_MODEL_NAME", "CHROMA_COLLECTION_NAME"):
+        monkeypatch.delenv(variable, raising=False)
     settings = Settings(_env_file=None)
 
     assert settings.llm_provider == "openrouter"

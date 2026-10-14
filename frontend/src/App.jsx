@@ -5,12 +5,10 @@ import { HomeView } from './components/home/HomeView';
 import { CopilotView } from './components/copilot/CopilotView';
 import { RoleplayView } from './components/roleplay/RoleplayView';
 import { KnowledgeView } from './components/knowledge/KnowledgeView';
-import { ChargingView } from './components/charging/ChargingView';
-import { ErrorState } from './components/common/ErrorState';
 import { LoginView } from './components/auth/LoginView';
+import { ChangePasswordView } from './components/auth/ChangePasswordView';
 import { ManagerReviewView } from './components/manager/ManagerReviewView';
 
-import { ADVISOR_PROFILE } from './data/competencyData';
 import { authApi } from './api/authApi';
 import { practiceApi } from './api/practiceApi';
 
@@ -86,6 +84,12 @@ export function App() {
     }
   };
 
+  const handleChangePassword = async (currentPassword, newPassword) => {
+    await authApi.changePassword(currentPassword, newPassword);
+    setCurrentUser(null);
+    setAuthStatus('anonymous');
+  };
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleMarkAllRead = () => {
@@ -102,10 +106,6 @@ export function App() {
     }
   };
 
-  const handleStartScenarioFromHome = () => {
-    setCurrentTab('roleplay');
-  };
-
   const handleConsultCopilot = (query) => {
     setCopilotQuery(query);
     setCopilotOpened(true);
@@ -120,18 +120,27 @@ export function App() {
     return <LoginView onLogin={handleLogin} />;
   }
 
+  if (currentUser?.must_change_password) {
+    return <ChangePasswordView username={currentUser.username}
+      onChangePassword={handleChangePassword} onLogout={handleLogout} />;
+  }
+
   if (currentUser?.role === 'manager') {
-    return <ManagerReviewView currentUser={currentUser} onLogout={handleLogout} />;
+    return (
+      <ManagerReviewView
+        currentUser={currentUser}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   const advisorProfile = {
-    ...ADVISOR_PROFILE,
     name: currentUser.display_name,
     role: 'Tư vấn viên',
   };
 
   return (
-    <div className="app-container">
+    <div className={`app-container${currentTab === 'home' ? ' home-app-container' : ''}${currentTab === 'copilot' ? ' copilot-app-container' : ''}${currentTab === 'knowledge' ? ' knowledge-app-container' : ''}`}>
       {/* GLOBAL TOP HEADER */}
       <Header
         currentTab={currentTab}
@@ -147,22 +156,27 @@ export function App() {
       />
 
       {/* MAIN CONTENT AREA */}
-      <main className="main-content">
+      <main className={`main-content${currentTab === 'home' ? ' home-main-content' : ''}${currentTab === 'copilot' ? ' copilot-main-content' : ''}${currentTab === 'knowledge' ? ' knowledge-main-content' : ''}`}>
         {currentTab === 'home' && (
           <HomeView
-            advisorProfile={advisorProfile}
             scenarios={scenarios}
+            scenarioStatus={scenarioStatus}
+            onRetryScenarios={() => {
+              setScenarioStatus('loading');
+              setScenarioReloadToken((value) => value + 1);
+            }}
             onNavigate={(tab) => {
               setCurrentTab(tab);
               if (tab === 'copilot') setCopilotOpened(true);
             }}
-            onStartScenario={handleStartScenarioFromHome}
+            onStartScenario={() => setCurrentTab('roleplay')}
           />
         )}
 
         {(currentTab === 'copilot' || copilotOpened) && (
           <div style={{ display: currentTab === 'copilot' ? 'block' : 'none' }}>
           <CopilotView
+            currentUser={currentUser}
             initialQuery={copilotQuery}
             onOpenDocument={(documentId) => {
               setSourceDocumentId(documentId);
@@ -190,19 +204,6 @@ export function App() {
           />
         )}
 
-        {currentTab === 'charging' && (
-          <ChargingView
-            onConsultCopilot={handleConsultCopilot}
-          />
-        )}
-
-        {currentTab === 'progress' && (
-          <ErrorState
-            title="Theo dõi tiến bộ sẽ được bổ sung"
-            message="MVP hiện lưu và đánh giá từng phiên luyện tập; dashboard tổng hợp năng lực chưa kết nối dữ liệu thật."
-            onRetry={() => setCurrentTab('roleplay')}
-          />
-        )}
       </main>
 
       {/* NOTIFICATIONS FLYOUT */}

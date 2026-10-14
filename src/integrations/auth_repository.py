@@ -17,11 +17,13 @@ from sqlalchemy import (
     delete,
     insert,
     select,
+    update,
 )
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 
 from src.integrations.practice_persistence import normalize_database_url
-from src.models.auth import AuthenticatedUser, StoredSession, StoredUser, UserRole
+from src.models.auth import AccountAlreadyExistsError, AuthenticatedUser, StoredSession, StoredUser, UserRole
 
 
 class SQLAuthRepository:
@@ -48,6 +50,11 @@ class SQLAuthRepository:
             Column("created_at", DateTime(timezone=True), nullable=False),
             Column("expires_at", DateTime(timezone=True), nullable=False, index=True),
         )
+        self._password_change_required = Table(
+            "password_change_required",
+            metadata,
+            Column("user_id", String(120), primary_key=True),
+        )
         self._metadata = metadata
         self._schema_ready = False
         self._schema_lock = Lock()
@@ -63,7 +70,7 @@ class SQLAuthRepository:
     async def upsert_user(self, user: StoredUser) -> None:
         """Create or replace one explicitly seeded local user."""
         self._ensure_schema()
-        values = user.model_dump(mode="json")
+        values = user.model_dump(mode="json", exclude={"must_change_password"})
         with self._engine.begin() as connection:
             connection.execute(delete(self._sessions).where(self._sessions.c.user_id == user.user_id))
             connection.execute(delete(self._users).where(self._users.c.user_id == user.user_id))
@@ -71,12 +78,84 @@ class SQLAuthRepository:
             connection.execute(delete(self._users).where(self._users.c.username == user.username))
             connection.execute(insert(self._users).values(**values))
 
+    async def create_user(self, user: StoredUser, *, require_password_change: bool = False) -> None:
+        """Insert without replacing an account or invalidating its sessions."""
+        self._ensure_schema()
+        try:
+            with self._engine.begin() as connection:
+                connection.execute(
+                    insert(self._users).values(**user.model_dump(mode="json", exclude={"must_change_password"}))
+                )
+                if require_password_change:
+                    connection.execute(insert(self._password_change_required).values(user_id=user.user_id))
+        except IntegrityError as exc:
+            raise AccountAlreadyExistsError("username already exists") from exc
+
     async def user_by_username(self, username: str) -> StoredUser | None:
         self._ensure_schema()
         query = select(self._users).where(self._users.c.username == username)
         with self._engine.connect() as connection:
             row = connection.execute(query).mappings().first()
         return StoredUser.model_validate(dict(row)) if row else None
+
+    async def manager_exists(self) -> bool:
+        self._ensure_schema()
+        with self._engine.connect() as connection:
+            row = connection.execute(
+                select(self._users.c.user_id).where(self._users.c.role == UserRole.MANAGER.value).limit(1)
+            ).first()
+        return row is not None
+
+    async def requires_password_change(self, user_id: str) -> bool:
+        self._ensure_schema()
+        with self._engine.connect() as connection:
+            row = connection.execute(
+                select(self._password_change_required.c.user_id).where(
+                    self._password_change_required.c.user_id == user_id
+                )
+            ).first()
+        return row is not None
+
+    async def update_password(self, user_id: str, password_hash: str, password_salt: str, iterations: int) -> None:
+        self._ensure_schema()
+        with self._engine.begin() as connection:
+            connection.execute(
+                update(self._users)
+                .where(self._users.c.user_id == user_id)
+                .values(
+                    password_hash=password_hash,
+                    password_salt=password_salt,
+                    password_iterations=iterations,
+                )
+            )
+            connection.execute(
+                delete(self._password_change_required).where(self._password_change_required.c.user_id == user_id)
+            )
+            connection.execute(delete(self._sessions).where(self._sessions.c.user_id == user_id))
+
+    async def active_advisors(self) -> list[AuthenticatedUser]:
+        """Return public identities only; never expose password fields."""
+        self._ensure_schema()
+        query = (
+            select(self._users.c.user_id, self._users.c.username, self._users.c.display_name, self._users.c.role)
+            .where(self._users.c.role == UserRole.ADVISOR.value, self._users.c.active.is_(True))
+            .order_by(self._users.c.display_name, self._users.c.user_id)
+        )
+        with self._engine.connect() as connection:
+            return [AuthenticatedUser.model_validate(dict(row)) for row in connection.execute(query).mappings()]
+
+    async def active_advisor(self, user_id: str) -> AuthenticatedUser | None:
+        self._ensure_schema()
+        query = select(
+            self._users.c.user_id, self._users.c.username, self._users.c.display_name, self._users.c.role
+        ).where(
+            self._users.c.user_id == user_id,
+            self._users.c.role == UserRole.ADVISOR.value,
+            self._users.c.active.is_(True),
+        )
+        with self._engine.connect() as connection:
+            row = connection.execute(query).mappings().first()
+        return AuthenticatedUser.model_validate(dict(row)) if row else None
 
     async def create_session(self, session: StoredSession) -> None:
         self._ensure_schema()

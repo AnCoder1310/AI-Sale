@@ -1,21 +1,30 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  SparkleIcon,
   RefreshIcon,
   CopyIcon,
   SendIcon,
   ChevronRight,
   BookIcon,
   CheckIcon,
+
   ChatIcon,
   TrashIcon,
+
+  LightbulbIcon,
+  ArrowRight,
+
 } from '../common/Icons';
+import { CopilotLogo } from '../common/CopilotLogo';
 import { Badge } from '../common/Badge';
+import { Modal } from '../common/Modal';
 import { copilotApi } from '../../api/copilotApi';
 import { ProductContextPanel } from './ProductContextPanel';
 import { createId, getCurrentTimeString } from '../../lib/id';
 import { copilotReason } from '../../lib/copilotStatus';
 import { SourceViewerModal } from './SourceViewerModal';
+import { FAQ_QUESTIONS, CHEAT_SHEET_DATA } from '../../data/faqData';
+
+const STORAGE_KEY_PREFIX = 'vinfast_copilot_chat_';
 
 function renderInlineWithCitations(text, citations = [], onCitationClick) {
   if (!text) return null;
@@ -59,10 +68,13 @@ function renderInlineWithCitations(text, citations = [], onCitationClick) {
 }
 
 function renderFormattedText(text, keyPrefix) {
-  const boldParts = text.split(/(\*\*[^*]+\*\*)/g);
+  const boldParts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
   return boldParts.map((bPart, bIdx) => {
     if (bPart.startsWith('**') && bPart.endsWith('**')) {
       return <strong key={`${keyPrefix}-b-${bIdx}`}>{bPart.slice(2, -2)}</strong>;
+    }
+    if (bPart.startsWith('*') && bPart.endsWith('*')) {
+      return <em key={`${keyPrefix}-i-${bIdx}`}>{bPart.slice(1, -1)}</em>;
     }
     const codeParts = bPart.split(/(`[^`]+`)/g);
     return codeParts.map((cPart, cIdx) => {
@@ -264,16 +276,20 @@ function renderMarkdownWithCitations(content, citations = [], onCitationClick) {
   return <>{elements}</>;
 }
 
-export function CopilotView({ onOpenDocument, initialQuery = '' }) {
+export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = null }) {
   const [filterDomain, setFilterDomain] = useState('all');
   const [inputDraft, setInputDraft] = useState({ initialQuery, value: initialQuery || '' });
   const inputMessage = inputDraft.initialQuery === initialQuery ? inputDraft.value : initialQuery || '';
   const setInputMessage = (value) => setInputDraft({ initialQuery, value });
 
+  const storageKey = `${STORAGE_KEY_PREFIX}${currentUser?.username || 'advisor'}`;
+
+
   const [loading, setLoading] = useState(false);
   const [streamStatus, setStreamStatus] = useState('');
   const [error, setError] = useState('');
   const [copiedId, setCopiedId] = useState(null);
+
   const [customerContext, setCustomerContext] = useState('');
   const [targetDate, setTargetDate] = useState('');
   const [activeCitation, setActiveCitation] = useState(null);
@@ -292,7 +308,14 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
   const [sessions, setSessions] = useState([]);
   const [showSidebar, setShowSidebar] = useState(true);
 
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+      if (Array.isArray(saved) && saved.length > 0) return saved;
+    } catch {
+      // Ignore invalid cached messages and start a new conversation.
+    }
+    return [
     {
       id: 'msg-welcome',
       role: 'assistant',
@@ -302,12 +325,44 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
       talking_points: [],
       citations: [],
     },
-  ]);
+    ];
+  });
+
+  const [selectedCitationDoc, setSelectedCitationDoc] = useState(null);
+  const [citationLoading, setCitationLoading] = useState(false);
+
+  const handleOpenCitation = async (documentId) => {
+    setCitationLoading(true);
+    try {
+      const doc = await copilotApi.getSource(documentId);
+      setSelectedCitationDoc(doc);
+    } catch {
+      setSelectedCitationDoc({
+        document_id: documentId,
+        title: `Tài liệu: ${documentId}`,
+        content: 'Không thể tải nội dung chi tiết của tài liệu này từ máy chủ.',
+      });
+    } finally {
+      setCitationLoading(false);
+    }
+  };
+
+
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(messages));
+    } catch {
+      // ignore
+    }
+  }, [messages, storageKey]);
+
 
   const messagesEndRef = useRef(null);
   const chatScrollContainerRef = useRef(null);
   const isNearBottomRef = useRef(true);
   const textareaRef = useRef(null);
+
 
   const filterChips = [
     { id: 'all', label: 'Tất cả lĩnh vực' },
@@ -329,6 +384,8 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, []);
+
+
 
   useEffect(() => {
     scrollToBottomIfNeeded();
@@ -581,6 +638,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
               reason_code: response.reason_code,
               missing_information: response.missing_information || [],
               sales_actions: response.sales_actions || [],
+              suggested_next_question: response.suggested_next_question,
             };
 
             setMessages((prev) => {
@@ -827,25 +885,19 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
               <ChatIcon style={{ width: 15, height: 15 }} />
               <span>{showSidebar ? 'Ẩn lịch sử' : 'Lịch sử'}</span>
             </button>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                backgroundColor: '#111111',
-                color: '#FFFFFF',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <SparkleIcon style={{ width: 18, height: 18 }} />
+            <div className="copilot-chat-mark">
+              <CopilotLogo style={{ width: 23, height: 23 }} />
             </div>
+
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111111' }}>
+                <h2 className="copilot-chat-title">
                   VinFast AI Copilot
                 </h2>
+                <Badge variant="default" className="copilot-grounded-badge">
+                  <span className="copilot-grounded-dot" />
+                  RAG Grounded
+                </Badge>
                 <Badge variant="default" style={{ backgroundColor: '#F4F4F2', border: '1px solid #E0E0DD' }}>
                   <span
                     style={{
@@ -860,8 +912,8 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                   Trợ lý sales
                 </Badge>
               </div>
-              <p style={{ fontSize: '0.78rem', color: '#737373', margin: 0 }}>
-                Chuẩn bị tư vấn và đối chiếu thông tin với tài liệu
+              <p className="copilot-chat-subtitle">
+                Chuẩn bị tư vấn, đối chiếu thông số kỹ thuật &amp; chính sách bán hàng 2026
               </p>
             </div>
           </div>
@@ -869,14 +921,14 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
           <button
             onClick={handleNewChat}
             disabled={loading}
-            className="btn-ghost"
-            style={{ fontSize: '0.8rem', color: '#737373' }}
+            className="copilot-reset-button"
             title="Bắt đầu cuộc trò chuyện mới"
           >
             <RefreshIcon style={{ width: 14, height: 14 }} />
             <span>Làm mới phiên chat</span>
           </button>
         </div>
+
 
         {/* DOMAIN FILTER CHIPS */}
         <div
@@ -937,6 +989,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
         <div
           ref={chatScrollContainerRef}
           onScroll={handleScroll}
+          className="copilot-messages"
           style={{
             flex: 1,
             overflowY: 'auto',
@@ -946,6 +999,8 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
             gap: 20,
           }}
         >
+
+
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -964,26 +1019,17 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                   </div>
                 </div>
               ) : (
-                <div className="chat-bubble-ai" style={{ width: '100%' }}>
+                <div className="chat-bubble-ai copilot-assistant-message" style={{ width: '100%' }}>
+                  {/* AI header */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                    <div
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 6,
-                        backgroundColor: '#111111',
-                        color: '#FFFFFF',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <SparkleIcon style={{ width: 13, height: 13 }} />
+                    <div className="copilot-message-mark">
+                      <CopilotLogo style={{ width: 16, height: 16 }} />
                     </div>
                     <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#111111' }}>
                       VinFast Sales Copilot
                     </span>
                   </div>
+
 
                   {msg.status === 'needs_clarification' && (
                     <p style={{ marginBottom: 8, fontSize: '0.8rem', color: '#92400E', fontWeight: 600 }}>
@@ -1004,6 +1050,7 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                   {/* Formatted body with Markdown & citations */}
                   <div style={{ fontSize: '0.92rem', color: '#222222', lineHeight: 1.6 }}>
                     {renderMarkdownWithCitations(msg.content, msg.citations, setActiveCitation)}
+
                   </div>
 
                   {msg.missing_information?.length > 0 && (
@@ -1039,7 +1086,8 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                           marginBottom: 8,
                         }}
                       >
-                        <span>💡 Gợi ý luận điểm thuyết phục khách hàng:</span>
+                        <LightbulbIcon style={{ width: 14, height: 14, color: '#0F172A' }} />
+                        <span>Gợi ý luận điểm thuyết phục khách hàng:</span>
                       </div>
                       <ul style={{ listStyle: 'none', paddingLeft: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {msg.talking_points.map((point, pIdx) => (
@@ -1084,7 +1132,16 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                             <button
                               key={cIdx}
                               type="button"
-                              onClick={() => setActiveCitation(cite)}
+                              onClick={() => {
+                                if (cite.content) {
+                                  setActiveCitation(cite);
+                                } else if (cite.document_id) {
+                                  handleOpenCitation(cite.document_id);
+                                } else {
+                                  setActiveCitation(cite);
+                                }
+                              }}
+                              disabled={citationLoading}
                               style={{
                                 padding: '4px 10px',
                                 borderRadius: 6,
@@ -1119,6 +1176,25 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                     </div>
                   )}
 
+                  {msg.suggested_next_question && (
+                    <div style={{ marginTop: 12 }}>
+                      <button
+                        onClick={() => handleSend(msg.suggested_next_question)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: 9999,
+                          border: '1px dashed #B0B0AC',
+                          backgroundColor: '#FFFFFF',
+                          fontSize: '0.78rem',
+                          color: '#444444',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <ArrowRight style={{ width: 13, height: 13, color: '#0F172A', display: 'inline', verticalAlign: '-2px', marginRight: 4 }} /> Gợi ý hỏi tiếp: <strong>{msg.suggested_next_question}</strong>
+                      </button>
+                    </div>
+                  )}
+
                   {/* Footer actions */}
                   <div
                     style={{
@@ -1149,8 +1225,8 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
                       >
                         {copiedId === msg.id ? (
                           <>
-                            <CheckIcon style={{ width: 13, height: 13, color: '#166534' }} />
-                            <span style={{ color: '#166534' }}>Đã sao chép</span>
+                            <CheckIcon style={{ width: 13, height: 13, color: '#111111' }} />
+                            <span style={{ color: '#111111' }}>Đã sao chép</span>
                           </>
                         ) : (
                           <>
@@ -1167,21 +1243,10 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
           ))}
 
           {loading && (
-            <div className="chat-bubble-ai" style={{ width: '80%' }}>
+            <div className="chat-bubble-ai copilot-assistant-message" style={{ width: '80%' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <div
-                  style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 6,
-                    backgroundColor: '#111111',
-                    color: '#FFFFFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <SparkleIcon style={{ width: 12, height: 12 }} />
+                <div className="copilot-message-mark">
+                  <CopilotLogo style={{ width: 15, height: 15 }} />
                 </div>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#111111' }}>
                   {streamStatus || 'Copilot đang chuẩn bị nội dung tư vấn...'}
@@ -1198,50 +1263,16 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* BOTTOM INPUT BAR (MULTILINE COMPOSER) */}
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #E5E5E5', backgroundColor: '#FFFFFF' }}>
-          {error && (
-            <div
-              role="alert"
-              style={{
-                color: '#991B1B',
-                backgroundColor: '#FEF2F2',
-                padding: '8px 12px',
-                borderRadius: 6,
-                fontSize: '0.82rem',
-                marginBottom: 8,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <span>{error}</span>
-              <button
-                type="button"
-                onClick={() => handleSend()}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#B91C1C',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontSize: '0.78rem',
-                }}
-              >
-                Thử lại
-              </button>
-            </div>
-          )}
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'flex-end',
-              gap: 10,
-              backgroundColor: '#F7F7F5',
-              border: '1px solid #E5E5E5',
-              borderRadius: 16,
-              padding: '8px 12px 8px 16px',
+        {/* BOTTOM INPUT BAR */}
+        <div className="copilot-composer">
+          {error && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{error}</p>}
+          <form
+            className="copilot-composer-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+
             }}
           >
             <textarea
@@ -1273,49 +1304,169 @@ export function CopilotView({ onOpenDocument, initialQuery = '' }) {
             />
 
             <button
-              type="button"
-              onClick={() => handleSend()}
+              className="copilot-send-button"
+              type="submit"
               disabled={!inputMessage.trim() || loading}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                backgroundColor: inputMessage.trim() ? '#111111' : '#D1D1CE',
-                color: '#FFFFFF',
-                border: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: inputMessage.trim() && !loading ? 'pointer' : 'default',
-                transition: 'all 0.2s',
-                flexShrink: 0,
-              }}
               title="Gửi câu hỏi"
             >
               <SendIcon style={{ width: 16, height: 16 }} />
             </button>
-          </div>
+          </form>
         </div>
       </div>
 
-      {/* RIGHT SIDEBAR: CONTEXT / COMPLEMENTARY INSIGHTS PANEL */}
-      <ProductContextPanel
-        browseModel={browseModel}
-        resolvedModel={resolvedContext.model}
-        resolvedDate={resolvedContext.date}
-        originMessageId={resolvedContext.originMessageId}
-        insights={resolvedContext.insights}
-        loading={loading}
-        onSelectBrowseModel={(model) => setBrowseModel(model)}
-        onFillDraft={handleFillDraft}
-        onSwitchModel={() => {
-          setResolvedContext({ model: null, date: null, originMessageId: null, insights: [] });
-        }}
-        onCitationClick={(citation) => setActiveCitation(citation)}
-        onCopy={handleCopy}
-        copiedId={copiedId}
-        onComposeMessage={(draft) => handleFillDraft(draft)}
-      />
+      {/* RIGHT SIDEBAR: CONTEXT PANEL + FAQ + CHEAT SHEET */}
+      <div className="copilot-sidebar-column">
+        <ProductContextPanel
+          browseModel={browseModel}
+          resolvedModel={resolvedContext.model}
+          resolvedDate={resolvedContext.date}
+          originMessageId={resolvedContext.originMessageId}
+          insights={resolvedContext.insights}
+          loading={loading}
+          onSelectBrowseModel={(model) => setBrowseModel(model)}
+          onFillDraft={handleFillDraft}
+          onSwitchModel={() => {
+            setResolvedContext({ model: null, date: null, originMessageId: null, insights: [] });
+          }}
+          onCitationClick={(citation) => setActiveCitation(citation)}
+          onCopy={handleCopy}
+          copiedId={copiedId}
+          onComposeMessage={(draft) => handleFillDraft(draft)}
+        />
+
+
+        {/* CARD: CÂU HỎI THƯỜNG GẶP */}
+        <div className="card-white copilot-faq-card">
+          <div className="copilot-sidebar-heading">
+            <h3>
+              Câu hỏi thường gặp
+            </h3>
+          </div>
+
+          <div className="copilot-faq-list">
+            {FAQ_QUESTIONS.length === 0 ? (
+              <div style={{ padding: '12px 14px', borderRadius: 8, backgroundColor: '#F9FAFB', border: '1px dashed #D1D5DB', fontSize: '0.8rem', color: '#6B7280' }}>
+                <span style={{ fontWeight: 600, color: '#374151', display: 'block', marginBottom: 2 }}>
+                  Chờ nạp tài liệu FAQ thực tế
+                </span>
+                Cần 6 tệp PDF câu hỏi thường gặp theo dải xe (VF 3 – VF 9) từ thư mục <code>data/knowledge/</code>.
+              </div>
+            ) : (
+              FAQ_QUESTIONS.slice(0, 6).map((item) => (
+              <button
+                type="button"
+                className="copilot-faq-question"
+                key={item.id}
+                onClick={() => handleSend(item.query)}
+                disabled={loading}
+              >
+                <span>
+                  {item.question}
+                </span>
+                <ChevronRight aria-hidden="true" />
+              </button>
+            )))}
+          </div>
+        </div>
+
+        {/* CARD: QUICK CHEAT-SHEET 2026 */}
+        <div className="card-dark copilot-cheat-card" style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'inline-block', backgroundColor: 'rgba(255, 255, 255, 0.1)', padding: '3px 8px', borderRadius: 4, width: 'fit-content' }}>
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#E0E0E0', letterSpacing: '0.05em' }}>
+              {CHEAT_SHEET_DATA.title}
+            </span>
+          </div>
+
+          <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#FFFFFF' }}>
+            {CHEAT_SHEET_DATA.subtitle}
+          </h4>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+            {CHEAT_SHEET_DATA.items.length === 0 ? (
+              <div style={{ fontSize: '0.8rem', color: '#9CA3AF', lineHeight: 1.4 }}>
+                Đang để trống — Sẽ tự động trích xuất thông số khi nạp các tệp PDF thông số xe & chính sách bảo hành.
+              </div>
+            ) : (
+              CHEAT_SHEET_DATA.items.map((item, idx) => (
+              <div key={idx} style={{ fontSize: '0.82rem', color: '#D4D4D4', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                <span style={{ color: '#FFFFFF' }}>•</span>
+                <div>
+                  <span style={{ color: '#999999' }}>{item.label}: </span>
+                  <span style={{ fontWeight: 600, color: '#FFFFFF' }}>{item.value}</span>
+                </div>
+              </div>
+            )))}
+          </div>
+        </div>
+      </div>
+      {/* SOURCE CITATION DOCUMENT MODAL */}
+      <Modal
+        isOpen={Boolean(selectedCitationDoc)}
+        onClose={() => setSelectedCitationDoc(null)}
+        title={selectedCitationDoc ? selectedCitationDoc.title : "Tài liệu nguồn trích dẫn"}
+        maxWidth={780}
+      >
+        {selectedCitationDoc && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "0.78rem", color: "#737373", borderBottom: "1px solid #F0F0EE", paddingBottom: 10, flexWrap: "wrap" }}>
+              <span>Mã văn bản: <strong>{selectedCitationDoc.document_id}</strong></span>
+              {selectedCitationDoc.effective_date && (
+                <>
+                  <span>•</span>
+                  <span>Ngày hiệu lực: <strong>{selectedCitationDoc.effective_date}</strong></span>
+                </>
+              )}
+              {selectedCitationDoc.product_model && (
+                <>
+                  <span>•</span>
+                  <span>Dòng xe: <strong>{selectedCitationDoc.product_model}</strong></span>
+                </>
+              )}
+              {selectedCitationDoc.status && (
+                <>
+                  <span>•</span>
+                  <span>Trạng thái: <strong>{selectedCitationDoc.status}</strong></span>
+                </>
+              )}
+            </div>
+
+            <div
+              style={{
+                fontSize: "0.88rem",
+                lineHeight: 1.6,
+                color: "#222222",
+                whiteSpace: "pre-wrap",
+                maxHeight: "60vh",
+                overflowY: "auto",
+                backgroundColor: "#FAFAFA",
+                padding: "16px 20px",
+                borderRadius: 8,
+                border: "1px solid #ECECE8",
+              }}
+            >
+              {selectedCitationDoc.content}
+            </div>
+
+            {onOpenDocument && (
+              <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 10, borderTop: "1px solid #F0F0EE" }}>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => {
+                    const docId = selectedCitationDoc.document_id;
+                    setSelectedCitationDoc(null);
+                    onOpenDocument(docId);
+                  }}
+                  style={{ fontSize: "0.82rem", padding: "8px 14px" }}
+                >
+                  Xem toàn văn trong mục Knowledge →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
 
       <SourceViewerModal
         isOpen={!!activeCitation}

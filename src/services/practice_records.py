@@ -6,7 +6,8 @@ This module deliberately does not accept user IDs from browser request bodies.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
+from enum import StrEnum
 from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -27,6 +28,42 @@ class AttemptNotFoundError(LookupError):
 
 class ReviewConflictError(ValueError):
     """The attempt cannot be reviewed in its current state."""
+
+
+class AssignmentConflictError(ValueError):
+    """The assignment cannot be used for this advisor or scenario."""
+
+
+class AssignmentStatus(StrEnum):
+    ASSIGNED = "assigned"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+class CreateAssignmentInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    advisor_id: str = Field(min_length=1, max_length=120)
+    scenario_id: str = Field(min_length=1, max_length=120)
+    title: str = Field(min_length=1, max_length=200)
+    due_date: date | None = None
+
+    @model_validator(mode="after")
+    def strip_fields(self) -> CreateAssignmentInput:
+        self.advisor_id = self.advisor_id.strip()
+        self.scenario_id = self.scenario_id.strip()
+        self.title = self.title.strip()
+        if not all((self.advisor_id, self.scenario_id, self.title)):
+            raise ValueError("assignment fields must not be blank")
+        return self
+
+
+class AssignmentRecord(CreateAssignmentInput):
+    assignment_id: str
+    manager_id: str
+    created_at: datetime
+    status: AssignmentStatus
+    session_id: str | None = None
 
 
 class AttemptSummary(BaseModel):
@@ -56,6 +93,25 @@ class TeamOverview(BaseModel):
     failed_evaluations: int
     active_advisors: int
     skill_summaries: list[SkillSummary]
+
+
+class ApprovedScore(BaseModel):
+    session_id: str
+    scenario_id: str
+    score: float
+    reviewed_at: datetime
+
+
+class AdvisorPerformance(BaseModel):
+    advisor_id: str
+    display_name: str
+    completed_sessions: int
+    approved_sessions: int
+    scored_sessions: int
+    average_score: float | None
+    rank: int | None
+    skill_summaries: list[SkillSummary]
+    recent_scores: list[ApprovedScore]
 
 
 class ManagerReviewDecision(BaseModel):
@@ -88,7 +144,19 @@ class ManagerReviewRecord(BaseModel):
 
 
 class PracticeRecordsRepository(Protocol):
-    async def register(self, session_id: str, scenario_id: str, advisor_id: str) -> None: ...
+    async def register(
+        self, session_id: str, scenario_id: str, advisor_id: str, assignment_id: str | None = None
+    ) -> None: ...
+
+    async def create_assignment(self, manager_id: str, payload: CreateAssignmentInput) -> AssignmentRecord: ...
+
+    async def assignments(self, advisor_id: str | None = None) -> list[AssignmentRecord]: ...
+
+    async def validate_assignment(self, assignment_id: str, advisor_id: str, scenario_id: str) -> None: ...
+
+    async def advisor_performance(self) -> dict[str, AdvisorPerformance]: ...
+
+    async def mark_evaluation_pending(self, session_id: str) -> None: ...
 
     async def mark_evaluation_failed(self, session_id: str) -> None: ...
 

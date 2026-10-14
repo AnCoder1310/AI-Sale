@@ -15,7 +15,8 @@ Validated advisor factual claims are retained with their originating message ID 
 category so Finish can retrieve evidence for the exact claim rather than the whole
 transcript.
 Objections and termination conditions are nested typed contracts. All scenario
-objections start as unresolved. They are not active until D2 checks `trigger_stage`.
+objections start as unresolved. A concern becomes active when the customer actually
+raises it; stage labels do not force the customer to recite every objection.
 D2 loads a scenario, creates state, persists every turn, and checkpoints it. On
 termination it persists the final turn and freezes the transcript. `POST
 /practice/{session_id}/finish` then evaluates the saved attempt. The checkpoint
@@ -24,6 +25,11 @@ through Finish without losing the transcript. `GET /practice/{session_id}/result
 returns the status and, when complete, the provisional AI result.
 `GET /practice/{session_id}` returns only `advisor_visible_context()` so the
 Practice Room can recover the saved transcript after a reply fails.
+Each session stores its scenario snapshot, so a catalog edit does not change the
+buyer rules halfway through an attempt. After advisor analysis, a pending-customer
+reply flag is saved. `POST /practice/{session_id}/retry-reply` resumes that reply
+without appending or analyzing the advisor message again. New advisor messages and
+Finish are blocked while the reply is pending.
 
 Difficulty is selected before the session and remains fixed for that attempt.
 Adaptive difficulty inside an attempt is out of MVP scope; later attempts may use a
@@ -33,8 +39,9 @@ different configured difficulty.
 
 `customer_prompt_context()` is server-only input for the AI customer. It includes
 difficulty, persona, trust/interest levels, customer goals, current intent, revealed
-facts, active objections, and chat history. It never includes unrevealed
-`hidden_facts`.
+facts as actually spoken in saved customer messages, active objections, and chat
+history. It never includes unrevealed `hidden_facts` or silently substitutes a
+fuller hidden value for a shorter spoken statement.
 
 `advisor_visible_context()` is the frontend/trainee contract. It exposes session
 identity, stage, turn count, chosen difficulty, sales channel/training objective when
@@ -54,16 +61,24 @@ examples and fallback hints, not exact phrases the advisor must say. Broad quest
 may reveal a partial clue; a single prompt must not dump all hidden facts.
 
 Turn analysis proposes known intent/fact/objection IDs and application code validates
-them against scenario state before updating it. The customer model receives only facts
-already revealed or explicitly allowed for the current turn. Replies should normally
-be one to three natural sentences. Current price, promotion, battery, charging, and
-product facts must use the knowledge tool, not scenario data or code.
+them against scenario state before updating it. The customer model must return a
+spoken reply, an explicit concern ID or null, and a decision of reply, acknowledge,
+accept_step, defer, or decline. Missing decision fields fail validation. A concern's
+first mention is tracked separately from its two permitted follow-ups. Customer
+acknowledgment or acceptance may clear only a concern the advisor actually addressed.
+An accepted concrete step can complete a session; deferral or refusal ends it without
+claiming success. Scenario buyer criteria and dropout triggers guide those decisions.
+Replies should normally be one to three natural sentences. Current price, promotion,
+battery, charging, and product facts must use the knowledge tool, not scenario data or code.
 
 ## Stages and termination
 
 Stages are `opening`, `discovery`, `presentation`, `objection_handling`, `closing`, and
 `finished`. D2 can move them forward or backward based on dialogue. Termination is
-active, completed, advisor-ended, dropped-out, or max-turns.
+active, completed, advisor-ended, dropped-out, or max-turns. Advisors choose 8–15
+turns at session start; scenario defaults are at least eight turns. The final
+allowed advisor message still receives a customer reply before max-turns ends
+the session.
 
 ## Integration boundary
 

@@ -2,6 +2,7 @@ import {
   RefreshIcon,
   BookIcon,
   ClockIcon,
+  LightbulbIcon,
 } from '../common/Icons';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
@@ -78,7 +79,7 @@ export function EvaluationScorecard({
         {/* Strengths & Weaknesses Quick Summary */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 12, paddingTop: 16, borderTop: '1px solid rgba(255, 255, 255, 0.12)' }}>
           <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', padding: '14px 16px', borderRadius: 10 }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#4ADE80', display: 'block', marginBottom: 6 }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#FFFFFF', display: 'block', marginBottom: 6 }}>
               + ĐIỂM MẠNH NỔI BẬT:
             </span>
             <ul style={{ listStyle: 'none', paddingLeft: 0, fontSize: '0.82rem', color: '#E0E0E0', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -92,7 +93,7 @@ export function EvaluationScorecard({
           </div>
 
           <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', padding: '14px 16px', borderRadius: 10 }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#FCD34D', display: 'block', marginBottom: 6 }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#E4E4E7', display: 'block', marginBottom: 6 }}>
               ! ĐIỂM CẦN RÈN LUYỆN:
             </span>
             <ul style={{ listStyle: 'none', paddingLeft: 0, fontSize: '0.82rem', color: '#E0E0E0', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -176,7 +177,7 @@ export function EvaluationScorecard({
 
                 {crit.improvement_suggestion && (
                   <div style={{ fontSize: '0.82rem', color: '#111111', fontWeight: 500 }}>
-                    💡 <strong>Gợi ý cải thiện:</strong> {crit.improvement_suggestion}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><LightbulbIcon style={{ width: 13, height: 13 }} /> <strong>Gợi ý cải thiện:</strong></span> {crit.improvement_suggestion}
                   </div>
                 )}
               </div>
@@ -219,7 +220,7 @@ export function EvaluationScorecard({
                   </div>
                 </div>
                 <Badge variant={finding.status === 'supported' ? 'highlight' : 'default'}>
-                  {finding.status === 'supported' ? '✓ Chính xác' : finding.status}
+                  {finding.status === 'supported' ? 'Chính xác' : finding.status}
                 </Badge>
               </div>
             ))}

@@ -35,6 +35,9 @@ class RecordingClient:
 
 
 def settings(**kwargs):
+    if kwargs.get("app_env") == "production":
+        kwargs = {"auth_cookie_secure": True, "database_url": "postgresql://test:test@localhost/test",
+                  "vector_store_type": "pgvector", "openrouter_api_key": "test-key", **kwargs}
     return Settings(
         _env_file=None, embedding_provider="openrouter" if kwargs.get("app_env") == "production" else "hash", **kwargs
     )
@@ -238,6 +241,7 @@ async def test_export_failure_disabled_sampling_and_other_routes():
 
 
 def test_configuration_defaults_aliases_and_production_guard(monkeypatch):
+    monkeypatch.delenv("LANGSMITH_PROJECT", raising=False)
     monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
     monkeypatch.delenv("LANGCHAIN_TRACING_V2", raising=False)
     assert settings().langsmith_tracing is False
@@ -245,7 +249,7 @@ def test_configuration_defaults_aliases_and_production_guard(monkeypatch):
     assert settings(LANGSMITH_TRACING=False, LANGCHAIN_TRACING_V2=True).langsmith_tracing is False
     with pytest.raises(ValidationError):
         Settings(_env_file=None, app_env="production", langsmith_capture_content=True)
-    assert Settings(_env_file=None, app_env="production").langsmith_project == "p043-copilot-prod"
+    assert settings(app_env="production").langsmith_project == "p043-copilot-prod"
 
 
 def test_exporter_configuration_and_shutdown(monkeypatch):

@@ -141,8 +141,9 @@ export function ProgressView({
                     fontWeight: 600,
                     padding: '2px 8px',
                     borderRadius: 4,
-                    backgroundColor: crit.status === 'attention' ? '#FEFCE8' : '#F0FDF4',
-                    color: crit.status === 'attention' ? '#854D0E' : '#166534',
+                    border: '1px solid #E4E4E7',
+                    backgroundColor: crit.status === 'attention' ? '#F4F4F5' : '#18181B',
+                    color: crit.status === 'attention' ? '#52525B' : '#FFFFFF',
                   }}
                 >
                   {crit.status_label}

@@ -1,15 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, SendIcon } from '../common/Icons';
+import { ChevronLeft, SendIcon, FlagIcon, TargetIcon, MicIcon, UsersIcon } from '../common/Icons';
 import { Badge } from '../common/Badge';
+import { getVehicleImage } from '../../data/vehicleData';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { practiceApi } from '../../api/practiceApi';
 import { createId } from '../../lib/id';
+import { usePushToTalk } from '../../hooks/usePushToTalk';
 
 export function PracticeRoom({
   scenario,
   session,
   onFinish,
+  onSavedAttempt,
   onExit,
 }) {
   const [messages, setMessages] = useState(session?.messages || []);
@@ -19,11 +22,63 @@ export function PracticeRoom({
   const [turnCount, setTurnCount] = useState(session?.turn_count || 0);
   const [stage, setStage] = useState(session?.conversation_stage || 'opening');
   const [terminationStatus, setTerminationStatus] = useState(session?.termination_status || 'active');
+  const [pendingReply, setPendingReply] = useState(session?.pending_customer_reply || false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState('');
+  const [mode, setMode] = useState('text');
+  const [voiceGender, setVoiceGender] = useState('female');
+  const [transcribing, setTranscribing] = useState(false);
+  const [voiceError, setVoiceError] = useState('');
+  const [speakingId, setSpeakingId] = useState(null);
 
   const chatEndRef = useRef(null);
+  const audioRef = useRef(null);
+  const audioUrlsRef = useRef(new Map());
+
+  const onRecorded = async (blob, durationSeconds) => {
+    if (blob.size > 4_000_000) {
+      setVoiceError('Ghi âm quá lớn. Hãy nói ngắn hơn rồi thử lại.');
+      return;
+    }
+    setVoiceError('');
+    setTranscribing(true);
+    try {
+      const result = await practiceApi.transcribeVoice(session.session_id, blob, durationSeconds);
+      setInputMessage(result.transcript);
+    } catch (requestError) {
+      setVoiceError(requestError.message || 'Không nhận dạng được giọng nói. Hãy thử ghi lại.');
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const recorder = usePushToTalk(onRecorded);
+
+  const playCustomer = async (message) => {
+    if (!message || message.role !== 'customer') return;
+    const cacheKey = `${message.message_id}:${voiceGender}`;
+    setVoiceError('');
+    setSpeakingId(message.message_id);
+    try {
+      let url = audioUrlsRef.current.get(cacheKey);
+      if (!url) {
+        const blob = await practiceApi.customerSpeech(session.session_id, message.message_id, voiceGender);
+        url = URL.createObjectURL(blob);
+        audioUrlsRef.current.set(cacheKey, url);
+      }
+      audioRef.current?.pause();
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => setSpeakingId(null);
+      await audio.play();
+    } catch (requestError) {
+      setVoiceError(requestError.name === 'NotAllowedError'
+        ? 'Trình duyệt chặn tự phát âm thanh. Nhấn “Phát giọng khách” để nghe.'
+        : requestError.message || 'Không phát được giọng khách. Hãy thử lại.');
+      setSpeakingId(null);
+    }
+  };
 
   const stageLabels = {
     opening: 'Giai đoạn: Chào hỏi & Mở đầu',
@@ -38,9 +93,14 @@ export function PracticeRoom({
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
+  useEffect(() => () => {
+    audioRef.current?.pause();
+    audioUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+
   const handleSendMessage = async () => {
     const text = inputMessage.trim();
-    if (!text || loading || finishing || terminationStatus !== 'active') return;
+    if (!text || loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active') return;
 
     const advisorMsg = {
       message_id: createId('adv'),
@@ -60,6 +120,11 @@ export function PracticeRoom({
       setStage(updated.conversation_stage);
       setTurnCount(updated.turn_count);
       setTerminationStatus(updated.termination_status);
+      setPendingReply(updated.pending_customer_reply);
+      if (mode === 'voice') {
+        const customerReply = updated.messages.at(-1);
+        if (customerReply?.role === 'customer') playCustomer(customerReply);
+      }
     } catch (requestError) {
       setError(requestError.message || 'AI Customer chưa phản hồi. Phiên đã được lưu; vui lòng thử tải lại.');
       try {
@@ -68,6 +133,7 @@ export function PracticeRoom({
         setStage(saved.conversation_stage);
         setTurnCount(saved.turn_count);
         setTerminationStatus(saved.termination_status);
+        setPendingReply(saved.pending_customer_reply);
       } catch {
         // Keep the advisor's visible draft; do not fabricate a customer reply.
       }
@@ -76,15 +142,59 @@ export function PracticeRoom({
     }
   };
 
+  const handleRetryReply = async () => {
+    if (!pendingReply || loading || finishing || transcribing || recorder.recordingState !== 'idle') return;
+    setLoading(true);
+    setError('');
+    try {
+      const updated = await practiceApi.retryCustomerReply(session.session_id);
+      setMessages(updated.messages);
+      setStage(updated.conversation_stage);
+      setTurnCount(updated.turn_count);
+      setTerminationStatus(updated.termination_status);
+      setPendingReply(updated.pending_customer_reply);
+      if (mode === 'voice') {
+        const customerReply = updated.messages.at(-1);
+        if (customerReply?.role === 'customer') playCustomer(customerReply);
+      }
+    } catch (requestError) {
+      setError(requestError.message || 'AI Customer chưa phản hồi. Hãy thử lại.');
+      try {
+        const saved = await practiceApi.getSession(session.session_id);
+        setMessages(saved.messages);
+        setStage(saved.conversation_stage);
+        setTurnCount(saved.turn_count);
+        setTerminationStatus(saved.termination_status);
+        setPendingReply(saved.pending_customer_reply);
+      } catch {
+        // Keep the saved pending turn visible until the session can be loaded.
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFinishSession = async () => {
-    if (loading || finishing) return;
+    if (loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle') return;
     setFinishing(true);
     setError('');
     try {
       const resultView = await practiceApi.finishSession(session.session_id);
       onFinish(resultView);
     } catch (requestError) {
-      setError(requestError.message || 'Không thể chấm điểm lúc này. Phiên đã được lưu; hãy thử lại.');
+      // The server saves the finished transcript before it asks the evaluator.
+      // A failed evaluation (or a lost response) must not strand the advisor
+      // in a room that can no longer accept messages.
+      try {
+        const saved = await practiceApi.getAttempt(session.session_id);
+        if (saved.session.termination_status !== 'active') {
+          await onSavedAttempt(session.session_id);
+          return;
+        }
+      } catch {
+        // We could not verify persistence, so keep the room and show the error.
+      }
+      setError(requestError.message || 'Không thể kết thúc phiên lúc này. Vui lòng thử lại.');
     } finally {
       setFinishing(false);
       setShowFinishConfirm(false);
@@ -92,120 +202,87 @@ export function PracticeRoom({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', minHeight: 650, backgroundColor: '#FFFFFF', borderRadius: 16, border: '1px solid #E5E5E5', overflow: 'hidden' }}>
+    <div className="practice-room-container">
       {/* ROOM HEADER */}
-      <div style={{ padding: '14px 20px', borderBottom: '1px solid #E5E5E5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FAFAFA', flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="practice-room-header">
+        <div className="practice-room-header-main">
           <button
             onClick={onExit}
-            className="btn-ghost"
-            style={{ padding: '6px 10px', fontSize: '0.85rem' }}
+            className="practice-room-back"
           >
             <ChevronLeft style={{ width: 16, height: 16 }} />
             <span>Rời phòng</span>
           </button>
 
-          <div style={{ height: 20, width: 1, backgroundColor: '#E5E5E5' }} />
+          {getVehicleImage(scenario?.model_badge || scenario?.model || scenario?.title) && (
+            <div className="practice-room-vehicle">
+              <img
+                src={getVehicleImage(scenario?.model_badge || scenario?.model || scenario?.title)}
+                alt={scenario?.model_badge || scenario?.model}
+              />
+            </div>
+          )}
 
-          <div>
-            <h2 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#111111' }}>
-              {scenario?.title}
-            </h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+          <div className="practice-room-identity">
+            <h2>{scenario?.title}</h2>
+            <div className="practice-room-meta">
               <Badge variant="highlight">{scenario?.model_badge || scenario?.model}</Badge>
-              <span style={{ fontSize: '0.75rem', color: '#666666' }}>
-                {stageLabels[stage] || stage}
-              </span>
-              <span style={{ fontSize: '0.75rem', color: '#888888' }}>
-                • Lượt trao đổi: {turnCount}/{session?.max_turns || scenario?.max_turns}
-              </span>
+              <span>{stageLabels[stage] || stage}</span>
+              <span>Lượt trao đổi: {turnCount}/{session?.max_turns || scenario?.max_turns}</span>
             </div>
           </div>
         </div>
 
         <button
-          className="btn-primary"
-          style={{ backgroundColor: '#111111', fontSize: '0.82rem', padding: '8px 16px' }}
+          className="practice-room-finish"
           onClick={() => setShowFinishConfirm(true)}
-          disabled={loading || finishing}
+          disabled={loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle'}
         >
-          🏁 Kết thúc & Chấm điểm
+          <FlagIcon style={{ width: 14, height: 14 }} /> Kết thúc & Chấm điểm
         </button>
       </div>
 
       {/* CUSTOMER CONTEXT BANNER */}
-      <div style={{ padding: '12px 20px', backgroundColor: '#F8F8F6', borderBottom: '1px solid #EDEDEA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111111' }}>
-              Khách hàng • {scenario?.sales_channel || 'Kênh tư vấn'}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#737373' }}>
-              {session?.visible_context}
-            </div>
-          </div>
+      <div className="practice-room-context">
+        <div className="practice-room-context-item">
+          <UsersIcon aria-hidden="true" />
+          <div><strong>Khách hàng · {scenario?.sales_channel || 'Kênh tư vấn'}</strong><p>{session?.visible_context}</p></div>
         </div>
-        <div style={{ fontSize: '0.78rem', color: '#555555', textAlign: 'right' }}>
-          🎯 <strong>Mục tiêu:</strong> {scenario?.training_objective}
+        <div className="practice-room-context-item">
+          <TargetIcon aria-hidden="true" />
+          <div><strong>Mục tiêu luyện tập</strong><p>{scenario?.training_objective}</p></div>
         </div>
       </div>
 
       {/* CHAT THREAD */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 18, backgroundColor: '#FFFFFF' }}>
+      <div className="practice-room-messages">
         {messages.map((m, idx) => (
           <div
             key={m.message_id || idx}
-            style={{
-              display: 'flex',
-              gap: 12,
-              alignItems: 'flex-start',
-              alignSelf: m.role === 'advisor' ? 'flex-end' : 'flex-start',
-              maxWidth: '85%',
-            }}
+            className={`practice-room-message ${m.role === 'advisor' ? 'practice-room-message-advisor' : 'practice-room-message-customer'}`}
           >
-
-            <div
-              style={{
-                padding: '14px 18px',
-                borderRadius: 14,
-                backgroundColor: m.role === 'advisor' ? '#111111' : '#F4F4F2',
-                color: m.role === 'advisor' ? '#FFFFFF' : '#111111',
-                fontSize: '0.92rem',
-                lineHeight: 1.5,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-              }}
-            >
-              <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: 4, opacity: 0.7 }}>
+            <div className="practice-room-bubble">
+              <div className="practice-room-speaker">
                 {m.role === 'advisor' ? 'Bạn (Tư vấn viên)' : 'Khách hàng'}
               </div>
-              <div style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
+              <div className="practice-room-message-content">{m.content}</div>
+              {mode === 'voice' && m.role === 'customer' && (
+                <button
+                  type="button"
+                  className="practice-room-play-voice"
+                  onClick={() => playCustomer(m)}
+                  disabled={speakingId === m.message_id}
+                >
+                  {speakingId === m.message_id ? 'Đang phát...' : 'Phát giọng khách'}
+                </button>
+              )}
             </div>
-
-            {m.role === 'advisor' && (
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  backgroundColor: '#111111',
-                  color: '#FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  flexShrink: 0,
-                }}
-              >
-                An
-              </div>
-            )}
           </div>
         ))}
 
         {loading && (
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <div style={{ padding: '12px 18px', borderRadius: 14, backgroundColor: '#F4F4F2', fontSize: '0.85rem', color: '#666666' }}>
+          <div className="practice-room-message practice-room-message-customer">
+            <div className="practice-room-bubble practice-room-loading" role="status">
               Khách hàng đang soạn câu trả lời...
             </div>
           </div>
@@ -215,10 +292,48 @@ export function PracticeRoom({
       </div>
 
       {/* INPUT BAR */}
-      <div style={{ padding: '16px 20px', borderTop: '1px solid #E5E5E5', backgroundColor: '#FAFAFA' }}>
+      <div className="practice-room-composer">
         {error && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{error}</p>}
-        {terminationStatus !== 'active' && <p style={{ fontSize: '0.82rem', marginBottom: 8 }}>Đã đạt giới hạn lượt. Hãy kết thúc để xem đánh giá.</p>}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+        {pendingReply && (
+          <div className="practice-room-retry">
+            <span style={{ fontSize: '0.82rem' }}>Tin nhắn đã lưu. Khách hàng chưa phản hồi.</span>
+            <button className="btn-primary" onClick={handleRetryReply} disabled={loading || finishing || transcribing || recorder.recordingState !== 'idle'}>Thử lại phản hồi</button>
+          </div>
+        )}
+        {(voiceError || recorder.recordingError) && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{voiceError || recorder.recordingError}</p>}
+        {terminationStatus !== 'active' && <p style={{ fontSize: '0.82rem', marginBottom: 8 }}>Cuộc trò chuyện đã kết thúc. Hãy xem đánh giá.</p>}
+        <div className="practice-room-modes">
+          <button type="button" className={mode === 'text' ? 'selected' : ''} onClick={() => setMode('text')} disabled={recorder.recordingState !== 'idle'}>Chế độ chữ</button>
+          <button type="button" className={mode === 'voice' ? 'selected' : ''} onClick={() => setMode('voice')} disabled={recorder.recordingState !== 'idle'}>Chế độ nói</button>
+          {mode === 'voice' && (
+            <>
+              <label style={{ fontSize: '0.82rem' }} htmlFor="customer-voice">Giọng khách:</label>
+              <select id="customer-voice" value={voiceGender} onChange={(event) => setVoiceGender(event.target.value)}>
+                <option value="female">Nữ</option>
+                <option value="male">Nam</option>
+              </select>
+            </>
+          )}
+        </div>
+        {mode === 'voice' && terminationStatus === 'active' && (
+          <div className="practice-room-recording">
+            <button
+              type="button"
+              className={`practice-room-record-button ${recorder.recordingState === 'recording' ? 'recording' : ''}`}
+              onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); recorder.start(); }}
+              onPointerUp={recorder.stop}
+              onPointerCancel={recorder.stop}
+              onKeyDown={(event) => { if (!event.repeat && [' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.start(); } }}
+              onKeyUp={(event) => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.stop(); } }}
+              disabled={loading || finishing || pendingReply || transcribing}
+              aria-label="Giữ để nói tiếng Việt, thả để nhận dạng"
+            >
+              <MicIcon aria-hidden="true" /> {recorder.recordingState === 'requesting' ? 'Đang xin quyền micro...' : recorder.recordingState === 'recording' ? 'Thả để nhận dạng' : 'Giữ để nói'}
+            </button>
+            <span style={{ fontSize: '0.78rem', color: '#666666' }}>{transcribing ? 'Đang nhận dạng tiếng Việt...' : 'Giữ nút để nói tối đa 60 giây; sửa bản chép trước khi gửi.'}</span>
+          </div>
+        )}
+        <div className="practice-room-composer-form">
           <textarea
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
@@ -228,29 +343,18 @@ export function PracticeRoom({
                 handleSendMessage();
               }
             }}
-            placeholder="Nhập nội dung tư vấn khách hàng... (Nhấn Enter để gửi, Shift+Enter xuống dòng)"
+            placeholder={mode === 'voice' ? 'Bản chép giọng nói sẽ hiện ở đây. Bạn có thể sửa trước khi gửi.' : 'Nhập nội dung tư vấn khách hàng... (Nhấn Enter để gửi, Shift+Enter xuống dòng)'}
             rows={2}
-            style={{
-              flex: 1,
-              padding: '10px 14px',
-              borderRadius: 10,
-              border: '1px solid #D1D1CE',
-              outline: 'none',
-              resize: 'none',
-              fontSize: '0.9rem',
-              lineHeight: 1.4,
-              backgroundColor: '#FFFFFF',
-            }}
-            disabled={loading || finishing || terminationStatus !== 'active'}
+            disabled={loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active'}
           />
           <button
             onClick={handleSendMessage}
-            disabled={!inputMessage.trim() || loading || finishing || terminationStatus !== 'active'}
-            className="btn-primary"
-            style={{ height: 46, padding: '0 20px' }}
+            disabled={!inputMessage.trim() || loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active'}
+            className="practice-room-send"
+            title="Gửi tin nhắn"
           >
             <SendIcon style={{ width: 16, height: 16 }} />
-            <span>Gửi</span>
+            <span className="sr-only">Gửi</span>
           </button>
         </div>
       </div>

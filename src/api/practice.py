@@ -27,6 +27,7 @@ class CreatePracticeSessionRequest(BaseModel):
 
     scenario_id: str = Field(min_length=1, max_length=120)
     max_turns: int | None = Field(default=None, ge=8, le=15)
+    assignment_id: str | None = Field(default=None, min_length=1, max_length=120)
 
     @field_validator("scenario_id")
     @classmethod

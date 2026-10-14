@@ -22,6 +22,7 @@ from src.agents.copilot.summarizer import format_summary_for_context, maybe_trig
 from src.config import get_settings
 from src.integrations.copilot_sessions import CopilotSessionConflictError, CopilotSessionNotFoundError
 from src.knowledge.index_readiness import IndexNotReadyError
+from src.models.auth import UserRole
 from src.observability import annotate, graph_config, span
 from src.services.semantic_cache import semantic_cache
 
@@ -143,7 +144,10 @@ async def query_copilot(
 
 async def current_copilot_user(request: Request):
     with span("authentication"):
-        return await request.app.state.current_user(request)
+        identity = await request.app.state.current_user(request)
+        if identity.role != UserRole.ADVISOR:
+            raise HTTPException(status_code=403, detail="Advisor access required.")
+        return identity
 
 
 @router.post("/query", response_model=CopilotQueryResponse)

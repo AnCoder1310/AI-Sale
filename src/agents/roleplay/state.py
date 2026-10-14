@@ -74,12 +74,21 @@ class RoleplayState(BaseModel):
     customer_goals: str
     current_intent: str
     current_topic: str | None = None
+    pending_next_step_attempted: bool = False
     termination_status: TerminationStatus = TerminationStatus.ACTIVE
     termination_reason: str | None = None
     evaluation_status: EvaluationStatus = EvaluationStatus.NOT_STARTED
     evaluation_result: SessionEvaluationResult | None = None
     messages: list[RoleplayMessage] = Field(default_factory=list)
     factual_claims: list[AdvisorFactualClaim] = Field(default_factory=list)
+
+    @property
+    def pending_customer_reply(self) -> bool:
+        return (
+            self.termination_status is TerminationStatus.ACTIVE
+            and bool(self.messages)
+            and self.messages[-1].role == "advisor"
+        )
 
     @model_validator(mode="after")
     def validate_evaluation_lifecycle(self) -> "RoleplayState":
@@ -93,6 +102,8 @@ class RoleplayState(BaseModel):
             raise ValueError("spoken concerns must reference an actual customer message")
         if any(count < 0 or count > 2 for count in self.concern_prompt_counts.values()):
             raise ValueError("concern prompt counts must remain within the two-prompt limit")
+        if self.pending_next_step_attempted and not self.pending_customer_reply:
+            raise ValueError("pending next-step context requires a pending customer reply")
         if (self.evaluation_status is EvaluationStatus.COMPLETE) != (self.evaluation_result is not None):
             raise ValueError("complete evaluation status and saved result must occur together")
         if self.evaluation_result is not None and (
@@ -163,6 +174,7 @@ class RoleplayState(BaseModel):
             "conversation_stage": self.conversation_stage.value,
             "turn_count": self.turn_count,
             "max_turns": self.max_turns,
+            "pending_customer_reply": self.pending_customer_reply,
             "visible_context": self.visible_context,
             "termination_status": self.termination_status.value,
             "termination_reason": self.termination_reason,

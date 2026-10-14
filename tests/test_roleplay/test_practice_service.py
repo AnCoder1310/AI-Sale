@@ -217,3 +217,61 @@ async def test_evaluator_failure_keeps_frozen_transcript_and_allows_retry(caplog
     retried = await service.finish_session("session-1")
     assert retried.evaluation_status is EvaluationStatus.COMPLETE
     assert evaluator.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_finish_confirms_saved_transcript_before_evaluation():
+    service, checkpoint, evaluator = build_lifecycle_service()
+    await service.start_session("SCENARIO_01_VF5_TAXI")
+    evaluator.fail_next = True
+    saved_before_scoring = False
+
+    async def confirm_saved():
+        nonlocal saved_before_scoring
+        state = RoleplayState.model_validate(await checkpoint.load("session-1"))
+        assert state.termination_status is TerminationStatus.ADVISOR_ENDED
+        assert state.evaluation_status is EvaluationStatus.PENDING
+        assert evaluator.calls == 0
+        saved_before_scoring = True
+
+    with pytest.raises(PracticeEvaluationUnavailableError):
+        await service.finish_session("session-1", on_saved=confirm_saved)
+
+    assert saved_before_scoring
+
+
+@pytest.mark.asyncio
+async def test_finish_does_not_score_when_checkpoint_save_fails():
+    service, checkpoint, evaluator = build_lifecycle_service()
+    await service.start_session("SCENARIO_01_VF5_TAXI")
+    original_save = checkpoint.save
+
+    async def reject_finish_save(session_id, state):
+        if state["evaluation_status"] == EvaluationStatus.PENDING.value:
+            raise OSError("database write failed")
+        await original_save(session_id, state)
+
+    checkpoint.save = reject_finish_save
+    with pytest.raises(OSError, match="database write failed"):
+        await service.finish_session("session-1")
+
+    assert evaluator.calls == 0
+    saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
+    assert saved.termination_status is TerminationStatus.ACTIVE
+
+
+@pytest.mark.asyncio
+async def test_finish_does_not_score_when_history_save_fails():
+    service, checkpoint, evaluator = build_lifecycle_service()
+    await service.start_session("SCENARIO_01_VF5_TAXI")
+
+    async def reject_history_save():
+        raise OSError("attempt update failed")
+
+    with pytest.raises(OSError, match="attempt update failed"):
+        await service.finish_session("session-1", on_saved=reject_history_save)
+
+    assert evaluator.calls == 0
+    saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
+    assert saved.termination_status is TerminationStatus.ADVISOR_ENDED
+    assert saved.evaluation_status is EvaluationStatus.PENDING
