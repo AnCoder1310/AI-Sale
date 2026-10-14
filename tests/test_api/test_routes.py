@@ -47,7 +47,7 @@ async def test_manager_cannot_use_advisor_copilot_routes(client, monkeypatch):
             user_id="manager-test", username="manager.test", display_name="Manager", role=UserRole.MANAGER
         )
 
-    monkeypatch.setattr("src.main.current_user", manager_identity)
+    monkeypatch.setattr("src.main.app.state.current_user", manager_identity)
     response = await client.get("/api/v1/copilot/sources/PRICE_LIST_VINFAST_20260921")
 
     assert response.status_code == 403

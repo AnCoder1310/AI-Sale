@@ -7,6 +7,7 @@ from src.agents.roleplay.scenario_loader import (
     ScenarioDatasetError,
     ScenarioNotFoundError,
     ScenarioRepository,
+    _voice_gender_from_name,
 )
 
 SCENARIOS = Path("data/scenarios/scenarios.json")
@@ -43,6 +44,15 @@ def test_public_summaries_do_not_expose_private_scenario_fields():
         "success_conditions",
     }
     assert all(private_fields.isdisjoint(summary) for summary in summaries)
+    assert {summary["scenario_id"]: summary["voice_gender"] for summary in summaries} == {
+        "SCENARIO_01_VF5_TAXI": "male",
+        "SCENARIO_02_VF7_VS_CX5": "female",
+        "SCENARIO_03_VF6_APARTMENT": "male",
+    }
+
+
+def test_voice_gender_is_not_guessed_for_ambiguous_customer_title():
+    assert _voice_gender_from_name("Bác Minh") is None
 
 
 def test_unknown_scenario_has_a_domain_specific_error():

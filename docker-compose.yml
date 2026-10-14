@@ -38,12 +38,21 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
       DEMO_ADVISOR_PASSWORD: ${DEMO_ADVISOR_PASSWORD:-}
       DEMO_MANAGER_PASSWORD: ${DEMO_MANAGER_PASSWORD:-}
+      KNOWLEDGE_MANIFEST_DIR: /app/data/index_manifests
+      LANGSMITH_TRACING: ${LANGSMITH_TRACING:-false}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
+      LANGSMITH_ENDPOINT: ${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-p043-copilot-dev}
+      LANGSMITH_CAPTURE_CONTENT: ${LANGSMITH_CAPTURE_CONTENT:-false}
+      LANGSMITH_SAMPLING_RATE: ${LANGSMITH_SAMPLING_RATE:-1.0}
       AI_LOG_SERVER: ${AI_LOG_SERVER:-}
       AI_LOG_API_KEY: ${AI_LOG_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GOOGLE_TTS_SERVICE_ACCOUNT_JSON: ${GOOGLE_TTS_SERVICE_ACCOUNT_JSON:-}
       VOICE_STT_USD_PER_HOUR: ${VOICE_STT_USD_PER_HOUR:-0.04}
       VOICE_TTS_USD_PER_MILLION_CHARACTERS: ${VOICE_TTS_USD_PER_MILLION_CHARACTERS:-16}
+    volumes:
+      - index_manifests:/app/data/index_manifests
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,3 +83,4 @@ services:
 
 volumes:
   postgres_data:
+  index_manifests:
