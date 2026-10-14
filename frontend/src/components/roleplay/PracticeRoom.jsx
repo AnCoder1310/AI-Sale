@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, SendIcon, FlagIcon, TargetIcon, MicIcon, UsersIcon, VoiceModeIcon, SpeakerIcon, CloseIcon } from '../common/Icons';
 import { Badge } from '../common/Badge';
 import { getVehicleImage } from '../../data/vehicleData';
-import { Button } from '../common/Button';
-import { Modal } from '../common/Modal';
+import { FinishConfirmDialog } from './FinishConfirmDialog';
 import { practiceApi } from '../../api/practiceApi';
 import { createId } from '../../lib/id';
 import { usePushToTalk } from '../../hooks/usePushToTalk';
@@ -425,29 +424,12 @@ export function PracticeRoom({
       </div>
 
       {/* FINISH MODAL */}
-      <Modal
+      <FinishConfirmDialog
         isOpen={showFinishConfirm}
         onClose={() => setShowFinishConfirm(false)}
-        title="Xác nhận hoàn tất phiên thực chiến"
-        maxWidth={500}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <p style={{ fontSize: '0.92rem', color: '#333333', lineHeight: 1.5 }}>
-            Bạn có chắc chắn muốn kết thúc phiên và gửi tới Hệ thống Chấm điểm AI không?
-          </p>
-          <div style={{ backgroundColor: '#F7F7F5', padding: '12px 16px', borderRadius: 8, fontSize: '0.82rem', color: '#555555' }}>
-            Hội thoại sẽ được đóng băng và đánh giá tự động dựa trên <strong>5 tiêu chí Rubric chuẩn</strong> cùng kiểm chứng thông số sản phẩm.
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
-            <Button variant="outline" onClick={() => setShowFinishConfirm(false)}>
-              Tiếp tục luyện tập
-            </Button>
-            <Button variant="primary" loading={finishing} onClick={handleFinishSession}>
-              Hoàn tất & Chấm điểm
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onConfirm={handleFinishSession}
+        finishing={finishing}
+      />
     </div>
   );
 }
