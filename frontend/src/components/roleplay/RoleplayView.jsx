@@ -159,7 +159,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
         <PracticeRoom scenario={activeScenario} session={activeSession} onFinish={handleFinishSession} onSavedAttempt={openAttempt} onExit={handleBackToCatalog} />
       )}
       {viewMode === 'evaluation' && (
-        <EvaluationScorecard result={evaluationResult} scenario={activeScenario} onRetry={() => handleStartScenario(activeScenario?.scenario_id, lastMaxTurns)} onBackToCatalog={handleBackToCatalog} />
+        <EvaluationScorecard result={evaluationResult} scenario={activeScenario} onRetry={() => handleStartScenario(activeScenario?.scenario_id, lastMaxTurns)} onBackToCatalog={handleBackToCatalog} onOpenAttempt={openAttempt} />
       )}
       {viewMode === 'attempt' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -192,6 +192,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
                   scenario={activeScenario}
                   onRetry={() => handleStartScenario(attemptDetail.attempt.scenario_id, lastMaxTurns)}
                   onBackToCatalog={handleBackToCatalog}
+                  showTranscriptLinks
                 />
               )}
             </>
