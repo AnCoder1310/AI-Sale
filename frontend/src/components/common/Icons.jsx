@@ -240,6 +240,24 @@ export function MicIcon({ className = 'w-4 h-4', ...props }) {
   );
 }
 
+export function VoiceModeIcon({ className = 'w-4 h-4', ...props }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" className={className} {...props}>
+      <path d="M3 13v8M9 10v14M15 7v20M21 12v10M27 5v22" />
+      <path d="M25 8c1.5 0 2.5-1 3-3 .5 2 1.5 3 3 3-1.5 0-2.5 1-3 3-.5-2-1.5-3-3-3Z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function SpeakerIcon({ className = 'w-4 h-4', ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+      <path d="M15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12" />
+    </svg>
+  );
+}
+
 export function SendIcon({ className = 'w-4 h-4', ...props }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
