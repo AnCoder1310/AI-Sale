@@ -13,7 +13,7 @@ Cần Python 3.11, Node.js tương thích Vite 8, npm và OpenRouter API key có
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.lock
 cp .env.example .env
 ```
 
@@ -44,7 +44,7 @@ Mở <http://localhost:3000>. Vite proxy `/api` và `/health` sang cổng 8000; 
 
 ## Luồng demo và câu hỏi mẫu
 
-Practice Room có **Chế độ nói** tùy chọn: giữ micro để nói tiếng Việt, sửa bản chép rồi gửi, nghe phản hồi của AI Customer bằng giọng WaveNet. Xem [cấu hình Voice Mode](docs/voice-mode.md); Text Mode vẫn chạy khi chưa có key giọng nói.
+Practice Room có micro để đọc tiếng Việt thành chữ rồi sửa trước khi gửi. Bật **Chế độ hội thoại** để giữ micro lớn và thả tay gửi tự động; phản hồi của AI Customer được đọc bằng giọng WaveNet phù hợp với tình huống. Hộp nhập chữ vẫn hiện trong cả hai chế độ. Xem [cấu hình Voice Mode](docs/voice-mode.md); chat chữ vẫn chạy khi chưa có key giọng nói.
 
 1. Đăng nhập Advisor. Hỏi Copilot: **“Giá niêm yết VF 8 Thế hệ mới theo bảng giá VinFast là bao nhiêu?”** Mở citation. Câu ngoài kho: **“Giá bảo hiểm chính xác của đại lý X ngày mai là bao nhiêu?”** phải không tự bịa.
 2. Vào Practice Room, chọn **VF 5 Plus — khách chạy dịch vụ**. Hỏi quãng đường/ngày, tiền xăng Vios thực tế và giờ nghỉ/sạc; xử lý lo ngại chi phí, tránh cam kết tiết kiệm khi chưa đủ dữ liệu. Kết thúc để xem điểm AI dự thảo, transcript evidence và lịch sử.
@@ -55,9 +55,13 @@ Bài được giao chỉ hoàn thành khi một phiên Practice bắt đầu t�
 
 Không biến giá niêm yết thành “giá lăn bánh” hay tự suy ra mọi VF 5 phải thuê pin. Nếu provider lỗi, UI cần cho retry; không mô tả sai là “không có tài liệu”.
 
+## Giám sát Copilot
+
+Dùng `.venv` làm môi trường Python chính. Dependency trực tiếp nằm trong `requirements.txt`; local, CI và Docker cài phiên bản chính xác từ `requirements.lock`. Baseline hiện tại được kiểm tra trên Python 3.11.7. Xem [hướng dẫn LangSmith và logs](docs/copilot-observability.md) để cấu hình Cloud, tìm trace bằng `X-Request-ID` và phân tích latency.
+
 ## Kiến trúc, kiểm thử và bằng chứng
 
-Xem [sơ đồ kiến trúc](docs/architecture_diagram.md). React/Vite gọi FastAPI bằng cookie phiên; Copilot dùng LangGraph, hybrid retrieval, vector index và OpenRouter. Practice dùng LangGraph giữ trạng thái, AI Customer, evaluator rubric có evidence và manager HITL. Docker dùng PostgreSQL + pgvector local; chạy Python trực tiếp mặc định SQLite + Chroma. Dữ liệu trên ổ local **không tự bền vững** khi deploy lên filesystem tạm.
+Xem [sơ đồ kiến trúc](docs/architecture_diagram.md) và [hướng dẫn khởi tạo Database](docs/DATABASE_SETUP.md). React/Vite gọi FastAPI bằng cookie phiên; Copilot dùng LangGraph, hybrid retrieval, vector index và OpenRouter. Practice dùng LangGraph giữ trạng thái, AI Customer, evaluator rubric có evidence và manager HITL. Docker dùng PostgreSQL + pgvector local; chạy Python trực tiếp mặc định SQLite + Chroma (hoặc Supabase PostgreSQL khi cấu hình `DATABASE_URL`). Dữ liệu trên ổ local **không tự bền vững** khi deploy lên filesystem tạm.
 
 ```bash
 ruff check src tests

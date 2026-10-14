@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, SendIcon, FlagIcon, TargetIcon, MicIcon, UsersIcon } from '../common/Icons';
+import { ChevronLeft, SendIcon, FlagIcon, TargetIcon, MicIcon, UsersIcon, VoiceModeIcon, SpeakerIcon, CloseIcon } from '../common/Icons';
 import { Badge } from '../common/Badge';
 import { getVehicleImage } from '../../data/vehicleData';
 import { Button } from '../common/Button';
@@ -27,7 +27,7 @@ export function PracticeRoom({
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState('');
   const [mode, setMode] = useState('text');
-  const [voiceGender, setVoiceGender] = useState('female');
+  const voiceGender = scenario?.voice_gender;
   const [transcribing, setTranscribing] = useState(false);
   const [voiceError, setVoiceError] = useState('');
   const [speakingId, setSpeakingId] = useState(null);
@@ -35,6 +35,11 @@ export function PracticeRoom({
   const chatEndRef = useRef(null);
   const audioRef = useRef(null);
   const audioUrlsRef = useRef(new Map());
+  const modeRef = useRef(mode);
+  const sendingRef = useRef(false);
+  const sendHandlerRef = useRef(null);
+
+  useEffect(() => { modeRef.current = mode; }, [mode]);
 
   const onRecorded = async (blob, durationSeconds) => {
     if (blob.size > 4_000_000) {
@@ -46,6 +51,10 @@ export function PracticeRoom({
     try {
       const result = await practiceApi.transcribeVoice(session.session_id, blob, durationSeconds);
       setInputMessage(result.transcript);
+      if (modeRef.current === 'voice' && result.transcript.trim()) {
+        setTranscribing(false);
+        await sendHandlerRef.current?.(result.transcript, true);
+      }
     } catch (requestError) {
       setVoiceError(requestError.message || 'Không nhận dạng được giọng nói. Hãy thử ghi lại.');
     } finally {
@@ -55,8 +64,13 @@ export function PracticeRoom({
 
   const recorder = usePushToTalk(onRecorded);
 
-  const playCustomer = async (message) => {
+  const playCustomer = async (message, automatic = false) => {
     if (!message || message.role !== 'customer') return;
+    if (automatic && modeRef.current !== 'voice') return;
+    if (!voiceGender) {
+      setVoiceError('Chưa xác định được giọng khách trong tình huống này.');
+      return;
+    }
     const cacheKey = `${message.message_id}:${voiceGender}`;
     setVoiceError('');
     setSpeakingId(message.message_id);
@@ -67,6 +81,10 @@ export function PracticeRoom({
         url = URL.createObjectURL(blob);
         audioUrlsRef.current.set(cacheKey, url);
       }
+      if (automatic && modeRef.current !== 'voice') {
+        setSpeakingId(null);
+        return;
+      }
       audioRef.current?.pause();
       const audio = new Audio(url);
       audioRef.current = audio;
@@ -75,7 +93,7 @@ export function PracticeRoom({
     } catch (requestError) {
       setVoiceError(requestError.name === 'NotAllowedError'
         ? 'Trình duyệt chặn tự phát âm thanh. Nhấn “Phát giọng khách” để nghe.'
-        : requestError.message || 'Không phát được giọng khách. Hãy thử lại.');
+        : requestError.status ? requestError.message : 'Không phát được giọng khách. Hãy thử lại.');
       setSpeakingId(null);
     }
   };
@@ -91,16 +109,28 @@ export function PracticeRoom({
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  }, [messages, loading, mode]);
 
   useEffect(() => () => {
     audioRef.current?.pause();
     audioUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
   }, []);
 
-  const handleSendMessage = async () => {
-    const text = inputMessage.trim();
-    if (!text || loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active') return;
+  const toggleVoiceMode = () => {
+    if (recorder.recordingState !== 'idle' || transcribing) return;
+    const nextMode = modeRef.current === 'voice' ? 'text' : 'voice';
+    modeRef.current = nextMode;
+    setMode(nextMode);
+    if (nextMode === 'text') {
+      audioRef.current?.pause();
+      setSpeakingId(null);
+    }
+  };
+
+  async function handleSendMessage(message = inputMessage, fromVoice = false) {
+    const text = typeof message === 'string' ? message.trim() : inputMessage.trim();
+    if (!text || sendingRef.current || loading || finishing || pendingReply || (!fromVoice && transcribing) || (!fromVoice && recorder.recordingState !== 'idle') || terminationStatus !== 'active') return;
+    sendingRef.current = true;
 
     const advisorMsg = {
       message_id: createId('adv'),
@@ -110,7 +140,7 @@ export function PracticeRoom({
     };
 
     setMessages((prev) => [...prev, advisorMsg]);
-    setInputMessage('');
+    if (!fromVoice) setInputMessage('');
     setLoading(true);
     setError('');
 
@@ -121,9 +151,10 @@ export function PracticeRoom({
       setTurnCount(updated.turn_count);
       setTerminationStatus(updated.termination_status);
       setPendingReply(updated.pending_customer_reply);
-      if (mode === 'voice') {
+      if (fromVoice) setInputMessage('');
+      if (modeRef.current === 'voice') {
         const customerReply = updated.messages.at(-1);
-        if (customerReply?.role === 'customer') playCustomer(customerReply);
+        if (customerReply?.role === 'customer') playCustomer(customerReply, true);
       }
     } catch (requestError) {
       setError(requestError.message || 'AI Customer chưa phản hồi. Phiên đã được lưu; vui lòng thử tải lại.');
@@ -134,13 +165,17 @@ export function PracticeRoom({
         setTurnCount(saved.turn_count);
         setTerminationStatus(saved.termination_status);
         setPendingReply(saved.pending_customer_reply);
+        if (fromVoice && saved.messages.length > messages.length) setInputMessage('');
       } catch {
         // Keep the advisor's visible draft; do not fabricate a customer reply.
       }
     } finally {
+      sendingRef.current = false;
       setLoading(false);
     }
-  };
+  }
+
+  useEffect(() => { sendHandlerRef.current = handleSendMessage; });
 
   const handleRetryReply = async () => {
     if (!pendingReply || loading || finishing || transcribing || recorder.recordingState !== 'idle') return;
@@ -153,9 +188,9 @@ export function PracticeRoom({
       setTurnCount(updated.turn_count);
       setTerminationStatus(updated.termination_status);
       setPendingReply(updated.pending_customer_reply);
-      if (mode === 'voice') {
+      if (modeRef.current === 'voice') {
         const customerReply = updated.messages.at(-1);
-        if (customerReply?.role === 'customer') playCustomer(customerReply);
+        if (customerReply?.role === 'customer') playCustomer(customerReply, true);
       }
     } catch (requestError) {
       setError(requestError.message || 'AI Customer chưa phản hồi. Hãy thử lại.');
@@ -266,14 +301,16 @@ export function PracticeRoom({
                 {m.role === 'advisor' ? 'Bạn (Tư vấn viên)' : 'Khách hàng'}
               </div>
               <div className="practice-room-message-content">{m.content}</div>
-              {mode === 'voice' && m.role === 'customer' && (
+              {m.role === 'customer' && (
                 <button
                   type="button"
                   className="practice-room-play-voice"
                   onClick={() => playCustomer(m)}
                   disabled={speakingId === m.message_id}
+                  aria-label={speakingId === m.message_id ? 'Đang phát giọng khách' : 'Phát giọng khách'}
                 >
-                  {speakingId === m.message_id ? 'Đang phát...' : 'Phát giọng khách'}
+                  <SpeakerIcon aria-hidden="true" />
+                  <span className="sr-only">{speakingId === m.message_id ? 'Đang phát giọng khách' : 'Phát giọng khách'}</span>
                 </button>
               )}
             </div>
@@ -291,6 +328,35 @@ export function PracticeRoom({
         <div ref={chatEndRef} />
       </div>
 
+      {mode === 'voice' && terminationStatus === 'active' && (
+        <div className="practice-room-voice-stage">
+          <div className="practice-room-voice-stage-title">Trò chuyện bằng giọng nói</div>
+          <button
+            type="button"
+            className={`practice-room-voice-bubble ${recorder.recordingState === 'recording' ? 'recording' : ''}`}
+            onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); recorder.start(); }}
+            onPointerUp={recorder.stop}
+            onPointerCancel={recorder.stop}
+            onKeyDown={(event) => { if (!event.repeat && [' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.start(); } }}
+            onKeyUp={(event) => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.stop(); } }}
+            disabled={loading || finishing || pendingReply || transcribing || speakingId !== null}
+            aria-label="Bấm giữ để nói, thả để gửi"
+          >
+            <span className="practice-room-voice-glow" aria-hidden="true" />
+            <MicIcon aria-hidden="true" />
+          </button>
+          <span className="practice-room-voice-label">Bấm giữ để nói</span>
+          <span className="practice-room-voice-status" role="status">
+            {recorder.recordingState === 'requesting' ? 'Đang xin quyền micro...'
+              : recorder.recordingState === 'recording' ? 'Đang ghi âm · Thả để gửi'
+                : transcribing ? 'Đang chuyển giọng nói thành chữ...'
+                  : loading ? 'Khách hàng đang trả lời...'
+                    : speakingId ? 'Đang phát giọng khách...'
+                      : 'Giữ tối đa 60 giây rồi thả để gửi tự động'}
+          </span>
+        </div>
+      )}
+
       {/* INPUT BAR */}
       <div className="practice-room-composer">
         {error && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{error}</p>}
@@ -302,37 +368,6 @@ export function PracticeRoom({
         )}
         {(voiceError || recorder.recordingError) && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{voiceError || recorder.recordingError}</p>}
         {terminationStatus !== 'active' && <p style={{ fontSize: '0.82rem', marginBottom: 8 }}>Cuộc trò chuyện đã kết thúc. Hãy xem đánh giá.</p>}
-        <div className="practice-room-modes">
-          <button type="button" className={mode === 'text' ? 'selected' : ''} onClick={() => setMode('text')} disabled={recorder.recordingState !== 'idle'}>Chế độ chữ</button>
-          <button type="button" className={mode === 'voice' ? 'selected' : ''} onClick={() => setMode('voice')} disabled={recorder.recordingState !== 'idle'}>Chế độ nói</button>
-          {mode === 'voice' && (
-            <>
-              <label style={{ fontSize: '0.82rem' }} htmlFor="customer-voice">Giọng khách:</label>
-              <select id="customer-voice" value={voiceGender} onChange={(event) => setVoiceGender(event.target.value)}>
-                <option value="female">Nữ</option>
-                <option value="male">Nam</option>
-              </select>
-            </>
-          )}
-        </div>
-        {mode === 'voice' && terminationStatus === 'active' && (
-          <div className="practice-room-recording">
-            <button
-              type="button"
-              className={`practice-room-record-button ${recorder.recordingState === 'recording' ? 'recording' : ''}`}
-              onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); recorder.start(); }}
-              onPointerUp={recorder.stop}
-              onPointerCancel={recorder.stop}
-              onKeyDown={(event) => { if (!event.repeat && [' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.start(); } }}
-              onKeyUp={(event) => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.stop(); } }}
-              disabled={loading || finishing || pendingReply || transcribing}
-              aria-label="Giữ để nói tiếng Việt, thả để nhận dạng"
-            >
-              <MicIcon aria-hidden="true" /> {recorder.recordingState === 'requesting' ? 'Đang xin quyền micro...' : recorder.recordingState === 'recording' ? 'Thả để nhận dạng' : 'Giữ để nói'}
-            </button>
-            <span style={{ fontSize: '0.78rem', color: '#666666' }}>{transcribing ? 'Đang nhận dạng tiếng Việt...' : 'Giữ nút để nói tối đa 60 giây; sửa bản chép trước khi gửi.'}</span>
-          </div>
-        )}
         <div className="practice-room-composer-form">
           <textarea
             value={inputMessage}
@@ -343,12 +378,30 @@ export function PracticeRoom({
                 handleSendMessage();
               }
             }}
-            placeholder={mode === 'voice' ? 'Bản chép giọng nói sẽ hiện ở đây. Bạn có thể sửa trước khi gửi.' : 'Nhập nội dung tư vấn khách hàng... (Nhấn Enter để gửi, Shift+Enter xuống dòng)'}
-            rows={2}
+            placeholder="Nhắn tin cho khách hàng..."
+            aria-label="Nhắn tin cho khách hàng"
+            rows={1}
             disabled={loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active'}
           />
+          {mode === 'text' && (
+            <button
+              type="button"
+              className={`practice-room-control practice-room-dictate ${recorder.recordingState === 'recording' ? 'recording' : ''}`}
+              onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); recorder.start(); }}
+              onPointerUp={recorder.stop}
+              onPointerCancel={recorder.stop}
+              onKeyDown={(event) => { if (!event.repeat && [' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.start(); } }}
+              onKeyUp={(event) => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.stop(); } }}
+              disabled={loading || finishing || pendingReply || transcribing || terminationStatus !== 'active'}
+              aria-label="Bấm giữ để đọc tin nhắn thành chữ"
+              title="Bấm giữ để đọc tin nhắn thành chữ"
+            >
+              <MicIcon aria-hidden="true" />
+            </button>
+          )}
           <button
-            onClick={handleSendMessage}
+            type="button"
+            onClick={() => handleSendMessage()}
             disabled={!inputMessage.trim() || loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active'}
             className="practice-room-send"
             title="Gửi tin nhắn"
@@ -356,7 +409,19 @@ export function PracticeRoom({
             <SendIcon style={{ width: 16, height: 16 }} />
             <span className="sr-only">Gửi</span>
           </button>
+          <button
+            type="button"
+            onClick={toggleVoiceMode}
+            disabled={recorder.recordingState !== 'idle' || transcribing}
+            className={`practice-room-control practice-room-mode-toggle ${mode === 'voice' ? 'active' : ''}`}
+            aria-label={mode === 'voice' ? 'Thoát chế độ hội thoại' : 'Bật chế độ hội thoại'}
+            aria-pressed={mode === 'voice'}
+            title={mode === 'voice' ? 'Thoát chế độ hội thoại' : 'Bật chế độ hội thoại'}
+          >
+            {mode === 'voice' ? <CloseIcon aria-hidden="true" /> : <VoiceModeIcon aria-hidden="true" />}
+          </button>
         </div>
+        {mode === 'text' && transcribing && <p className="practice-room-composer-hint" role="status">Đang chuyển giọng nói thành chữ. Kiểm tra bản chép rồi nhấn Gửi.</p>}
       </div>
 
       {/* FINISH MODAL */}
