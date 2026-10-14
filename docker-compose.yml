@@ -28,6 +28,15 @@ services:
       AUTH_COOKIE_SECURE: "false"
       DEMO_ADVISOR_PASSWORD: ${DEMO_ADVISOR_PASSWORD:-}
       DEMO_MANAGER_PASSWORD: ${DEMO_MANAGER_PASSWORD:-}
+      KNOWLEDGE_MANIFEST_DIR: /app/data/index_manifests
+      LANGSMITH_TRACING: ${LANGSMITH_TRACING:-false}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
+      LANGSMITH_ENDPOINT: ${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-p043-copilot-dev}
+      LANGSMITH_CAPTURE_CONTENT: ${LANGSMITH_CAPTURE_CONTENT:-false}
+      LANGSMITH_SAMPLING_RATE: ${LANGSMITH_SAMPLING_RATE:-1.0}
+    volumes:
+      - index_manifests:/app/data/index_manifests
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,3 +67,4 @@ services:
 
 volumes:
   postgres_data:
+  index_manifests:

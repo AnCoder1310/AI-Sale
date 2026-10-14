@@ -1,9 +1,17 @@
 :{$PORT} {
     handle /api/* {
-        reverse_proxy {$BACKEND_UPSTREAM}
+        reverse_proxy {$BACKEND_UPSTREAM} {
+            transport http {
+                read_timeout 190s
+            }
+        }
     }
 
     handle /health {
+        reverse_proxy {$BACKEND_UPSTREAM}
+    }
+
+    handle /ready {
         reverse_proxy {$BACKEND_UPSTREAM}
     }
 

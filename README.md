@@ -11,7 +11,7 @@ Cần Python 3.11, Node.js tương thích Vite 8, npm và OpenRouter API key có
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.lock
 cp .env.example .env
 ```
 
@@ -48,9 +48,13 @@ Mở <http://localhost:3000>. Vite proxy `/api` và `/health` sang cổng 8000; 
 
 Không biến giá niêm yết thành “giá lăn bánh” hay tự suy ra mọi VF 5 phải thuê pin. Nếu provider lỗi, UI cần cho retry; không mô tả sai là “không có tài liệu”.
 
+## Giám sát Copilot
+
+Dùng `.venv` làm môi trường Python chính. Dependency trực tiếp nằm trong `requirements.txt`; local, CI và Docker cài phiên bản chính xác từ `requirements.lock`. Baseline hiện tại được kiểm tra trên Python 3.11.7. Xem [hướng dẫn LangSmith và logs](docs/copilot-observability.md) để cấu hình Cloud, tìm trace bằng `X-Request-ID` và phân tích latency.
+
 ## Kiến trúc, kiểm thử và bằng chứng
 
-Xem [sơ đồ kiến trúc](docs/architecture_diagram.md). React/Vite gọi FastAPI bằng cookie phiên; Copilot dùng LangGraph, hybrid retrieval, vector index và OpenRouter. Practice dùng LangGraph giữ trạng thái, AI Customer, evaluator rubric có evidence và manager HITL. Docker dùng PostgreSQL + pgvector local; chạy Python trực tiếp mặc định SQLite + Chroma. Dữ liệu trên ổ local **không tự bền vững** khi deploy lên filesystem tạm.
+Xem [sơ đồ kiến trúc](docs/architecture_diagram.md) và [hướng dẫn khởi tạo Database](docs/DATABASE_SETUP.md). React/Vite gọi FastAPI bằng cookie phiên; Copilot dùng LangGraph, hybrid retrieval, vector index và OpenRouter. Practice dùng LangGraph giữ trạng thái, AI Customer, evaluator rubric có evidence và manager HITL. Docker dùng PostgreSQL + pgvector local; chạy Python trực tiếp mặc định SQLite + Chroma (hoặc Supabase PostgreSQL khi cấu hình `DATABASE_URL`). Dữ liệu trên ổ local **không tự bền vững** khi deploy lên filesystem tạm.
 
 ```bash
 ruff check src tests

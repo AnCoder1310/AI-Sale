@@ -36,6 +36,10 @@ def test_chat_and_embedding_clients_share_openrouter_endpoint(monkeypatch):
     assert embeddings.model == "openai/text-embedding-3-small"
     assert str(embeddings.openai_api_base).rstrip("/") == "https://openrouter.ai/api/v1"
     assert not isinstance(embeddings, llm.DeterministicHashEmbeddings)
+    assert chat.extra_body is None
+    checker = llm.get_llm(max_retries=0, max_tokens=1000, openrouter_reasoning_effort="none")
+    assert checker.extra_body == {"reasoning": {"effort": "none"}}
+    assert checker.max_tokens == 1000 and checker.max_retries == 0
 
 
 def test_missing_openrouter_key_does_not_fall_back_to_hash(monkeypatch):
@@ -49,3 +53,23 @@ def test_missing_openrouter_key_does_not_fall_back_to_hash(monkeypatch):
 def test_production_rejects_hash_even_if_explicitly_requested():
     with pytest.raises(ValidationError, match="Hash embeddings are not allowed"):
         Settings(_env_file=None, APP_ENV="production", EMBEDDING_PROVIDER="hash")
+
+
+def test_copilot_preserves_choice_error_code_without_private_provider_message():
+    from src.services.provider_response import CopilotChatOpenAI, ProviderResponseError
+
+    model = CopilotChatOpenAI(api_key="test-key")
+    with pytest.raises(ProviderResponseError) as caught:
+        model._create_chat_result(
+            {
+                "choices": [
+                    {
+                        "finish_reason": "error",
+                        "message": {"role": "assistant", "content": ""},
+                        "error": {"code": 503, "message": "private prompt and secret"},
+                    }
+                ]
+            }
+        )
+    assert caught.value.status_code == 503
+    assert "private" not in str(caught.value)

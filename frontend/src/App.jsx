@@ -25,6 +25,7 @@ export function App() {
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [copilotQuery, setCopilotQuery] = useState('');
+  const [copilotOpened, setCopilotOpened] = useState(false);
 
   useEffect(() => {
     async function restoreSession() {
@@ -80,6 +81,8 @@ export function App() {
       setCurrentTab('home');
       setScenarios([]);
       setScenarioStatus('loading');
+      setCopilotOpened(false);
+      setCopilotQuery('');
     }
   };
 
@@ -95,6 +98,7 @@ export function App() {
     );
     if (item.link) {
       setCurrentTab(item.link);
+      if (item.link === 'copilot') setCopilotOpened(true);
     }
   };
 
@@ -104,6 +108,7 @@ export function App() {
 
   const handleConsultCopilot = (query) => {
     setCopilotQuery(query);
+    setCopilotOpened(true);
     setCurrentTab('copilot');
   };
 
@@ -132,6 +137,7 @@ export function App() {
         currentTab={currentTab}
         onTabChange={(tab) => {
           setCurrentTab(tab);
+          if (tab === 'copilot') setCopilotOpened(true);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         unreadCount={unreadCount}
@@ -146,12 +152,16 @@ export function App() {
           <HomeView
             advisorProfile={advisorProfile}
             scenarios={scenarios}
-            onNavigate={(tab) => setCurrentTab(tab)}
+            onNavigate={(tab) => {
+              setCurrentTab(tab);
+              if (tab === 'copilot') setCopilotOpened(true);
+            }}
             onStartScenario={handleStartScenarioFromHome}
           />
         )}
 
-        {currentTab === 'copilot' && (
+        {(currentTab === 'copilot' || copilotOpened) && (
+          <div style={{ display: currentTab === 'copilot' ? 'block' : 'none' }}>
           <CopilotView
             initialQuery={copilotQuery}
             onOpenDocument={(documentId) => {
@@ -159,6 +169,7 @@ export function App() {
               setCurrentTab('knowledge');
             }}
           />
+          </div>
         )}
 
         {currentTab === 'roleplay' && (

@@ -2,6 +2,18 @@
 
 import asyncio
 import os
+import sys
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
+sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
 from src.config import get_settings
 from src.integrations.auth_repository import SQLAuthRepository
