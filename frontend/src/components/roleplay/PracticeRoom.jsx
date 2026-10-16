@@ -357,7 +357,7 @@ export function PracticeRoom({
 
       {terminationStatus === 'active' && (
         <div className="practice-room-voice-stage">
-          <div className="practice-room-voice-stage-title">{mode === 'voice' ? 'Trò chuyện bằng giọng nói' : 'Đọc tin nhắn bằng giọng nói'}</div>
+          <div className="practice-room-voice-stage-title">{mode === 'voice' ? 'Trò chuyện bằng giọng nói' : 'Hội thoại bằng giọng nói'}</div>
           <div className="practice-room-voice-controls">
             <button
               type="button"
