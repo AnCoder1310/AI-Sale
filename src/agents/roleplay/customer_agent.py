@@ -106,7 +106,6 @@ class CustomerModelOutput(BaseModel):
     raised_objection_id: str | None = None
     accepted_next_step: bool = False
     accepted_outcome_id: str | None = None
-    disclosed_fact_keys: list[str] = Field(default_factory=list)
 
     @field_validator("reply")
     @classmethod
@@ -181,7 +180,7 @@ class CustomerAgent:
             and self.focus_objection_id(state) is None
             and not consider_next_step
         ):
-            address = "Chị" if scenario.persona.get("name", "").startswith("Chị ") else "Anh"
+            address = self.persona_address(scenario)
             address_lower = address.lower()
             return CustomerTurn(
                 message=RoleplayMessage(
@@ -256,10 +255,11 @@ class CustomerAgent:
                 if output.accepted_next_step
                 else None
             ),
-            disclosed_fact_keys=tuple(
-                dict.fromkeys(key for key in output.disclosed_fact_keys if key in {rule.fact_key for rule in pending})
-            ),
         )
+
+    @staticmethod
+    def persona_address(scenario: ScenarioContract) -> str:
+        return "Chị" if scenario.persona.get("name", "").startswith("Chị ") else "Anh"
 
     @staticmethod
     def validated_outcome_id(outcome_id: str | None, scenario: ScenarioContract, state: RoleplayState) -> str | None:
@@ -284,7 +284,13 @@ class CustomerAgent:
             reply,
             re.IGNORECASE,
         )
-        allowed = [message.content for message in state.messages if message.role == "advisor"]
+        allowed = [scenario.visible_context, scenario.customer_goals]
+        allowed.extend(
+            objection.objection_text
+            for objection in scenario.objections
+            if objection.objection_id in state.active_objections
+        )
+        allowed.extend(message.content for message in state.messages if message.role == "advisor")
         allowed.extend(
             rule.revealed_statement for rule in scenario.disclosure_rules if rule.fact_key in state.revealed_facts
         )
@@ -326,10 +332,6 @@ class CustomerAgent:
                 "acceptable_outcomes": [item.model_dump(mode="json") for item in scenario.acceptable_outcomes],
                 "resolved_objection_ids": list(state.resolved_objections),
                 "upsell_objection_id": scenario.upsell_rule.objection_id if scenario.upsell_rule else None,
-                "pending_disclosures": [
-                    {"fact_key": rule.fact_key, "statement": rule.revealed_statement}
-                    for rule in CustomerAgent.pending_disclosures(scenario, state)
-                ],
                 "turn_mode": mode,
                 "focus_objection_id": focus_id,
                 "focus_objection_prompt_number": state.concern_prompt_counts.get(focus_id, 0) + 1 if focus_id else None,

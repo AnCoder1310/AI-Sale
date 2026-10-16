@@ -57,13 +57,15 @@ def validated_benefit_links(
     links: list[LinkedBenefit], scenario: ScenarioContract, state: RoleplayState
 ) -> list[LinkedBenefit]:
     """Allow only configured benefits linked to needs available before this turn."""
-    benefit_ids = {benefit.benefit_id for benefit in scenario.upsell_benefits}
+    benefits = {benefit.benefit_id: benefit for benefit in scenario.upsell_benefits}
     need_keys = {*state.revealed_facts, "visible_goals"}
     seen: set[tuple[str, str]] = set()
     result = []
     for link in links:
         key = (link.benefit_id, link.need_fact_key)
-        if link.benefit_id in benefit_ids and link.need_fact_key in need_keys and key not in seen:
+        benefit = benefits.get(link.benefit_id)
+        configured_keys = (benefit.linked_need_fact_keys or ["visible_goals"]) if benefit else []
+        if link.need_fact_key in configured_keys and link.need_fact_key in need_keys and key not in seen:
             seen.add(key)
             result.append(link)
     return result

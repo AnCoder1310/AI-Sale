@@ -20,11 +20,11 @@ then another outcome without prerequisites, or null. Legacy scenarios retain the
 `close` outcome. Acceptance keeps the conversation available until the advisor
 finishes it, matching the existing practice flow.
 
-Customer output carries `disclosed_fact_keys`. The graph only records pending
-fact keys, retaining exact revealed-statement recognition for legacy responses.
-Existing deterministic disclosure replies also supply these keys. Customer
+Disclosures stay deterministic: a pending fact is spoken through its
+configured revealed statement, and the graph records it by exact match. Customer
 output is retried once when it introduces a price or numeric specification not
-already present in advisor dialogue or a revealed statement. Ordinary model names
+already present in advisor dialogue, a revealed statement, the visible scenario
+context or an active objection's text. Ordinary model names
 and appointment times are allowed. This guard is deterministic pattern checking;
 semantic role compliance remains part of the customer prompt.
 
