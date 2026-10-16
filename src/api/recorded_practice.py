@@ -34,6 +34,7 @@ from src.services.practice_records import (
 from src.services.recorded_practice import RecordedAttemptDetail, RecordedPracticeService
 from src.services.voice import (
     MAX_AUDIO_BYTES,
+    MAX_AUDIO_SECONDS,
     VoiceInputError,
     VoiceProviderError,
     VoiceProviderUnavailableError,
@@ -131,7 +132,7 @@ def create_recorded_practice_routers(
             session_id: SessionId,
             request: Request,
             identity: actor,
-            duration_seconds: float = Query(..., gt=0, le=60),
+            duration_seconds: float = Query(..., gt=0, le=MAX_AUDIO_SECONDS),
         ) -> dict[str, str]:
             require_role(identity, "advisor")
             mime_type = request.headers.get("content-type", "").split(";", 1)[0].lower()

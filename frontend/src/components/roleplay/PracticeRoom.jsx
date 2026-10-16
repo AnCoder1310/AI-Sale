@@ -392,7 +392,7 @@ export function PracticeRoom({
                 <span>Tự động gửi</span>
               </button>
               <span id="practice-room-auto-send-hint" className="practice-room-auto-send-hint">
-                {autoSend ? 'Giữ tối đa 60 giây rồi thả để gửi tự động' : 'Giữ tối đa 60 giây, thả rồi sửa bản chép và nhấn Gửi'}
+                {autoSend ? 'Giữ tối đa 90 giây rồi thả để gửi tự động' : 'Giữ tối đa 90 giây, thả rồi sửa bản chép và nhấn Gửi'}
               </span>
             </div>
           </div>

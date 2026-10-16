@@ -193,3 +193,13 @@ async def test_voice_failure_is_retryable_and_only_billable_calls_are_counted(
         assert len(practice.session.messages) == 1
         usage = (await client.get(MANAGER_VOICE_USAGE_PATH, headers={"X-Test-Identity": "manager-a:manager"})).json()
         assert usage["stt_requests"] == expected_usage
+
+
+@pytest.mark.asyncio
+async def test_voice_accepts_recordings_up_to_ninety_seconds(tmp_path):
+    client, _ = await make_client(tmp_path)
+    async with client:
+        base = "/api/v1/practice/voice-session/voice/transcribe?duration_seconds="
+        headers = {"Content-Type": "audio/webm"}
+        assert (await client.post(base + "90", headers=headers, content=b"recorded-audio")).status_code == 200
+        assert (await client.post(base + "91", headers=headers, content=b"recorded-audio")).status_code == 422

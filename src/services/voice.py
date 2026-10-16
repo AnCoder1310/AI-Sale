@@ -17,7 +17,7 @@ from src.services.recorded_practice import RecordedPracticeService
 
 logger = logging.getLogger(__name__)
 MAX_AUDIO_BYTES = 4_000_000
-MAX_AUDIO_SECONDS = 60
+MAX_AUDIO_SECONDS = 90
 ALLOWED_AUDIO_TYPES = {
     "audio/webm": "webm",
     "audio/mp4": "mp4",
@@ -155,7 +155,7 @@ class VoiceService:
         if mime_type not in ALLOWED_AUDIO_TYPES or not audio or len(audio) > MAX_AUDIO_BYTES:
             raise VoiceInputError("Unsupported or oversized recording")
         if not math.isfinite(reported_seconds) or not 0 < reported_seconds <= MAX_AUDIO_SECONDS:
-            raise VoiceInputError("Recording must be at most 60 seconds")
+            raise VoiceInputError(f"Recording must be at most {MAX_AUDIO_SECONDS} seconds")
         result = await self.transcriber.transcribe(audio, mime_type)
         duration = (
             result.duration_seconds if result.duration_seconds and result.duration_seconds > 0 else reported_seconds

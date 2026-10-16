@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-const MAX_RECORDING_MS = 60_000;
+const MAX_RECORDING_MS = 90_000;
 const FORMATS = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm'];
 
 export function usePushToTalk(onRecorded) {
@@ -73,7 +73,7 @@ export function usePushToTalk(onRecorded) {
         if (!mountedRef.current || failedRef.current) return;
         setRecordingState('idle');
         if (blob.size && durationSeconds >= 0.1) {
-          onRecordedRef.current(blob, Math.min(durationSeconds, 60));
+          onRecordedRef.current(blob, Math.min(durationSeconds, MAX_RECORDING_MS / 1000));
         } else {
           setRecordingError('Không có âm thanh. Giữ nút nói lâu hơn rồi thử lại.');
         }
