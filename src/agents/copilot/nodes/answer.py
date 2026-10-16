@@ -43,6 +43,7 @@ async def generate_answer(state):
         if draft and draft.strip().startswith("{"):
             try:
                 import json
+
                 data = json.loads(draft.strip())
                 if isinstance(data, dict):
                     if "claims" in data and isinstance(data["claims"], list):
@@ -73,7 +74,11 @@ async def finalize_response(state):
     snapshot = state.get("verified_snapshot")
     if snapshot is not None:
         # Check snapshot binding with request
-        if snapshot.resolved_date and state.get("resolved_date") and snapshot.resolved_date != str(state.get("resolved_date")):
+        if (
+            snapshot.resolved_date
+            and state.get("resolved_date")
+            and snapshot.resolved_date != str(state.get("resolved_date"))
+        ):
             return {
                 "route": "fallback_response",
                 "fallback_reason": "verification_failed",
@@ -92,7 +97,9 @@ async def finalize_response(state):
         # Snapshot strictly owns all published suggestions; never leak from later drafts/state
         suggested_message = getattr(snapshot, "suggested_message", None)
         suggested_next_question = getattr(snapshot, "suggested_next_question", None)
-        talking_points = [answer] if (status == "answered" or state.get("talking_points")) else []
+        talking_points = (
+            [answer] if len(answer) <= 500 and (status == "answered" or state.get("talking_points")) else []
+        )
 
         ans_kind = getattr(snapshot, "answer_kind", state.get("answer_kind", "factual"))
         final = CopilotResponse(
@@ -177,7 +184,11 @@ async def finalize_response(state):
     suggestions_safe = getattr(self_check, "suggestions_safe", True)
     suggested_message = state.get("suggested_message") if suggestions_safe else None
     suggested_next_question = state.get("suggested_next_question") if suggestions_safe else None
-    talking_points = [] if claims_truncated else ([answer] if (status == "answered" or state.get("talking_points")) else [])
+    talking_points = (
+        [answer]
+        if not claims_truncated and len(answer) <= 500 and (status == "answered" or state.get("talking_points"))
+        else []
+    )
 
     final = CopilotResponse(
         status=status,

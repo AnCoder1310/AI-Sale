@@ -89,7 +89,7 @@ async def summarize_dialogue_turns(
             return parsed
         return None
     except Exception as exc:
-        logger.warning("Failed to parse dialogue summary JSON: %s", exc)
+        logger.warning("Failed to parse dialogue summary JSON: %s", type(exc).__name__)
         return None
 
 
@@ -104,21 +104,16 @@ async def _background_summarize_task(
         expected_version = mem_info["version"] if mem_info else 0
         existing_sum = mem_info["summary"] if mem_info else None
 
-        detail = await bounded_io(
-            lambda: repository.get_conversation_detail(session_id, owner_id=None), timeout=20.0
-        )
-        all_messages = detail.get("messages", [])
-        total_msgs = len(all_messages)
-
-        # Keep last 4 messages raw
+        total_msgs = await bounded_io(lambda: repository.get_conversation_last_seq(session_id), timeout=20.0)
+        # Keep last 4 messages raw; fetch only the next bounded batch, including real sequence IDs.
         target_seq = total_msgs - 4
         if target_seq <= summarized_seq:
             return
 
-        # Fetch turns by actual sequence
-        eligible_msgs = [m for m in all_messages if summarized_seq < m.get("seq", 0) <= target_seq]
-        if not eligible_msgs:
-            eligible_msgs = all_messages[summarized_seq:target_seq]
+        eligible_msgs = await bounded_io(
+            lambda: repository.summary_batch(session_id, after_seq=summarized_seq, through_seq=target_seq),
+            timeout=20.0,
+        )
 
         # Max 20 messages and 12,000 characters per batch
         batch = eligible_msgs[:20]
@@ -160,7 +155,7 @@ async def _background_summarize_task(
         else:
             logger.info("Background summarization dropped due to concurrent newer version for session=%s", session_id)
     except Exception as exc:
-        logger.warning("Error during background session summarization: %s", exc)
+        logger.warning("Background session summarization failed session=%s error_type=%s", session_id, type(exc).__name__)
 
 
 def maybe_trigger_background_summarization(
