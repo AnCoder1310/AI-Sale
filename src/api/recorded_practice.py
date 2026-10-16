@@ -3,7 +3,7 @@
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Path, Query, Request, Response, status
 from pydantic import BaseModel
 
 from src.agents.roleplay.customer_agent import CustomerResponseError
@@ -16,6 +16,7 @@ from src.agents.roleplay.scenario_loader import ScenarioSummary
 from src.agents.roleplay.state_reducer import StateTransitionError
 from src.agents.roleplay.turn_analyzer import TurnAnalysisError
 from src.api.practice import AdvisorMessageRequest, CreatePracticeSessionRequest
+from src.api.practice_errors import PracticeAPIError, PracticeRoute, session_conflict
 from src.integrations.voice_usage import VoiceUsageSummary
 from src.models.auth import AuthenticatedUser
 from src.services.practice import PracticeEvaluationUnavailableError, PracticeResultView, PracticeSessionView
@@ -34,7 +35,6 @@ from src.services.practice_records import (
 from src.services.recorded_practice import RecordedAttemptDetail, RecordedPracticeService
 from src.services.voice import (
     MAX_AUDIO_BYTES,
-    MAX_AUDIO_SECONDS,
     VoiceInputError,
     VoiceProviderError,
     VoiceProviderUnavailableError,
@@ -59,13 +59,13 @@ def create_recorded_practice_routers(
 
     Mount these instead of the legacy Practice router, never alongside it.
     """
-    practice = APIRouter(prefix="/practice", tags=["practice"])
-    manager = APIRouter(prefix="/manager", tags=["manager-review"])
+    practice = APIRouter(prefix="/practice", tags=["practice"], route_class=PracticeRoute)
+    manager = APIRouter(prefix="/manager", tags=["manager-review"], route_class=PracticeRoute)
     actor = Annotated[AuthenticatedUser, Depends(get_identity)]
 
     def require_role(identity: AuthenticatedUser, *roles: str) -> None:
         if identity.role not in roles:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This role cannot access this operation.")
+            raise PracticeAPIError("forbidden")
 
     @practice.get("/scenarios", response_model=list[ScenarioSummary])
     async def list_scenarios(identity: actor) -> list[ScenarioSummary]:
@@ -83,9 +83,9 @@ def create_recorded_practice_routers(
                 assignment_id=request.assignment_id,
             )
         except RoleplayScenarioNotFoundError as exc:
-            raise HTTPException(status_code=404, detail="Practice scenario was not found.") from exc
+            raise PracticeAPIError("session_not_found") from exc
         except AssignmentConflictError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
+            raise PracticeAPIError("validation_error", status_code=409) from exc
 
     @practice.get("/assignments", response_model=list[AssignmentRecord])
     async def advisor_assignments(identity: actor) -> list[AssignmentRecord]:
@@ -105,13 +105,13 @@ def create_recorded_practice_routers(
         try:
             return await service.send_message(session_id, identity.user_id, request.message)
         except (AttemptNotFoundError, RoleplaySessionNotFoundError) as exc:
-            raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+            raise PracticeAPIError("session_not_found") from exc
         except (RoleplaySessionConflictError, StateTransitionError) as exc:
-            raise HTTPException(status_code=409, detail="Practice session cannot accept a message now.") from exc
+            raise session_conflict(exc) from exc
         except CustomerResponseError as exc:
-            raise HTTPException(status_code=502, detail="AI customer failed; retry the saved customer reply.") from exc
+            raise PracticeAPIError("provider_unavailable") from exc
         except TurnAnalysisError as exc:
-            raise HTTPException(status_code=502, detail="AI analysis failed; please send the message again.") from exc
+            raise PracticeAPIError("provider_unavailable") from exc
 
     @practice.post("/{session_id}/retry-reply", response_model=PracticeSessionView)
     async def retry_customer_reply(session_id: SessionId, identity: actor) -> PracticeSessionView:
@@ -119,11 +119,11 @@ def create_recorded_practice_routers(
         try:
             return await service.retry_customer_reply(session_id, identity.user_id)
         except (AttemptNotFoundError, RoleplaySessionNotFoundError) as exc:
-            raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+            raise PracticeAPIError("session_not_found") from exc
         except RoleplaySessionConflictError as exc:
-            raise HTTPException(status_code=409, detail="No customer reply is pending.") from exc
+            raise session_conflict(exc) from exc
         except CustomerResponseError as exc:
-            raise HTTPException(status_code=502, detail="AI customer failed; please retry the reply.") from exc
+            raise PracticeAPIError("provider_unavailable") from exc
 
     if voice_service is not None:
 
@@ -132,7 +132,7 @@ def create_recorded_practice_routers(
             session_id: SessionId,
             request: Request,
             identity: actor,
-            duration_seconds: float = Query(..., gt=0, le=MAX_AUDIO_SECONDS),
+            duration_seconds: float = Query(..., gt=0),
         ) -> dict[str, str]:
             require_role(identity, "advisor")
             mime_type = request.headers.get("content-type", "").split(";", 1)[0].lower()
@@ -140,20 +140,20 @@ def create_recorded_practice_routers(
             async for chunk in request.stream():
                 audio.extend(chunk)
                 if len(audio) > MAX_AUDIO_BYTES:
-                    raise HTTPException(status_code=413, detail="Recording is too large; keep it under 4 MB.")
+                    raise PracticeAPIError("voice_invalid_audio", status_code=413)
             try:
                 transcript = await voice_service.transcribe(
                     session_id, identity.user_id, bytes(audio), mime_type, duration_seconds
                 )
                 return {"transcript": transcript}
             except (AttemptNotFoundError, RoleplaySessionNotFoundError) as exc:
-                raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+                raise PracticeAPIError("session_not_found") from exc
             except VoiceInputError as exc:
-                raise HTTPException(status_code=422, detail=str(exc)) from exc
+                raise PracticeAPIError(exc.code) from exc
             except VoiceProviderUnavailableError as exc:
-                raise HTTPException(status_code=503, detail=str(exc)) from exc
+                raise PracticeAPIError("voice_not_configured") from exc
             except VoiceProviderError as exc:
-                raise HTTPException(status_code=502, detail=str(exc)) from exc
+                raise PracticeAPIError("voice_failed") from exc
 
         @practice.post("/{session_id}/voice/speech")
         async def customer_speech(session_id: SessionId, request: CustomerSpeechRequest, identity: actor) -> Response:
@@ -162,13 +162,13 @@ def create_recorded_practice_routers(
                 audio = await voice_service.synthesize(session_id, identity.user_id, request.message_id, request.gender)
                 return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
             except (AttemptNotFoundError, RoleplaySessionNotFoundError) as exc:
-                raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+                raise PracticeAPIError("session_not_found") from exc
             except VoiceInputError as exc:
-                raise HTTPException(status_code=422, detail=str(exc)) from exc
+                raise PracticeAPIError(exc.code) from exc
             except VoiceProviderUnavailableError as exc:
-                raise HTTPException(status_code=503, detail=str(exc)) from exc
+                raise PracticeAPIError("voice_not_configured") from exc
             except VoiceProviderError as exc:
-                raise HTTPException(status_code=502, detail=str(exc)) from exc
+                raise PracticeAPIError("voice_failed") from exc
 
     @practice.post("/{session_id}/finish", response_model=PracticeResultView)
     async def finish_session(session_id: SessionId, identity: actor) -> PracticeResultView:
@@ -176,13 +176,11 @@ def create_recorded_practice_routers(
         try:
             return await service.finish_session(session_id, identity.user_id)
         except (AttemptNotFoundError, RoleplaySessionNotFoundError) as exc:
-            raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+            raise PracticeAPIError("session_not_found") from exc
         except RoleplaySessionConflictError as exc:
-            raise HTTPException(status_code=409, detail="Practice session cannot be finished now.") from exc
+            raise session_conflict(exc) from exc
         except PracticeEvaluationUnavailableError as exc:
-            raise HTTPException(
-                status_code=503, detail="Evaluation is unavailable; the attempt can be retried."
-            ) from exc
+            raise PracticeAPIError("evaluation_failed") from exc
 
     @practice.get("/{session_id}/result", response_model=PracticeResultView)
     async def advisor_result(session_id: SessionId, identity: actor) -> PracticeResultView:
@@ -190,7 +188,7 @@ def create_recorded_practice_routers(
         try:
             return await service.advisor_result(session_id, identity.user_id)
         except (AttemptNotFoundError, RoleplaySessionNotFoundError) as exc:
-            raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+            raise PracticeAPIError("session_not_found") from exc
 
     @practice.get("/{session_id}/attempt", response_model=RecordedAttemptDetail)
     async def advisor_detail(session_id: SessionId, identity: actor) -> RecordedAttemptDetail:
@@ -198,7 +196,7 @@ def create_recorded_practice_routers(
         try:
             return await service.advisor_detail(session_id, identity.user_id)
         except (AttemptNotFoundError, RoleplaySessionNotFoundError) as exc:
-            raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+            raise PracticeAPIError("session_not_found") from exc
 
     @practice.get("/{session_id}", response_model=PracticeSessionView)
     async def advisor_session(session_id: SessionId, identity: actor) -> PracticeSessionView:
@@ -206,7 +204,7 @@ def create_recorded_practice_routers(
         try:
             return await service.advisor_session(session_id, identity.user_id)
         except (AttemptNotFoundError, RoleplaySessionNotFoundError) as exc:
-            raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+            raise PracticeAPIError("session_not_found") from exc
 
     @manager.get("/reviews", response_model=list[AttemptSummary])
     async def review_queue(identity: actor) -> list[AttemptSummary]:
@@ -245,7 +243,7 @@ def create_recorded_practice_routers(
         try:
             return await service.create_assignment(identity.user_id, request)
         except AssignmentConflictError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
+            raise PracticeAPIError("validation_error", status_code=409) from exc
 
     @manager.get("/reviews/{session_id}", response_model=RecordedAttemptDetail)
     async def manager_detail(session_id: SessionId, identity: actor) -> RecordedAttemptDetail:
@@ -253,7 +251,7 @@ def create_recorded_practice_routers(
         try:
             return await service.manager_detail(session_id)
         except (AttemptNotFoundError, RoleplaySessionNotFoundError) as exc:
-            raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+            raise PracticeAPIError("session_not_found") from exc
 
     if voice_service is not None:
 
@@ -263,7 +261,7 @@ def create_recorded_practice_routers(
             try:
                 return await voice_service.manager_usage_summary(session_id)
             except AttemptNotFoundError as exc:
-                raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+                raise PracticeAPIError("session_not_found") from exc
 
     @manager.patch("/reviews/{session_id}", response_model=ManagerReviewRecord)
     async def approve(session_id: SessionId, decision: ManagerReviewDecision, identity: actor) -> ManagerReviewRecord:
@@ -271,8 +269,8 @@ def create_recorded_practice_routers(
         try:
             return await service.approve(session_id, identity.user_id, decision)
         except AttemptNotFoundError as exc:
-            raise HTTPException(status_code=404, detail="Practice session was not found.") from exc
+            raise PracticeAPIError("session_not_found") from exc
         except ReviewConflictError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
+            raise PracticeAPIError("validation_error", status_code=409) from exc
 
     return practice, manager
