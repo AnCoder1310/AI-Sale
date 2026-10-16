@@ -111,13 +111,18 @@ async def main() -> None:
     parser.add_argument("--output", type=Path, help="JSON result path; defaults to a timestamped file")
     parser.add_argument("--scenario-id", choices=(SCENARIO_ID, SCENARIO_04_ID), default=SCENARIO_ID)
     args = parser.parse_args()
-    results = [await run_one(name, turns, args.scenario_id)
-               for name, turns in runs_for_scenario(args.scenario_id).items()]
+    results = [
+        await run_one(name, turns, args.scenario_id) for name, turns in runs_for_scenario(args.scenario_id).items()
+    ]
     output = args.output or Path(f"eval/results/roleplay_realism_smoke_{datetime.now(UTC):%Y-%m-%dT%H-%M-%SZ}.json")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
-        json.dumps({"date_utc": datetime.now(UTC).isoformat(), "scenario_id": args.scenario_id,
-                    "runs": results}, ensure_ascii=False, indent=2) + "\n",
+        json.dumps(
+            {"date_utc": datetime.now(UTC).isoformat(), "scenario_id": args.scenario_id, "runs": results},
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
     )
     for result in results:
