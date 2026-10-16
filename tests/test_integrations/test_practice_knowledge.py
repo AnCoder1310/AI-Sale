@@ -197,3 +197,45 @@ async def test_discounted_price_keeps_both_promotion_and_price_sources():
     evidence = await RetrievalKnowledgeEvidenceProvider(Retriever()).for_session(scenario, state)
     assert "msrp" in {item.source_id for item in evidence}
     assert "promotion-0" in {item.source_id for item in evidence}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text,category",
+    [("VF 6 sạc từ 10% lên 70% trong 25 phút", "battery_charging"), ("VF 6 có giảm xóc tốt", "product")],
+)
+async def test_spec_claims_do_not_route_to_promotion(text, category):
+    scenario, state = scenario_and_state()
+    state.factual_claims = [AdvisorFactualClaim(message_id="m1", text=text, category=category)]
+
+    class SpecRetriever(RecordingRetriever):
+        def retrieve(self, query, *, top_k=4, product_model=None, document_type=None):
+            self.calls.append((query, top_k, product_model, document_type))
+            chunk = knowledge_chunk("spec", text)
+            chunk.document_id = "FAQ_VF6_test"
+            return [chunk]
+
+    retriever = SpecRetriever()
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+    assert all(call[3] != "promotion" for call in retriever.calls)
+    assert [item.content for item in evidence] == [text]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("text,category", [("VF 5 bảo hành 10 năm", "warranty"), ("VF 5 ưu đãi 9%", "promotion")])
+async def test_preferred_policy_source_miss_falls_back_to_general(text, category):
+    scenario, state = scenario_and_state()
+    state.factual_claims = [AdvisorFactualClaim(message_id="m1", text=text, category=category)]
+
+    class Retriever(RecordingRetriever):
+        def retrieve(self, query, *, top_k=4, product_model=None, document_type=None):
+            self.calls.append((query, top_k, product_model, document_type))
+            chunk = knowledge_chunk("spec", text)
+            chunk.document_id = "PRODUCT_VF5_test"
+            return [chunk]
+
+    retriever = Retriever()
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+    assert [item.source_id for item in evidence] == ["spec"]
+    assert len(retriever.calls) == 2
+    assert retriever.calls[-1][3] is None

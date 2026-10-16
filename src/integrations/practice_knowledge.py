@@ -65,7 +65,13 @@ class RetrievalKnowledgeEvidenceProvider:
             top_k = self._top_k_per_claim
             warranty = bool(re.search("bảo hành", claim.text, re.I)) or claim.category == "warranty"
             promotion = (
-                bool(re.search(r"ưu đãi|giảm|%|Vì Tương Lai Xanh|khuyến mãi", claim.text, re.I))
+                bool(
+                    re.search(
+                        r"ưu đãi|giảm giá|giảm\s+\d+(?:[.,]\d+)?\s*%|Vì Tương Lai Xanh|khuyến mãi|chiết khấu",
+                        claim.text,
+                        re.I,
+                    )
+                )
                 or claim.category == "promotion"
             )
             if warranty:
@@ -113,6 +119,16 @@ class RetrievalKnowledgeEvidenceProvider:
                         for chunk in prices
                         if product_model in chunk.content and "Giá bán bán lẻ đề xuất" in chunk.content
                     )
+            # Preferred-source misses must not erase otherwise useful evidence.
+            # FAQ IDs are not a document_type, so warranty preference is applied
+            # to the model-scoped candidates above; fallback retains all sources.
+            if (warranty or promotion) and not candidates:
+                candidates = self._retrieval_service.retrieve(
+                    claim.text,
+                    top_k=self._top_k_per_claim,
+                    product_model=product_model,
+                    document_type=None,
+                )
             candidates.sort(
                 key=lambda chunk: (
                     chunk.document_id.startswith("PRODUCT_"),
