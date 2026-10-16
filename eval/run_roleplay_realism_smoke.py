@@ -98,7 +98,11 @@ async def run_one(name: str, advisor_turns: list[str], scenario_id: str = SCENAR
                 "termination": state.termination_status.value,
                 "concern_prompt_counts": state.concern_prompt_counts,
                 "spoken_fact_message_ids": state.spoken_fact_message_ids,
-                "customer_decisions": [event.model_dump() for event in state.customer_decisions],
+                "closing_outcome": state.closing_outcome,
+                "active_objections": state.active_objections,
+                "resolved_objections": state.resolved_objections,
+                "linked_benefits": [link.model_dump() for link in state.linked_benefits],
+                "policy_mentions": state.policy_mentions,
                 "false_mileage_memory_detected": false_mileage_memory,
                 "transcript": transcript,
             }

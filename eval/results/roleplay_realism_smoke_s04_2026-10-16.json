@@ -1,0 +1,166 @@
+{
+  "date_utc": "2026-10-16T16:11:14.088477+00:00",
+  "scenario_id": "SCENARIO_04_VF6_ECO_PLUS_UPSELL",
+  "runs": [
+    {
+      "run": "discovery_and_plus",
+      "status": "completed",
+      "turns": 5,
+      "termination": "active",
+      "concern_prompt_counts": {
+        "OBJ_VF6_PRICE_ELIGIBILITY": 1
+      },
+      "spoken_fact_message_ids": {
+        "budget": "8cddd5a0-c980-42bb-9916-9fc2e557c916",
+        "charging_access": "ac1ef233-5164-4d0d-9b75-47e16d49b213",
+        "current_vehicle": "1d4e047f-dcb9-425c-a4e9-848adc90f259",
+        "driving_experience": "ac1ef233-5164-4d0d-9b75-47e16d49b213",
+        "parking": "ac1ef233-5164-4d0d-9b75-47e16d49b213"
+      },
+      "closing_outcome": null,
+      "active_objections": [
+        "OBJ_VF6_PRICE_ELIGIBILITY"
+      ],
+      "resolved_objections": [
+        "OBJ_VF6_PLUS_WORTH"
+      ],
+      "linked_benefits": [
+        {
+          "benefit_id": "airbags_7",
+          "need_fact_key": "visible_goals"
+        },
+        {
+          "benefit_id": "camera_360",
+          "need_fact_key": "parking"
+        }
+      ],
+      "policy_mentions": [
+        "vtlx2"
+      ],
+      "false_mileage_memory_detected": false,
+      "transcript": [
+        {
+          "message_id": "412a5760-0292-45a0-8944-507e5f1a5a8c",
+          "role": "customer",
+          "content": "Chị muốn xem xe thực tế trước, nhất là không gian cho cả nhà. Em giới thiệu giúp chị nhé."
+        },
+        {
+          "message_id": "d1f7d5ca-fa8a-4a0f-92c6-f6e90c0236ca",
+          "role": "advisor",
+          "content": "Chào chị, VF 6 có ưu đãi 9% Vì Tương Lai Xanh 2 khi đủ điều kiện. Chị đang đi xe gì, có đứng tên chị không?"
+        },
+        {
+          "message_id": "1d4e047f-dcb9-425c-a4e9-848adc90f259",
+          "role": "customer",
+          "content": "Chị đang đi xe máy xăng, xe đứng tên chị em nhé."
+        },
+        {
+          "message_id": "abd121eb-1f61-4e21-b0d8-7a7215326dd5",
+          "role": "advisor",
+          "content": "Chị chủ yếu đi đâu, chở ai và dự tính ngân sách thế nào ạ?"
+        },
+        {
+          "message_id": "8cddd5a0-c980-42bb-9916-9fc2e557c916",
+          "role": "customer",
+          "content": "Chị chuẩn bị khoảng 600 triệu, nếu thật sự đáng thì thêm được tầm 50 triệu."
+        },
+        {
+          "message_id": "3006d8bc-e096-4f7f-a925-e0cc11956dea",
+          "role": "advisor",
+          "content": "Chị lái xe lâu chưa, chỗ đỗ ở nhà và cơ quan thế nào, có chỗ sạc tại nhà không?"
+        },
+        {
+          "message_id": "ac1ef233-5164-4d0d-9b75-47e16d49b213",
+          "role": "customer",
+          "content": "Chị mới có bằng lái hơn một năm thôi, đỗ xe vẫn chưa quen lắm. Nhà chị trong ngõ nhỏ, còn chỗ làm phải đỗ hầm khá chật. Nhà chị có sân, cắm sạc ở nhà được em ạ."
+        },
+        {
+          "message_id": "aa1233ce-de49-442c-bf9a-1c52dd6f2404",
+          "role": "advisor",
+          "content": "Nếu đủ điều kiện, Eco từ 646 triệu còn 587,86 triệu; Plus từ 700 triệu còn 637 triệu, chênh 49,14 triệu. Chị thấy sao?"
+        },
+        {
+          "message_id": "087bf1fc-49df-495d-af8f-d37c564be414",
+          "role": "customer",
+          "content": "Giá này nghe hợp lý hơn với ngân sách của chị. Nhưng chị đang đi xe máy xăng đứng tên chị thì có được áp dụng ưu đãi đó không em?"
+        },
+        {
+          "message_id": "eca01a63-91ea-4e38-bcf1-5994b74fe4d2",
+          "role": "advisor",
+          "content": "Plus có 7 túi khí so với 4 trên Eco để thêm bảo vệ gia đình; camera 360° giúp quan sát khi đỗ ngõ hẹp. Chị muốn thử rồi cân nhắc không?"
+        },
+        {
+          "message_id": "279bb66b-2041-48ff-b071-7c66503399e0",
+          "role": "customer",
+          "content": "Chị vẫn chưa rõ xe máy xăng đứng tên chị có đủ điều kiện nhận ưu đãi không em? Em kiểm tra giúp chị phần này nhé."
+        }
+      ]
+    },
+    {
+      "run": "missed_concern",
+      "status": "completed",
+      "turns": 4,
+      "termination": "active",
+      "concern_prompt_counts": {
+        "OBJ_VF6_PLUS_WORTH": 2
+      },
+      "spoken_fact_message_ids": {},
+      "closing_outcome": null,
+      "active_objections": [
+        "OBJ_VF6_PLUS_WORTH",
+        "OBJ_VF6_PRICE_ELIGIBILITY"
+      ],
+      "resolved_objections": [],
+      "linked_benefits": [],
+      "policy_mentions": [],
+      "false_mileage_memory_detected": false,
+      "transcript": [
+        {
+          "message_id": "cc4ea5c6-d03d-4190-b7ac-d20b45445bda",
+          "role": "customer",
+          "content": "Chào em, chị đang tìm hiểu VF 6 Eco vì thấy giá đang có ưu đãi khá tốt. Chị muốn xem xe thực tế một chút."
+        },
+        {
+          "message_id": "dc8ea990-c41b-4633-9ab5-73777d732432",
+          "role": "advisor",
+          "content": "Chào chị, chị lấy Plus luôn nhé?"
+        },
+        {
+          "message_id": "5ae669a3-85b0-40ce-aa88-4d76fd98db14",
+          "role": "customer",
+          "content": "Chị đang nghiêng về Eco hơn, vì chị nghĩ cùng pin với kích thước thì chắc đã đủ cho nhu cầu đi làm, đưa đón con rồi. Bản Plus chênh gần 50 triệu, em giải thích giúp chị khoản thêm đó đáng ở điểm nào nhé?"
+        },
+        {
+          "message_id": "3d0bb794-a817-45c6-87d2-8bf1fbc53ff7",
+          "role": "advisor",
+          "content": "Plus đẹp hơn chị ạ."
+        },
+        {
+          "message_id": "36f6d336-4610-403a-adbc-dd88db1a49b9",
+          "role": "customer",
+          "content": "Đẹp hơn thì chưa đủ để chị bỏ thêm gần 50 triệu đâu em. Với nhu cầu đi làm, đưa đón con và thỉnh thoảng về quê, bản Plus có điểm nào thiết thực hơn Eco để chị cân nhắc không?"
+        },
+        {
+          "message_id": "2e8ec659-996c-4b0c-b272-a480b58adc40",
+          "role": "advisor",
+          "content": "Chị chọn màu trước nhé."
+        },
+        {
+          "message_id": "56bba865-9d4d-4065-9ff7-3b3869c2ac4c",
+          "role": "customer",
+          "content": "Màu để sau em nhé. Chị muốn biết bản Plus có điểm nào thiết thực hơn cho việc đi làm, đưa đón con để đáng phần chênh đó không?"
+        },
+        {
+          "message_id": "851911aa-2cdd-4511-b468-254bede4a397",
+          "role": "advisor",
+          "content": "Mình đặt cọc luôn chị nhé."
+        },
+        {
+          "message_id": "4c5ac9cd-24cd-473d-b6fa-b68b9490f783",
+          "role": "customer",
+          "content": "Khoan đặt cọc đã em, giá vẫn hơi cao so với dự tính của chị. Ưu đãi hiện tại chị có được áp dụng không, và tổng giá sau ưu đãi là bao nhiêu?"
+        }
+      ]
+    }
+  ]
+}
