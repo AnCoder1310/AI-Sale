@@ -180,6 +180,8 @@ export function PracticeRoom({
     const nextMode = modeRef.current === 'voice' ? 'text' : 'voice';
     modeRef.current = nextMode;
     setMode(nextMode);
+    // Starting a call always begins with auto-send on; the user can still switch it off.
+    if (nextMode === 'voice') chooseAutoSend(true);
     if (nextMode === 'text') {
       audioRef.current?.pause();
       setSpeakingId(null);
