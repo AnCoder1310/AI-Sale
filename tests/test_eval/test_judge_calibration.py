@@ -1,8 +1,8 @@
 """Pending calibration labels remain distinct from expert judgements."""
 
 import copy
+import hashlib
 import json
-import subprocess
 
 import pytest
 
@@ -28,15 +28,15 @@ def test_pending_case_validates_without_expert_judgements():
     )
 
 
-def test_original_cases_are_byte_identical_to_head():
-    original = subprocess.check_output(
-        ["git", "show", "HEAD:eval/datasets/judge_calibration.json"], cwd=run.ROOT, text=True
-    )
-    current = run.DEFAULT_DATASET.read_text()
-    # The original case list is an unchanged byte prefix; only a comma and case are appended.
-    assert current.startswith(original.removesuffix("\n  ]\n}\n") + ",\n")
-    assert dataset()["cases"][:5] == json.loads(original)["cases"]
-    assert dataset()["dataset_version"] == json.loads(original)["dataset_version"]
+# SHA-256 of the five expert-approved cases (JC1–JC5) as approved on develop.
+APPROVED_CASES_SHA256 = "347b5174196d05cafe2ca35b09d74c505b820a6c9ea5deb6f831226c32e42885"
+
+
+def test_expert_approved_cases_are_unchanged():
+    approved = dataset()["cases"][:5]
+    digest = hashlib.sha256(json.dumps(approved, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    assert digest == APPROVED_CASES_SHA256
+    assert dataset()["dataset_version"] == "gate4-judge-calibration-v1"
 
 
 def test_pending_prediction_is_excluded_from_all_agreement_metrics():
