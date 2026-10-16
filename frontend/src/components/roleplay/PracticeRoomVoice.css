@@ -1,10 +1,34 @@
 .practice-room-voice-controls {
-  display: flex;
+  --voice-switch-on: #0a84ff;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
   gap: 16px;
+  width: 100%;
   max-width: 100%;
+}
+
+/* Push-to-talk sits in the exact centre; the switch is centred in the right half. */
+.practice-room-voice-controls > .practice-room-voice-bubble {
+  grid-column: 2;
+}
+
+.practice-room-voice-controls > .practice-room-auto-send {
+  grid-column: 3;
+  justify-self: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 360px) {
+  .practice-room-voice-controls {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .practice-room-voice-controls > .practice-room-voice-bubble,
+  .practice-room-voice-controls > .practice-room-auto-send {
+    grid-column: 1;
+  }
 }
 
 .practice-room-auto-send {
@@ -45,7 +69,7 @@
 }
 
 .practice-room-auto-send[aria-checked="true"] .practice-room-auto-send-track {
-  background: var(--primary);
+  background: var(--voice-switch-on);
 }
 
 .practice-room-auto-send[aria-checked="true"] .practice-room-auto-send-knob {
@@ -53,7 +77,7 @@
 }
 
 .practice-room-auto-send:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--voice-switch-on);
   outline-offset: 3px;
 }
 
