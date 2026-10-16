@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -9,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from src.models.evaluation import (
     CriterionEvaluation,
     CriterionStatus,
+    CriterionType,
     FactualClaimStatus,
     FactualFinding,
     RecommendedNextPractice,
@@ -20,7 +22,10 @@ from src.models.evaluation import (
 from .contracts import ScenarioContract
 from .prompts import EVALUATOR_PROMPT_VERSION, EVALUATOR_SYSTEM_PROMPT
 from .prompts.evaluator import FACTUAL_FINDINGS_SYSTEM_PROMPT
+from .scenario_loader import ScenarioRepository
 from .state import RoleplayMessage, RoleplayState, TerminationStatus
+
+logger = logging.getLogger(__name__)
 
 
 class KnowledgeEvidence(BaseModel):
@@ -74,8 +79,16 @@ class EvaluationError(ValueError):
 
 
 class RoleplayEvaluator:
-    def __init__(self, model: EvaluationModel) -> None:
+    def __init__(
+        self, model: EvaluationModel, *, judge_model: str | None = None, scenario_ids: set[str] | None = None
+    ) -> None:
         self._model = model
+        self._judge_model = judge_model
+        self._scenario_ids = (
+            scenario_ids
+            if scenario_ids is not None
+            else {item.scenario_id for item in ScenarioRepository().list_public()}
+        )
 
     async def evaluate(
         self,
@@ -97,6 +110,11 @@ class RoleplayEvaluator:
             "transcript": [message.model_dump(mode="json") for message in state.messages],
             "knowledge_evidence": [item.model_dump(mode="json") for item in knowledge_evidence],
         }
+        for objection in context["scenario"]["objections"]:
+            objection.pop("ideal_sales_response", None)
+        closing_outcome = getattr(state, "closing_outcome", None)
+        context["final_state"]["closing_outcome"] = closing_outcome
+        misconduct = str(state.termination_status) == "advisor_misconduct"
         try:
             for attempt in range(2):
                 raw_draft = await self._model.evaluate(
@@ -105,6 +123,16 @@ class RoleplayEvaluator:
                 )
                 draft = EvaluationDraft.model_validate(raw_draft)
                 try:
+                    if misconduct:
+                        for evaluation in draft.evaluations:
+                            if evaluation.score is not None:
+                                evaluation.score = 1
+                        draft.summary_weaknesses = ["Phiên luyện tập kết thúc do hành vi sai phạm của tư vấn viên."]
+                    if scenario.policy_expectations and any(
+                        item.criterion is CriterionType.POLICY_ACCURACY and item.status is not CriterionStatus.ASSESSED
+                        for item in draft.evaluations
+                    ):
+                        raise EvaluationError("policy_accuracy must be assessed for configured policy expectations")
                     self._validate_transcript_evidence(draft, state.messages)
                     await self._complete_factual_findings(draft, state, knowledge_evidence)
                     self._validate_factual_claim_coverage(draft, state)
@@ -123,6 +151,14 @@ class RoleplayEvaluator:
                         "Copy each message_id and quote verbatim from the supplied transcript. "
                         "Do not invent or paraphrase either field."
                     )
+            recommendation = draft.recommended_next_practice
+            if (
+                recommendation
+                and recommendation.type == "scenario"
+                and recommendation.target_id not in self._scenario_ids
+            ):
+                logger.warning("Dropping unknown recommended scenario id: %s", recommendation.target_id)
+                draft.recommended_next_practice = None
             assessed_scores = [
                 evaluation.score
                 for evaluation in draft.evaluations
@@ -132,6 +168,11 @@ class RoleplayEvaluator:
             return SessionEvaluationResult(
                 session_id=state.session_id,
                 scenario_id=state.scenario_id,
+                judge_model=self._judge_model,
+                closing_outcome=closing_outcome,
+                closing_outcome_label=next(
+                    (item.label for item in scenario.acceptable_outcomes if item.outcome_id == closing_outcome), None
+                ),
                 rubric_version=EVALUATOR_PROMPT_VERSION,
                 assessed_criteria_count=len(assessed_scores),
                 overall_score=overall_score,
