@@ -375,20 +375,26 @@ export function PracticeRoom({
               <span className="practice-room-voice-glow" aria-hidden="true" />
               <MicIcon aria-hidden="true" />
             </button>
-            <button
-              type="button"
-              role="switch"
-              className="practice-room-auto-send"
-              aria-checked={autoSend}
-              aria-label="Tự động gửi"
-              onClick={() => chooseAutoSend(!autoSend)}
-              disabled={loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle'}
-            >
-              <span className="practice-room-auto-send-track" aria-hidden="true">
-                <span className="practice-room-auto-send-knob" />
+            <div className="practice-room-auto-send-group">
+              <button
+                type="button"
+                role="switch"
+                className="practice-room-auto-send"
+                aria-checked={autoSend}
+                aria-label="Tự động gửi"
+                aria-describedby="practice-room-auto-send-hint"
+                onClick={() => chooseAutoSend(!autoSend)}
+                disabled={loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle'}
+              >
+                <span className="practice-room-auto-send-track" aria-hidden="true">
+                  <span className="practice-room-auto-send-knob" />
+                </span>
+                <span>Tự động gửi</span>
+              </button>
+              <span id="practice-room-auto-send-hint" className="practice-room-auto-send-hint">
+                {autoSend ? 'Giữ tối đa 60 giây rồi thả để gửi tự động' : 'Giữ tối đa 60 giây, thả rồi sửa bản chép và nhấn Gửi'}
               </span>
-              <span>Tự động gửi</span>
-            </button>
+            </div>
           </div>
           <span className="practice-room-voice-label">Bấm giữ để nói</span>
           <span className="practice-room-voice-status" role="status">
@@ -397,7 +403,7 @@ export function PracticeRoom({
                 : transcribing ? 'Đang chuyển giọng nói thành chữ...'
                   : loading ? 'Khách hàng đang trả lời...'
                     : speakingId ? 'Đang phát giọng khách...'
-                      : (autoSend ? 'Giữ tối đa 60 giây rồi thả để gửi tự động' : 'Giữ tối đa 60 giây, thả rồi sửa bản chép và nhấn Gửi')}
+                      : ''}
           </span>
 
         </div>

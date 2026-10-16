@@ -13,10 +13,26 @@
   grid-column: 2;
 }
 
-.practice-room-voice-controls > .practice-room-auto-send {
+.practice-room-voice-controls > .practice-room-auto-send-group {
   grid-column: 3;
   justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+}
+
+.practice-room-auto-send {
   white-space: nowrap;
+}
+
+.practice-room-auto-send-hint {
+  max-width: 180px;
+  color: var(--muted, #6b7280);
+  font-size: .72rem;
+  line-height: 1.35;
+  text-align: center;
 }
 
 @media (max-width: 360px) {
@@ -26,7 +42,7 @@
   }
 
   .practice-room-voice-controls > .practice-room-voice-bubble,
-  .practice-room-voice-controls > .practice-room-auto-send {
+  .practice-room-voice-controls > .practice-room-auto-send-group {
     grid-column: 1;
   }
 }
