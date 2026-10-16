@@ -27,7 +27,7 @@ class CapturingEvaluationModel:
 
 @pytest.fixture
 def scenario():
-    return ScenarioRepository(SCENARIOS).get("SCENARIO_01_VF5_TAXI")
+    return ScenarioRepository(SCENARIOS).get("SCENARIO_01_VF5_TAXI").model_copy(update={"policy_expectations": []})
 
 
 @pytest.fixture
@@ -397,3 +397,42 @@ async def test_active_session_cannot_be_evaluated(scenario, completed_state):
 
     with pytest.raises(EvaluationError, match="active role-play"):
         await evaluator.evaluate(scenario, completed_state, approved_evidence())
+
+
+@pytest.mark.asyncio
+async def test_config_context_and_deterministic_metadata(scenario, completed_state, caplog):
+    output = evaluation_output()
+    output["recommended_next_practice"]["target_id"] = "missing-scenario"
+    model = CapturingEvaluationModel(output)
+    completed_state.__dict__["closing_outcome"] = "close"
+    result = await RoleplayEvaluator(model, judge_model="configured-judge").evaluate(
+        scenario, completed_state, approved_evidence()
+    )
+    context = model.calls[0]["context"]
+    assert all("ideal_sales_response" not in item for item in context["scenario"]["objections"])
+    assert "acceptable_outcomes" in context["scenario"]
+    assert "policy_expectations" in context["scenario"]
+    assert result.closing_outcome == "close"
+    assert result.closing_outcome_label == scenario.acceptable_outcomes[0].label
+    assert result.judge_model == "configured-judge"
+    assert result.recommended_next_practice is None
+    assert "missing-scenario" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_misconduct_caps_scores(scenario, completed_state):
+    completed_state.__dict__["termination_status"] = "advisor_misconduct"
+    result = await RoleplayEvaluator(CapturingEvaluationModel(evaluation_output())).evaluate(
+        scenario, completed_state, approved_evidence()
+    )
+    assert all(item.score is None or item.score == 1 for item in result.evaluations)
+    assert "sai phạm" in result.summary_weaknesses[0]
+
+
+@pytest.mark.asyncio
+async def test_expected_policies_cannot_be_unassessed(scenario, completed_state):
+    scenario.policy_expectations = ScenarioRepository().get(scenario.scenario_id).policy_expectations
+    with pytest.raises(EvaluationError, match="policy_accuracy must be assessed"):
+        await RoleplayEvaluator(CapturingEvaluationModel(evaluation_output())).evaluate(
+            scenario, completed_state, approved_evidence()
+        )

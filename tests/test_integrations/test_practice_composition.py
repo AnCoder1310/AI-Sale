@@ -49,11 +49,11 @@ class RecordingRetriever:
         return [
             KnowledgeChunk(
                 chunk_id="warranty-1",
-                document_id="warranty-doc",
+                document_id="FAQ_VF5_20260922",
                 content="VF 5 áp dụng chính sách bảo hành theo điều kiện công bố.",
                 metadata=ChunkMetadata(
                     chunk_id="warranty-1",
-                    document_id="warranty-doc",
+                    document_id="FAQ_VF5_20260922",
                     title="Chính sách bảo hành",
                     document_type="policy",
                     product_model="VF 5",
@@ -85,8 +85,18 @@ async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path:
             "evaluations": [
                 {
                     "criterion": criterion,
-                    "status": "unassessed",
-                    "score": None,
+                    "status": "assessed" if criterion == "policy_accuracy" else "unassessed",
+                    "score": 1 if criterion == "policy_accuracy" else None,
+                    "evidence": [
+                        {
+                            "message_id": json.loads(messages[1].content.removeprefix("CONTEXT_JSON:\n"))["transcript"][
+                                1
+                            ]["message_id"],
+                            "quote": "VF 5 có chính sách bảo hành",
+                        }
+                    ]
+                    if criterion == "policy_accuracy"
+                    else [],
                     "reason": "Chưa đủ cơ hội quan sát trong transcript ngắn.",
                 }
                 for criterion in (
@@ -121,12 +131,14 @@ async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path:
             ],
         }
 
-    model.outputs[EvaluationDraft] = [evaluation_output]
-    model.outputs[FactualFindingsDraft] = [factual_output]
+    judge = SchemaQueueModel()
+    judge.outputs[EvaluationDraft] = [evaluation_output]
+    judge.outputs[FactualFindingsDraft] = [factual_output]
     retriever = RecordingRetriever()
     service = build_practice_service(
         settings=Settings(database_url=f"sqlite:///{tmp_path / 'practice.db'}"),
         model_factory=lambda: model,
+        judge_model_factory=lambda: judge,
         retrieval_service=retriever,
     )
 
@@ -143,6 +155,50 @@ async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path:
         CustomerModelOutput,
         TurnAnalysis,
         CustomerModelOutput,
-        EvaluationDraft,
-        FactualFindingsDraft,
     ]
+    assert [schema for schema, _ in judge.calls] == [EvaluationDraft, FactualFindingsDraft]
+    assert result.result.judge_model == "google/gemini-3.8-flash"
+
+
+def test_default_judge_factory_uses_configured_provider_model(monkeypatch, tmp_path):
+    from src.integrations import practice_runtime
+
+    calls = []
+    judge = SchemaQueueModel()
+
+    def get_judge(**kwargs):
+        calls.append(kwargs)
+        return judge
+
+    monkeypatch.setattr(practice_runtime, "get_llm", get_judge)
+    settings = Settings(
+        database_url=f"sqlite:///{tmp_path / 'judge.db'}",
+        practice_judge_provider="openrouter",
+        practice_judge_model="google/gemini-3.8-flash",
+    )
+    service = build_practice_service(
+        settings=settings, model_factory=SchemaQueueModel, retrieval_service=RecordingRetriever()
+    )
+    assert calls == []
+    assert service._evaluator._model._invoker._model_factory() is judge
+    assert calls == [{"provider": "openrouter", "model": "google/gemini-3.8-flash", "temperature": 0}]
+
+
+def test_default_judge_rejects_generator_model(tmp_path):
+    settings = Settings(
+        database_url=f"sqlite:///{tmp_path / 'same.db'}",
+        practice_judge_provider="openrouter",
+        practice_judge_model="same-model",
+        llm_provider="openrouter",
+        model_name="same-model",
+    )
+    with pytest.raises(ValueError, match="must differ"):
+        build_practice_service(settings=settings, retrieval_service=RecordingRetriever())
+
+
+def test_practice_judge_environment_settings(monkeypatch):
+    monkeypatch.setenv("PRACTICE_JUDGE_PROVIDER", "gemini")
+    monkeypatch.setenv("PRACTICE_JUDGE_MODEL", "configured-judge")
+    settings = Settings(_env_file=None)
+    assert settings.practice_judge_provider == "gemini"
+    assert settings.practice_judge_model == "configured-judge"

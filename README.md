@@ -19,6 +19,8 @@ cp .env.example .env
 
 Điền `OPENROUTER_API_KEY` trong `.env`. Mặc định chat dùng `OPENROUTER_MODEL_NAME=openai/gpt-6-luna`, embedding dùng `EMBEDDING_MODEL_NAME=openai/text-embedding-3-small` qua OpenRouter; **hai tác vụ model khác nhau**, không dùng hash cho demo thật. Khi chạy Python trực tiếp, `DATABASE_URL=sqlite:///./data/app.db` lưu user, phiên, transcript và đánh giá; `CHROMA_PERSIST_DIR=./data/chroma` lưu vector index dẫn xuất từ `data/knowledge/corpus.json`. Docker Compose ghi đè hai mặc định này để dùng PostgreSQL + pgvector. Đổi embedding model thì tạo collection mới và ingest lại. Không commit `.env`, mật khẩu hoặc database local.
 
+Practice dùng judge riêng: `PRACTICE_JUDGE_PROVIDER=openrouter`, `PRACTICE_JUDGE_MODEL=google/gemini-3.8-flash` (temperature 0), độc lập với model Customer/analyzer.
+
 Trong `.env`, đặt `DEMO_ADVISOR_PASSWORD` và `DEMO_MANAGER_PASSWORD` riêng, rồi seed tài khoản local:
 
 ```bash

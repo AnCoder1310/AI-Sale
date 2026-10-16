@@ -14,11 +14,11 @@ SCENARIOS = Path("data/scenarios/scenarios.json")
 def knowledge_chunk(chunk_id: str, content: str) -> KnowledgeChunk:
     return KnowledgeChunk(
         chunk_id=chunk_id,
-        document_id=f"doc-{chunk_id}",
+        document_id="FAQ_VF5" if chunk_id == "chunk-shared" else "PROMOTION_SALES_VINFAST_test",
         content=content,
         metadata=ChunkMetadata(
             chunk_id=chunk_id,
-            document_id=f"doc-{chunk_id}",
+            document_id="FAQ_VF5" if chunk_id == "chunk-shared" else "PROMOTION_SALES_VINFAST_test",
             title="Nguồn VinFast",
             document_type="policy",
             product_model="VF 5",
@@ -68,10 +68,10 @@ async def test_provider_retrieves_each_unique_claim_and_deduplicates_chunks():
     evidence = await provider.for_session(scenario, state)
 
     assert retriever.calls == [
-        ("VF 5 có chính sách bảo hành", 2, "VF 5", None),
-        ("VF 5 có ưu đãi", 2, "VF 5", None),
+        ("VF 5 có chính sách bảo hành", 24, "VF 5", None),
+        ("VF 5 có ưu đãi", 24, "VF 5", "promotion"),
     ]
-    assert [item.source_id for item in evidence] == ["chunk-shared", "chunk-1", "chunk-2"]
+    assert [item.source_id for item in evidence] == ["chunk-shared", "chunk-2"]
     assert all(item.version == "2026.1" for item in evidence)
 
 
@@ -127,3 +127,73 @@ async def test_provider_rejects_mismatched_scenario():
 
     with pytest.raises(ValueError, match="identifiers do not match"):
         await RetrievalKnowledgeEvidenceProvider(RecordingRetriever()).for_session(other_scenario, state)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text,category,expected",
+    [
+        ("VF 7 bảo hành 10 năm/200.000 km", "warranty", "FAQ_VF7_20260922"),
+        ("VF 7 ưu đãi 9%", "promotion", "PROMOTION_SALES_VINFAST_20260921"),
+        ("VF 6 Plus có 7 túi khí", "product", "PRODUCT_VF6_plus"),
+    ],
+)
+async def test_authoritative_routing_and_trim(text, category, expected):
+    scenario, state = scenario_and_state()
+    state.factual_claims = [AdvisorFactualClaim(message_id="m1", text=text, category=category)]
+
+    class Retriever:
+        def retrieve(self, *args, **kwargs):
+            result = []
+            for document, content in [
+                ("PRODUCT_VF7_20260922", "VF 7 bảo hành 7 năm"),
+                ("PRODUCT_VF6_eco", "VF 6 Eco"),
+                ("PRODUCT_VF6_plus", "VF 6 Plus có 7 túi khí"),
+                ("FAQ_VF7_20260922", "VF 7 bảo hành 10 năm/200.000 km"),
+                ("PROMOTION_SALES_VINFAST_20260921", "VF 7 ưu đãi 9%"),
+            ]:
+                chunk = knowledge_chunk(document, content)
+                chunk.document_id = document
+                if category != "product" or document.startswith("PRODUCT_"):
+                    result.append(chunk)
+            return result
+
+    evidence = await RetrievalKnowledgeEvidenceProvider(Retriever(), top_k_per_claim=1).for_session(scenario, state)
+    assert evidence[0].source_id == expected
+
+
+@pytest.mark.asyncio
+async def test_claim_cap_warns(caplog):
+    scenario, state = scenario_and_state()
+    state.factual_claims = [
+        AdvisorFactualClaim(message_id=f"m{i}", text=f"claim {i}", category="other") for i in range(19)
+    ]
+    retriever = RecordingRetriever()
+    await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+    assert len(retriever.calls) == 16
+    assert "dropped 3 claims" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_discounted_price_keeps_both_promotion_and_price_sources():
+    scenario, state = scenario_and_state()
+    state.factual_claims = [
+        AdvisorFactualClaim(message_id="m1", text="VF 6 Eco giá sau ưu đãi 9% là 587,86 triệu", category="price")
+    ]
+
+    class Retriever:
+        def retrieve(self, query, **kwargs):
+            if kwargs["document_type"] == "price_list":
+                chunk = knowledge_chunk("msrp", "Giá bán bán lẻ đề xuất VF 6 Eco 646 triệu")
+                chunk.document_id = "PRICE_LIST_VINFAST_test"
+                return [chunk]
+            result = []
+            for i in range(4):
+                chunk = knowledge_chunk(f"promotion-{i}", "VF 6 Eco ưu đãi 9%")
+                chunk.document_id = "PROMOTION_SALES_VINFAST_test"
+                result.append(chunk)
+            return result
+
+    evidence = await RetrievalKnowledgeEvidenceProvider(Retriever()).for_session(scenario, state)
+    assert "msrp" in {item.source_id for item in evidence}
+    assert "promotion-0" in {item.source_id for item in evidence}

@@ -20,6 +20,22 @@ from src.integrations.practice_persistence import SQLCheckpointRepository
 from src.integrations.practice_runtime import SharedLLMCustomerModel, SharedLLMTurnAnalysisModel
 
 SCENARIO_ID = "SCENARIO_01_VF5_TAXI"
+SCENARIO_04_ID = "SCENARIO_04_VF6_ECO_PLUS_UPSELL"
+SCENARIO_04_RUNS = {
+    "discovery_and_plus": [
+        "Chào chị, VF 6 có ưu đãi 9% Vì Tương Lai Xanh 2 khi đủ điều kiện. Chị đang đi xe gì, có đứng tên chị không?",
+        "Chị chủ yếu đi đâu, chở ai và dự tính ngân sách thế nào ạ?",
+        "Chị lái xe lâu chưa, chỗ đỗ ở nhà và cơ quan thế nào, có chỗ sạc tại nhà không?",
+        "Nếu đủ điều kiện, Eco từ 646 triệu còn 587,86 triệu; Plus từ 700 triệu còn 637 triệu, chênh 49,14 triệu. Chị thấy sao?",
+        "Plus có 7 túi khí so với 4 trên Eco để thêm bảo vệ gia đình; camera 360° giúp quan sát khi đỗ ngõ hẹp. Chị muốn thử rồi cân nhắc không?",
+    ],
+    "missed_concern": [
+        "Chào chị, chị lấy Plus luôn nhé?",
+        "Plus đẹp hơn chị ạ.",
+        "Chị chọn màu trước nhé.",
+        "Mình đặt cọc luôn chị nhé.",
+    ],
+}
 RUNS = {
     "helpful_advisor": [
         "Anh thường chạy khoảng bao nhiêu km mỗi ngày hoặc mỗi tháng ạ?",
@@ -42,7 +58,12 @@ RUNS = {
 }
 
 
-async def run_one(name: str, advisor_turns: list[str]) -> dict:
+def runs_for_scenario(scenario_id: str) -> dict[str, list[str]]:
+    """Select persona-appropriate probes without creating a model client."""
+    return SCENARIO_04_RUNS if scenario_id == SCENARIO_04_ID else RUNS
+
+
+async def run_one(name: str, advisor_turns: list[str], scenario_id: str = SCENARIO_ID) -> dict:
     with TemporaryDirectory(prefix="p043-roleplay-realism-") as temp:
         graph = RoleplayGraph(
             ScenarioRepository(),
@@ -52,7 +73,7 @@ async def run_one(name: str, advisor_turns: list[str]) -> dict:
         )
         session_id = f"realism-{name}"
         try:
-            await graph.start(session_id, SCENARIO_ID, max_turns=10)
+            await graph.start(session_id, scenario_id, max_turns=10)
             for advisor_turn in advisor_turns:
                 state = await graph.get_session_state(session_id)
                 if state.termination_status.value != "active":
@@ -88,12 +109,15 @@ async def run_one(name: str, advisor_turns: list[str]) -> dict:
 async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, help="JSON result path; defaults to a timestamped file")
+    parser.add_argument("--scenario-id", choices=(SCENARIO_ID, SCENARIO_04_ID), default=SCENARIO_ID)
     args = parser.parse_args()
-    results = [await run_one(name, turns) for name, turns in RUNS.items()]
+    results = [await run_one(name, turns, args.scenario_id)
+               for name, turns in runs_for_scenario(args.scenario_id).items()]
     output = args.output or Path(f"eval/results/roleplay_realism_smoke_{datetime.now(UTC):%Y-%m-%dT%H-%M-%SZ}.json")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
-        json.dumps({"date_utc": datetime.now(UTC).isoformat(), "runs": results}, ensure_ascii=False, indent=2) + "\n",
+        json.dumps({"date_utc": datetime.now(UTC).isoformat(), "scenario_id": args.scenario_id,
+                    "runs": results}, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     for result in results:

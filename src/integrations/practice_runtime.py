@@ -148,12 +148,26 @@ def build_practice_service(
     *,
     settings: Settings | None = None,
     model_factory: LLMFactory = get_llm,
+    judge_model_factory: LLMFactory | None = None,
     retrieval_service: RetrievalService | None = None,
     checkpoint: SQLCheckpointRepository | None = None,
 ) -> PracticeService:
     """Compose the production Practice vertical slice from shared adapters."""
 
     resolved_settings = settings or get_settings()
+    if (
+        judge_model_factory is None
+        and resolved_settings.practice_judge_provider == resolved_settings.llm_provider
+        and resolved_settings.practice_judge_model == resolved_settings.model_name
+    ):
+        raise ValueError("Practice judge model must differ from the generator model")
+    resolved_judge_factory = judge_model_factory or (
+        lambda: get_llm(
+            provider=resolved_settings.practice_judge_provider,
+            model=resolved_settings.practice_judge_model,
+            temperature=0,
+        )
+    )
     scenarios = ScenarioRepository()
     resolved_checkpoint = checkpoint or SQLCheckpointRepository(resolved_settings.database_url)
     resolved_retrieval = retrieval_service or get_retrieval_service()
@@ -166,7 +180,11 @@ def build_practice_service(
     return PracticeService(
         graph,
         scenarios,
-        evaluator=RoleplayEvaluator(SharedLLMEvaluationModel(model_factory)),
+        evaluator=RoleplayEvaluator(
+            SharedLLMEvaluationModel(resolved_judge_factory),
+            judge_model=resolved_settings.practice_judge_model,
+            scenario_ids={item.scenario_id for item in scenarios.list_public()},
+        ),
         knowledge_evidence=RetrievalKnowledgeEvidenceProvider(resolved_retrieval),
     )
 
