@@ -11,6 +11,14 @@ contracts, consumers, tests, and UI semantics aligned.
 `RoleplayState` is initialized from `ScenarioContract` with a `session_id`. It keeps
 scenario identity, difficulty, persona, stages, turn count, trust/interest, visible
 and hidden facts, objections, discoveries, termination state, and message history.
+New sessions have an empty transcript, stage `opening`, and turn count zero.
+The advisor speaks first in every scenario; the first advisor message counts as
+turn one. The first customer reply introduces the buying intent and usage needs
+from `customer_goals`. Disclosures triggered by that opening still use configured
+revealed statements and are recorded against the first customer reply. Creating
+a session makes no customer model call; the existing maximum advisor-turn limit
+is unchanged.
+
 Validated advisor factual claims are retained with their originating message ID and
 category so Finish can retrieve evidence for the exact claim rather than the whole
 transcript.

@@ -235,18 +235,6 @@ class RoleplayGraph:
 
         state = RoleplayState.from_scenario(session_id, scenario, max_turns=max_turns)
         await _save_state(self._checkpoint, state)
-        opening_turn = await self._customer_agent.generate_turn(
-            scenario,
-            state,
-            mode="opening",
-        )
-        opening_message = opening_turn.message
-        state.messages.append(opening_message)
-        if opening_turn.raised_objection_id and opening_turn.raised_objection_id in state.unresolved_objections:
-            state.spoken_concern_message_ids[opening_turn.raised_objection_id] = opening_message.message_id
-            state.active_objections.append(opening_turn.raised_objection_id)
-            state.conversation_stage = ConversationStage.OBJECTION_HANDLING
-        await _save_state(self._checkpoint, state)
         return state.advisor_visible_context()
 
     async def continue_session(

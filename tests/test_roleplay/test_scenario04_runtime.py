@@ -55,7 +55,7 @@ class AnalysisModel:
 
 def runtime(*, analyses=(), replies=()):
     repository = ScenarioRepository()
-    customer = CustomerModel({"reply": "Chị muốn tìm hiểu xe Eco."}, *replies)
+    customer = CustomerModel(*replies)
     analysis = AnalysisModel(*analyses)
     checkpoint = Checkpoint()
     graph = RoleplayGraph(repository, TurnAnalyzer(analysis), CustomerAgent(customer), checkpoint)
@@ -240,7 +240,8 @@ async def test_disclosed_fact_keys_detect_paraphrase_and_ignore_unpermitted_keys
             )
 
     graph, checkpoint, customer, _ = runtime(
-        analyses=[{"detected_intents": ["ask_parking_conditions"], "discovered_fact_ids": ["parking"]}]
+        analyses=[{"detected_intents": ["ask_parking_conditions"], "discovered_fact_ids": ["parking"]}],
+        replies=[{"reply": "Chào em, chị đang tìm hiểu VF 6 Eco."}],
     )
     graph = RoleplayGraph(
         ScenarioRepository(),
@@ -266,7 +267,7 @@ async def test_blocks_profanity_and_ends_session():
     assert view["conversation_stage"] == "finished"
     assert view["messages"][-1]["content"] == "Chị nghĩ mình nên dừng cuộc trao đổi ở đây. Chào em."
     assert analyzer.calls == 0
-    assert customer.calls == 1
+    assert customer.calls == 0
     assert "ngu" not in view["termination_reason"]
     state = await graph.finish_session("session")
     assert state.evaluation_status is EvaluationStatus.PENDING
@@ -282,7 +283,7 @@ async def test_analyzer_flag_ends_session():
     view = await graph.continue_session("session", "Một câu không chứa từ khóa.")
     assert view["termination_status"] == "advisor_misconduct"
     assert analyzer.calls == 1
-    assert customer.calls == 1
+    assert customer.calls == 0
     assert (await graph.get_session_state("session")).misconduct_reason == "semantic_abuse"
 
 

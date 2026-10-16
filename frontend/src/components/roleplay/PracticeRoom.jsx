@@ -291,6 +291,9 @@ export function PracticeRoom({
 
       {/* CHAT THREAD */}
       <div className="practice-room-messages">
+        {messages.length === 0 && (
+          <p role="status">Bạn là tư vấn viên — hãy mở lời chào khách trước.</p>
+        )}
         {messages.map((m, idx) => (
           <div
             key={m.message_id || idx}

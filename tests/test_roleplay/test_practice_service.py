@@ -211,7 +211,7 @@ async def test_evaluator_failure_keeps_frozen_transcript_and_allows_retry(caplog
     failed = RoleplayState.model_validate(await checkpoint.load("session-1"))
     assert failed.evaluation_status is EvaluationStatus.FAILED
     assert failed.termination_status is TerminationStatus.ADVISOR_ENDED
-    assert [message.role for message in failed.messages] == ["customer"]
+    assert failed.messages == []
     assert (await service.get_result("session-1")).result is None
 
     retried = await service.finish_session("session-1")

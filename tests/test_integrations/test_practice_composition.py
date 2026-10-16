@@ -69,7 +69,6 @@ class RecordingRetriever:
 async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path: Path):
     model = SchemaQueueModel()
     model.outputs[CustomerModelOutput] = [
-        {"reply": "Anh đang cân nhắc VF 5."},
         {"reply": "Điều kiện bảo hành cụ thể thế nào em?"},
     ]
     model.outputs[TurnAnalysis] = [
@@ -90,7 +89,7 @@ async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path:
                     "evidence": [
                         {
                             "message_id": json.loads(messages[1].content.removeprefix("CONTEXT_JSON:\n"))["transcript"][
-                                1
+                                0
                             ]["message_id"],
                             "quote": "VF 5 có chính sách bảo hành",
                         }
@@ -146,13 +145,15 @@ async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path:
     continued = await service.send_message(started.session_id, "VF 5 có chính sách bảo hành đúng không anh?")
     result = await service.finish_session(started.session_id)
 
+    assert started.messages == []
     assert continued.turn_count == 1
+    assert continued.messages[0].role == "advisor"
+    assert result.result.evaluations[3].evidence[0].quote == "VF 5 có chính sách bảo hành"
     assert retriever.queries == ["VF 5 có chính sách bảo hành"]
     assert result.evaluation_status == "complete"
     assert result.result is not None
     assert result.result.review_status == "ai_draft"
     assert [schema for schema, _ in model.calls] == [
-        CustomerModelOutput,
         TurnAnalysis,
         CustomerModelOutput,
     ]

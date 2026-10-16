@@ -38,19 +38,19 @@ SCENARIO_04_RUNS = {
 }
 RUNS = {
     "helpful_advisor": [
-        "Anh thường chạy khoảng bao nhiêu km mỗi ngày hoặc mỗi tháng ạ?",
+        "Em chào anh, em có thể hỗ trợ anh tìm hiểu xe. Anh thường chạy khoảng bao nhiêu km mỗi ngày hoặc mỗi tháng ạ?",
         "Cảm ơn anh. Chi phí đổi xe cần nhìn cả tiền xe, pin, sạc và bảo dưỡng; em chưa muốn hứa mức tiết kiệm khi chưa kiểm tra chính sách đang áp dụng cho xe của anh.",
         "Em có thể lập bảng so sánh theo 5.000 km mỗi tháng, ghi rõ giả định tiền xăng và điều kiện sạc, rồi gửi anh xem trước khi quyết định.",
         "Ngoài chi phí, anh có lo việc dừng sạc trong ca chạy khách không? Mình có thể kiểm tra trạm gần tuyến anh chạy và hẹn trải nghiệm thực tế.",
     ],
     "missed_concern": [
-        "Xe điện nhiều công nghệ hay lắm anh ạ.",
+        "Em chào anh, xe điện nhiều công nghệ hay lắm anh ạ.",
         "Dạ xe rất đẹp và đi êm anh nhé.",
         "Mình cứ xem màu xe trước anh nhé.",
         "Em gửi hình xe cho anh.",
     ],
     "discovery_and_next_step": [
-        "Mỗi ngày anh chạy quãng đường khoảng bao nhiêu và chủ yếu ở đâu ạ?",
+        "Em chào anh, mỗi ngày anh chạy quãng đường khoảng bao nhiêu và chủ yếu ở đâu ạ?",
         "Anh thường nghỉ giữa ca ở khu vực nào, có tiện dừng sạc không ạ?",
         "Để so sát với Vios, em sẽ kiểm tra chính sách pin và sạc theo ngày mua xe, rồi tính một khoảng chi phí theo số km anh vừa chia sẻ; em chưa chốt một con số khi thiếu dữ liệu.",
         "Nếu anh thấy hướng này hợp lý, mình hẹn 15 phút xem xe và đối chiếu bảng chi phí theo ca chạy thực tế của anh nhé?",

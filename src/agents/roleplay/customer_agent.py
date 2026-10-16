@@ -167,7 +167,8 @@ class CustomerAgent:
             raise CustomerResponseError("state and scenario identifiers do not match")
 
         pending = self.pending_disclosures(scenario, state) if mode == "response" else []
-        if pending:
+        first_reply = mode == "response" and not any(message.role == "customer" for message in state.messages)
+        if pending and not first_reply:
             reply = " ".join(rule.revealed_statement for rule in pending)
             return CustomerTurn(
                 message=RoleplayMessage(role="customer", content=reply),
@@ -247,7 +248,11 @@ class CustomerAgent:
         if raised_id and state.concern_prompt_counts.get(raised_id, 0) >= 2:
             raise CustomerResponseError("customer repeated a concern after its follow-up limit")
         return CustomerTurn(
-            message=RoleplayMessage(role="customer", content=output.reply),
+            message=RoleplayMessage(
+                role="customer",
+                content=" ".join([output.reply, *(rule.revealed_statement for rule in pending)]),
+            ),
+            disclosed_fact_keys=tuple(rule.fact_key for rule in pending),
             raised_objection_id=raised_id,
             accepted_next_step=output.accepted_next_step,
             accepted_outcome_id=(
@@ -333,6 +338,8 @@ class CustomerAgent:
                 "resolved_objection_ids": list(state.resolved_objections),
                 "upsell_objection_id": scenario.upsell_rule.objection_id if scenario.upsell_rule else None,
                 "turn_mode": mode,
+                "replying_to_advisor_opening": mode == "response"
+                and not any(message.role == "customer" for message in state.messages),
                 "focus_objection_id": focus_id,
                 "focus_objection_prompt_number": state.concern_prompt_counts.get(focus_id, 0) + 1 if focus_id else None,
                 "sales_channel": state.sales_channel,
