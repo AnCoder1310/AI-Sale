@@ -309,7 +309,7 @@
     "title": "Chị Hà — VF 6 Eco hay nâng lên Plus?",
     "difficulty": "Medium",
     "sales_channel": "Showroom",
-    "scenario_version": "1.1",
+    "scenario_version": "1.2",
     "target_skills": [
       "need_discovery",
       "product_knowledge",
@@ -440,11 +440,11 @@
     ],
     "objections": [
       {
-        "objection_id": "OBJ_VF6_PRICE_ELIGIBILITY",
+        "objection_id": "OBJ_VF6_PROMO_ELIGIBILITY",
         "trigger_stage": "presentation",
-        "objection_text": "Giá vẫn hơi cao so với dự tính của chị. Ưu đãi đó chị có được áp dụng không em?",
-        "resolve_condition": "Tư vấn viên xác nhận điều kiện Vì Tương Lai Xanh 2 bằng xe máy xăng đứng tên chị, báo đúng giá VF 6 Eco Tiêu chuẩn 1 sau ưu đãi: 646 triệu − 9% = 587,86 triệu đồng, và nêu thêm ít nhất một ưu đãi/chính sách hiện hành (sạc miễn phí, bảo hành hoặc Mua xe 0 Đồng).",
-        "ideal_sales_response": "Dạ chị đang sở hữu xe gì và có đứng tên chị không ạ? Nếu đủ điều kiện Vì Tương Lai Xanh 2, Eco còn 587,86 triệu đồng; xe còn được ưu đãi 10 lượt sạc/tháng theo chính sách hiện hành."
+        "objection_text": "Giá vẫn hơi cao so với dự tính của chị. Ưu đãi 9% đó chị có được áp dụng không em?",
+        "resolve_condition": "Sale xác nhận rõ ràng chị đủ điều kiện nhận ưu đãi (kể cả câu trả lời ngắn như “Dạ được ạ” hay “Chị đủ điều kiện” khi đang trả lời đúng câu hỏi về xe máy xăng đứng tên chị). Giá sau ưu đãi và các chính sách khác là điểm cộng cho policy_accuracy, KHÔNG bắt buộc để giải tỏa băn khoăn này.",
+        "ideal_sales_response": "Dạ được ạ, chị đang có xe máy xăng đứng tên chị nên đủ điều kiện Vì Tương Lai Xanh 2; VF 6 Eco còn 587,86 triệu."
       },
       {
         "objection_id": "OBJ_VF6_PLUS_WORTH",

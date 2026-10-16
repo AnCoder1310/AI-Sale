@@ -11,7 +11,14 @@ from src.agents.roleplay.customer_agent import CustomerAgent, CustomerResponseEr
 from src.agents.roleplay.graph import RoleplayGraph, RoleplaySessionConflictError
 from src.agents.roleplay.guardrails import check_advisor_message
 from src.agents.roleplay.scenario_loader import ScenarioRepository
-from src.agents.roleplay.state import ConversationStage, EvaluationStatus, LinkedBenefit, RoleplayMessage, RoleplayState
+from src.agents.roleplay.state import (
+    ConversationStage,
+    EvaluationStatus,
+    LinkedBenefit,
+    RoleplayMessage,
+    RoleplayState,
+    TerminationStatus,
+)
 from src.agents.roleplay.state_reducer import apply_turn_analysis
 from src.agents.roleplay.turn_analyzer import TurnAnalysis, TurnAnalyzer
 from src.api.practice import create_practice_router
@@ -20,6 +27,7 @@ from src.services.practice import PracticeService
 
 SCENARIO_ID = "SCENARIO_04_VF6_ECO_PLUS_UPSELL"
 UPSELL = "OBJ_VF6_PLUS_WORTH"
+ELIGIBILITY = "OBJ_VF6_PROMO_ELIGIBILITY"
 
 
 class Checkpoint:
@@ -75,6 +83,54 @@ def state(scenario):
 def links(*ids):
     needs = {"airbags_7": "family_usage", "motor_150kw": "weekend_trips", "camera_360": "parking"}
     return [LinkedBenefit(benefit_id=key, need_fact_key=needs[key]) for key in ids]
+
+
+@pytest.mark.parametrize("reply", ["Dạ được ạ, chị đủ điều kiện", "Được", "Dạ có", "Đúng rồi ạ"])
+@pytest.mark.asyncio
+async def test_eligibility_confirmation_after_two_prompts_resolves_without_dropout(scenario, reply):
+    graph, checkpoint, customer, analyzer = runtime(
+        analyses=[
+            {"factual_claims": [{"text": "Eco giá 646 triệu", "category": "price"}]},
+            {},
+            {},
+            {"addressed_objection_ids": [ELIGIBILITY], "resolved_objection_ids": [ELIGIBILITY]},
+        ],
+        replies=[
+            {
+                "reply": "Em kiểm tra giúp chị xem xe máy xăng đứng tên chị có được áp dụng ưu đãi không nhé?",
+                "raised_objection_id": ELIGIBILITY,
+            },
+            {
+                "reply": "Xe máy xăng đứng tên chị có được tính vào điều kiện nhận ưu đãi không em?",
+                "raised_objection_id": ELIGIBILITY,
+            },
+            {
+                "reply": "Chị có xe máy xăng đứng tên chị, vậy chị có đủ điều kiện không em?",
+                "raised_objection_id": ELIGIBILITY,
+            },
+            {"reply": "Vậy chị xem tiếp bản Eco nhé."},
+        ],
+    )
+    await graph.start("session", SCENARIO_ID)
+    await graph.continue_session("session", "Eco giá 646 triệu")
+    await graph.continue_session("session", "Để em kiểm tra.")
+    await graph.continue_session("session", "Em đang xem lại điều kiện.")
+    before = await graph.get_session_state("session")
+    assert ELIGIBILITY in before.active_objections
+    assert before.concern_prompt_counts[ELIGIBILITY] == 2
+    context = _turn_analysis_context(reply, scenario, before)
+    assert context["state"]["recent_messages"][-1]["content"] == before.messages[-1].content
+
+    view = await graph.continue_session("session", reply)
+    after = RoleplayState.model_validate(await checkpoint.load("session"))
+    assert view["termination_status"] == TerminationStatus.ACTIVE.value
+    assert after.resolved_objections == [ELIGIBILITY]
+    assert ELIGIBILITY not in after.active_objections
+    assert ELIGIBILITY not in after.unresolved_objections
+    assert after.policy_mentions == []
+    assert UPSELL in after.unresolved_objections
+    assert after.messages[-1].content == "Vậy chị xem tiếp bản Eco nhé."
+    assert customer.calls == analyzer.calls == 4
 
 
 @pytest.mark.parametrize(

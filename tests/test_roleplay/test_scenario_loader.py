@@ -87,6 +87,18 @@ def test_non_array_dataset_is_rejected(tmp_path):
 def test_new_scenario_exposes_internal_contracts_only_on_private_lookup():
     repository = ScenarioRepository(SCENARIOS)
     scenario = repository.get("SCENARIO_04_VF6_ECO_PLUS_UPSELL")
+    assert scenario.scenario_version == "1.2"
+    assert [objection.objection_id for objection in scenario.objections] == [
+        "OBJ_VF6_PROMO_ELIGIBILITY",
+        "OBJ_VF6_PLUS_WORTH",
+    ]
+    eligibility = scenario.objections[0]
+    assert eligibility.objection_text == (
+        "Giá vẫn hơi cao so với dự tính của chị. Ưu đãi 9% đó chị có được áp dụng không em?"
+    )
+    assert "Dạ được ạ" in eligibility.resolve_condition
+    assert "KHÔNG bắt buộc" in eligibility.resolve_condition
+    assert "policy_accuracy" in eligibility.resolve_condition
     assert scenario.upsell_rule.objection_id == "OBJ_VF6_PLUS_WORTH"
     assert len(scenario.upsell_benefits) == 4
     assert scenario.acceptable_outcomes[0].outcome_id == "close_eco"

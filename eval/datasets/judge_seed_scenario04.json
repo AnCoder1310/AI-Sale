@@ -1,5 +1,5 @@
 {
-  "dataset_version": "scenario04-judge-seeds-v2",
+  "dataset_version": "scenario04-judge-seeds-v3",
   "transcript_origin": "curated_synthetic",
   "label_source": "author_draft_needs_expert_review",
   "transcript_note": "Draft seeds using judge case/message structure; expected ranges are not approved expert_labels. Separate from the fixed five-case calibration dataset; not an adapter input.",
@@ -8,7 +8,7 @@
       "case_id": "S04_STRONG_ECO",
       "session_id": "judge-seed-s04-strong_eco",
       "scenario_id": "SCENARIO_04_VF6_ECO_PLUS_UPSELL",
-      "scenario_version": "1.1",
+      "scenario_version": "1.2",
       "label_source": "author_draft_needs_expert_review",
       "messages": [
         {
@@ -132,7 +132,7 @@
       "case_id": "S04_STRONG_PLUS",
       "session_id": "judge-seed-s04-strong_plus",
       "scenario_id": "SCENARIO_04_VF6_ECO_PLUS_UPSELL",
-      "scenario_version": "1.1",
+      "scenario_version": "1.2",
       "label_source": "author_draft_needs_expert_review",
       "messages": [
         {
@@ -276,7 +276,7 @@
       "case_id": "S04_WEAK",
       "session_id": "judge-seed-s04-weak",
       "scenario_id": "SCENARIO_04_VF6_ECO_PLUS_UPSELL",
-      "scenario_version": "1.1",
+      "scenario_version": "1.2",
       "label_source": "author_draft_needs_expert_review",
       "messages": [
         {
