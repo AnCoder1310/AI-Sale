@@ -51,7 +51,7 @@ flowchart LR
 
 Sau khi tạo `.env` và điền các biến ở phần dưới, chọn chạy Python trực tiếp hoặc Docker. Mỗi máy có database riêng; muốn chia sẻ dữ liệu cần backend và PostgreSQL hosted dùng chung.
 
-Mô hình triển khai được mô tả là Render cho backend, Vercel cho frontend và Neon cho PostgreSQL + pgvector; xem [hướng dẫn triển khai](docs/deployment.md). Mô tả tính năng trong README phản ánh mã trên nhánh hiện tại; không khẳng định các thay đổi chưa merge đã có trên bản live. URL ở đầu README không xác nhận trạng thái backend hoặc uptime.
+Mô hình triển khai được mô tả là Render cho backend, Vercel cho frontend và Neon cho PostgreSQL + pgvector; xem [hướng dẫn triển khai](docs/deployment.md). Mô tả tính năng trong README phản ánh mã trên nhánh hiện tại; không khẳng định các thay đổi chưa merge đã có trên bản live. URL ở đầu README không xác nhận trạng thái backend hoặc uptime. Chỉ mở PR vào `develop` sau khi kiểm tra deployment thật.
 
 Cần Python 3.11, Node.js 22 tương thích Vite 8 (Docker dùng Node 22), npm và OpenRouter API key có quyền gọi chat/embedding. Lời gọi thật có thể phát sinh phí.
 
