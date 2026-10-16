@@ -8,6 +8,9 @@ import { practiceApi } from '../../api/practiceApi';
 import { createId } from '../../lib/id';
 import { usePushToTalk } from '../../hooks/usePushToTalk';
 import './PracticeRoomVoice.css';
+import { NoticeDialog } from '../common/NoticeDialog';
+import { apiErrorNotice, terminationNotice } from '../../utils/practiceNotices';
+import { authApi } from '../../api/authApi';
 
 const VOICE_SEND_PREFERENCE_KEY = 'practice.voice.autoSend';
 
@@ -28,7 +31,23 @@ export function PracticeRoom({
   const [pendingReply, setPendingReply] = useState(session?.pending_customer_reply || false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [finishing, setFinishing] = useState(false);
-  const [error, setError] = useState('');
+  const [notice, setNotice] = useState(null);
+  const endedNoticeRef = useRef(null);
+  const inputRef = useRef(null);
+  const showError = (error) => {
+    console.debug('Practice request failed', { status: error.status, code: error.code, name: error.name });
+    if (error.code === 'session_finished') {
+      endedNoticeRef.current = 'rejected';
+      setTerminationStatus('completed');
+    }
+    const nextNotice = apiErrorNotice(error, terminationStatus);
+    if (nextNotice) setNotice(nextNotice);
+  };
+  useEffect(() => {
+    if (terminationStatus === 'active' || endedNoticeRef.current) return;
+    endedNoticeRef.current = terminationStatus;
+    if (!session?.result) queueMicrotask(() => setNotice((current) => current || terminationNotice(terminationStatus)));
+  }, [terminationStatus, session?.result]);
   const [mode, setMode] = useState('text');
   const [autoSendPreference, setAutoSendPreference] = useState(() => {
     try {
@@ -49,7 +68,6 @@ export function PracticeRoom({
   };
   const voiceGender = scenario?.voice_gender;
   const [transcribing, setTranscribing] = useState(false);
-  const [voiceError, setVoiceError] = useState('');
   const [speakingId, setSpeakingId] = useState(null);
 
   const chatEndRef = useRef(null);
@@ -63,15 +81,14 @@ export function PracticeRoom({
 
   const onRecorded = async (blob, durationSeconds) => {
     if (blob.size > 4_000_000) {
-      setVoiceError('Ghi âm quá lớn. Hãy nói ngắn hơn rồi thử lại.');
+      showError({ code: 'voice_invalid_audio' });
       return;
     }
-    setVoiceError('');
     setTranscribing(true);
     try {
       const result = await practiceApi.transcribeVoice(session.session_id, blob, durationSeconds);
       if (!result.transcript.trim()) {
-        setVoiceError('Không nhận dạng được lời nói. Hãy giữ nút và nói lại.');
+        showError({ code: 'voice_invalid_audio' });
         return;
       }
       setInputMessage(result.transcript);
@@ -80,7 +97,7 @@ export function PracticeRoom({
         await sendHandlerRef.current?.(result.transcript, true);
       }
     } catch (requestError) {
-      setVoiceError(requestError.message || 'Không nhận dạng được giọng nói. Hãy thử ghi lại.');
+      showError(requestError);
     } finally {
       setTranscribing(false);
     }
@@ -92,11 +109,10 @@ export function PracticeRoom({
     if (!message || message.role !== 'customer') return;
     if (automatic && modeRef.current !== 'voice') return;
     if (!voiceGender) {
-      setVoiceError('Chưa xác định được giọng khách trong tình huống này.');
+      showError({ code: 'voice_not_configured' });
       return;
     }
     const cacheKey = `${message.message_id}:${voiceGender}`;
-    setVoiceError('');
     setSpeakingId(message.message_id);
     try {
       let url = audioUrlsRef.current.get(cacheKey);
@@ -115,9 +131,7 @@ export function PracticeRoom({
       audio.onended = () => setSpeakingId(null);
       await audio.play();
     } catch (requestError) {
-      setVoiceError(requestError.name === 'NotAllowedError'
-        ? 'Trình duyệt chặn tự phát âm thanh. Nhấn “Phát giọng khách” để nghe.'
-        : requestError.status ? requestError.message : 'Không phát được giọng khách. Hãy thử lại.');
+      showError(requestError);
       setSpeakingId(null);
     }
   };
@@ -166,7 +180,7 @@ export function PracticeRoom({
     setMessages((prev) => [...prev, advisorMsg]);
     if (!fromVoice) setInputMessage('');
     setLoading(true);
-    setError('');
+    setNotice(null);
 
     try {
       const updated = await practiceApi.sendMessage(session.session_id, text);
@@ -181,7 +195,7 @@ export function PracticeRoom({
         if (customerReply?.role === 'customer') playCustomer(customerReply, true);
       }
     } catch (requestError) {
-      setError(requestError.message || 'AI Customer chưa phản hồi. Phiên đã được lưu; vui lòng thử tải lại.');
+      showError(requestError);
       try {
         const saved = await practiceApi.getSession(session.session_id);
         setMessages(saved.messages);
@@ -201,10 +215,10 @@ export function PracticeRoom({
 
   useEffect(() => { sendHandlerRef.current = handleSendMessage; });
 
-  const handleRetryReply = async () => {
-    if (!pendingReply || loading || finishing || transcribing || recorder.recordingState !== 'idle') return;
+  async function handleRetryReply() {
+    if (loading || finishing || transcribing || recorder.recordingState !== 'idle') return;
     setLoading(true);
-    setError('');
+    setNotice(null);
     try {
       const updated = await practiceApi.retryCustomerReply(session.session_id);
       setMessages(updated.messages);
@@ -217,7 +231,7 @@ export function PracticeRoom({
         if (customerReply?.role === 'customer') playCustomer(customerReply, true);
       }
     } catch (requestError) {
-      setError(requestError.message || 'AI Customer chưa phản hồi. Hãy thử lại.');
+      showError(requestError);
       try {
         const saved = await practiceApi.getSession(session.session_id);
         setMessages(saved.messages);
@@ -236,32 +250,45 @@ export function PracticeRoom({
   const handleFinishSession = async () => {
     if (loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle') return;
     setFinishing(true);
-    setError('');
+    setNotice(null);
     try {
       const resultView = await practiceApi.finishSession(session.session_id);
       onFinish(resultView);
     } catch (requestError) {
-      // The server saves the finished transcript before it asks the evaluator.
-      // A failed evaluation (or a lost response) must not strand the advisor
-      // in a room that can no longer accept messages.
-      try {
-        const saved = await practiceApi.getAttempt(session.session_id);
-        if (saved.session.termination_status !== 'active') {
-          await onSavedAttempt(session.session_id);
-          return;
-        }
-      } catch {
-        // We could not verify persistence, so keep the room and show the error.
-      }
-      setError(requestError.message || 'Không thể kết thúc phiên lúc này. Vui lòng thử lại.');
+      showError(requestError);
     } finally {
       setFinishing(false);
       setShowFinishConfirm(false);
     }
   };
 
+  const recordingErrorSeen = useRef('');
+  useEffect(() => {
+    const error = recorder.recordingError;
+    if (!error) { recordingErrorSeen.current = ''; return; }
+    if (recordingErrorSeen.current === error) return;
+    recordingErrorSeen.current = error;
+    console.debug('Practice microphone unavailable');
+    setNotice(apiErrorNotice(error.startsWith('Micro chưa') ? { name: 'NotAllowedError' } : { code: 'voice_invalid_audio' }));
+  }, [recorder.recordingError]);
+
+  const handleNoticeAction = async (id) => {
+    setNotice(null);
+    if (id === 'finish_and_score' || id === 'retry_finish') await handleFinishSession();
+    else if (id === 'view_result') await onSavedAttempt(session.session_id);
+    else if (id === 'new_session') onExit();
+    else if (id === 'retry_reply') await handleRetryReply();
+    else if (id === 'login') {
+      try { await authApi.logout(); } finally { window.location.reload(); }
+    } else if (id === 'type_instead') {
+      setMode('text');
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  };
+
   return (
     <div className="practice-room-container">
+      <NoticeDialog notice={notice} onAction={handleNoticeAction} onClose={() => setNotice(null)} />
       {/* ROOM HEADER */}
       <div className="practice-room-header">
         <div className="practice-room-header-main">
@@ -411,19 +438,18 @@ export function PracticeRoom({
 
       {/* INPUT BAR */}
       <div className="practice-room-composer">
-        {error && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{error}</p>}
         {pendingReply && (
           <div className="practice-room-retry">
             <span style={{ fontSize: '0.82rem' }}>Tin nhắn đã lưu. Khách hàng chưa phản hồi.</span>
             <button className="btn-primary" onClick={handleRetryReply} disabled={loading || finishing || transcribing || recorder.recordingState !== 'idle'}>Thử lại phản hồi</button>
           </div>
         )}
-        {(voiceError || recorder.recordingError) && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{voiceError || recorder.recordingError}</p>}
         {terminationStatus !== 'active' && <p role="status" style={{ fontSize: '0.82rem', marginBottom: 8, color: terminationStatus === 'advisor_misconduct' ? '#991B1B' : undefined }}>{terminationStatus === 'advisor_misconduct'
           ? 'Phiên luyện tập đã dừng do ngôn từ không phù hợp.'
           : 'Cuộc trò chuyện đã kết thúc. Hãy xem đánh giá.'}</p>}
         <div className="practice-room-composer-form">
           <textarea
+            ref={inputRef}
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyDown={(e) => {
