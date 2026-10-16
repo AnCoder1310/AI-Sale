@@ -124,9 +124,9 @@ graph LR
 
 ## Design Decisions
 
-| Decision | Choice | Reason |
+| Quyết định | Lựa chọn | Lý do |
 |----------|--------|--------|
-| Framework | FastAPI | Async, auto-docs, type-safe |
+| Framework | FastAPI | Bất đồng bộ, tự sinh tài liệu API (Swagger), kiểm tra kiểu dữ liệu |
 | Agent | LangGraph | Quản lý state và conditional routing rõ ràng; Practice cần checkpoint theo phiên |
 | Database | SQLite (dev) / PostgreSQL (Docker, hosted) | SQLite chạy nhanh không cần dịch vụ; PostgreSQL dùng chung một nơi lưu và hỗ trợ pgvector |
 | Vector store | Chroma / pgvector | Chroma đơn giản cho local; pgvector gom SQL và vector vào một database khi triển khai |

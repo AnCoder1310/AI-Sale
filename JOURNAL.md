@@ -15,7 +15,7 @@
 
 > Tổng hợp hồi cứu theo tuần ISO từ ngày commit của thành viên (19/09–17/10/2026), không tính commit khởi tạo của bot. Mục tiêu được diễn đạt từ phạm vi commit, không phải kế hoạch đã được nhóm xác nhận trước tuần; “hoàn thành” nghĩa là đã commit, không tự khẳng định kiểm thử đạt.
 
-## Week 1 — 2026-W38: 2026-09-14 - 2026-09-20
+## Tuần 1 — 2026-W38: 2026-09-14 - 2026-09-20
 
 ### Mục tiêu tuần này
 - Cập nhật thông tin nhóm, vai trò và tài liệu bàn giao Gate 1.
@@ -37,7 +37,7 @@
 
 ---
 
-## Week 2 — 2026-W39: 2026-09-21 - 2026-09-27
+## Tuần 2 — 2026-W39: 2026-09-21 - 2026-09-27
 
 ### Mục tiêu tuần này
 - Phân công theo roadmap; chốt hợp đồng dữ liệu, schema, rubric và trạng thái khách hàng; điều chỉnh package backend.
@@ -61,7 +61,7 @@
 
 ---
 
-## Week 3 — 2026-W40: 2026-09-28 - 2026-10-04
+## Tuần 3 — 2026-W40: 2026-09-28 - 2026-10-04
 
 ### Mục tiêu tuần này
 - Xây dựng và tích hợp Copilot/Practice MVP, corpus/evaluation, auth/lịch sử/review, frontend thật, CI và tài liệu Gate 2.
@@ -95,7 +95,7 @@
 
 ---
 
-## Week 4 — 2026-W41: 2026-10-05 - 2026-10-11
+## Tuần 4 — 2026-W41: 2026-10-05 - 2026-10-11
 
 ### Mục tiêu tuần này
 - Bổ sung benchmark Gate 3/4, Docker/PostgreSQL/Neon, voice mode và assignments/team performance; tích hợp frontend và develop.
@@ -121,7 +121,7 @@
 
 ---
 
-## Week 5 — 2026-W42: 2026-10-12 - 2026-10-18
+## Tuần 5 — 2026-W42: 2026-10-12 - 2026-10-18
 
 ### Mục tiêu tuần này
 - Cập nhật UI/hosting/Copilot, hội thoại giọng nói, injection hardening, phục hồi attempt và scenario 04 với outcome/upsell/policy/judge riêng.

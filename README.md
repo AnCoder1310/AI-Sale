@@ -8,9 +8,11 @@ TODO (team): ảnh chụp màn hình Practice Room / Copilot / Manager.
 
 ## Vấn đề
 
-Tư vấn viên VinFast mới phải nhớ lượng lớn thông số xe, chính sách pin/sạc, giá và biểu phí, nhưng khó tra cứu nhanh có nguồn khi đang nói chuyện với khách. Họ cũng ít cơ hội luyện xử lý từ chối và lo ngại chi phí với nhiều kiểu khách khác nhau, còn quản lý khó chấm và theo dõi năng lực từng người một cách nhất quán.
+Tư vấn viên bán hàng mới thường cần quản lý kèm cặp trực tiếp trong lúc trò chuyện với khách. Cách làm này tốn chi phí và thời gian của quản lý, trong khi những sai sót không được hướng dẫn kịp thời — như nói sai thông số xe, giá hay chính sách — làm giảm lòng tin của khách và khiến mất cơ hội bán hàng. Tư vấn viên cũng phải nắm lượng lớn thông số xe, chính sách pin/sạc, giá và biểu phí thay đổi liên tục, nhưng khó tra cứu nhanh có nguồn khi đang tư vấn.
 
 ## Giải pháp
+
+Ứng dụng cung cấp một môi trường luyện tập riêng, nơi tư vấn viên luyện đi luyện lại các tình huống với khách hàng AI để nâng cao năng lực trước khi gặp khách thật. Đồng thời, ứng dụng giúp quản lý giám sát gọn hơn: thay vì kèm cặp trực tiếp từng cuộc trò chuyện, quản lý xem lại transcript và bản đánh giá của từng buổi luyện tập một cách bất đồng bộ, rồi đưa ra nhận xét có trọng tâm trong thời gian ngắn hơn nhiều.
 
 MVP gồm **Copilot** tra cứu kiến thức xe/chính sách có trích nguồn và **Practice Room** trò chuyện nhiều lượt với AI Customer, nhận đánh giá có dẫn chứng từ transcript. Advisor xem lịch sử và bài được giao; manager giao kịch bản, xem hàng đợi, transcript, duyệt/sửa đánh giá và theo dõi năng lực đội ngũ từ các bài đã duyệt. Đây là sản phẩm học tập dùng corpus công khai và khách hàng giả lập, không phải kênh công bố chính sách chính thức của VinFast.
 
