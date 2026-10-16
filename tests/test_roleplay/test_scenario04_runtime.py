@@ -73,7 +73,10 @@ def state(scenario):
 
 
 def links(*ids):
-    return [LinkedBenefit(benefit_id=key, need_fact_key="visible_goals") for key in ids]
+    return [
+        LinkedBenefit(benefit_id=key, need_fact_key="parking" if key == "camera_360" else "visible_goals")
+        for key in ids
+    ]
 
 
 @pytest.mark.parametrize(
@@ -95,6 +98,7 @@ def test_keyword_triggered_objection_has_word_boundaries(scenario, state, messag
     ],
 )
 def test_upsell_rule_requires_distinct_benefits_and_safety(scenario, state, benefits, resolved):
+    state.revealed_facts = ["parking"]
     updated = apply_turn_analysis(state, scenario, "Plus", TurnAnalysis(linked_benefits=links(*benefits)))
     assert (UPSELL in updated.resolved_objections) is resolved
     assert (UPSELL in updated.unresolved_objections) is not resolved
@@ -110,6 +114,7 @@ def test_analyzer_cannot_bypass_upsell_rule(scenario, state):
 
 
 def test_benefit_links_and_policy_mentions_accumulate_and_deduplicate(scenario, state):
+    state.revealed_facts = ["parking"]
     first = apply_turn_analysis(
         state,
         scenario,
@@ -195,7 +200,8 @@ async def test_acceptance_cannot_resolve_upsell_objection_without_benefits():
     await graph.continue_session("session", "Mình lái thử nhé?")
     saved = await graph.get_session_state("session")
     assert saved.closing_outcome == "close_eco"
-    assert UPSELL in saved.unresolved_objections
+    assert UPSELL not in saved.resolved_objections
+    assert UPSELL not in saved.active_objections
 
 
 @pytest.mark.asyncio
@@ -464,3 +470,143 @@ def test_guardrail_normalizes_combining_accents_and_compound_diacritics():
     assert check_advisor_message("dot nha").level == "end_session"
     for text in ("Chị ngủ ngon nhé.", "Các xe lớn đều đeo dây an toàn.", "Đồ điện chính hãng."):
         assert check_advisor_message(text).level == "ok"
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Chị rảnh hôm nào cho em hẹn lái thử ạ?",
+        "Chị cho anh số điện thoại nhé",
+        "Bãi nào cũng đỗ được",
+        "Chị sạc qua đêm tại nhà, cuối tuần đi lái thử với em nhé",
+        "Chị cứ ngủ ngon, mai lái thử với em",
+        "cac phien ban VF 6 deu co",
+        "cop xe lon",
+        "xe chay do dien",
+        "VF 6 co hai phien ban Eco va Plus",
+        "Gia xe duoc niem yet tai showroom",
+        "Em gui chi bang gia chi tiet",
+        "Pin xe co the sac tai nha",
+        "Chi hen lai thu vao sang mai nhe",
+        "Bao hanh theo chinh sach cua hang",
+        "Cac thong so ky thuat deu co trong tai lieu",
+        "Cop xe lon de du hanh ly gia dinh",
+        "Chi can bao nhieu cho ngoi",
+        "Xe chay do dien nen khong can xang",
+        "Ben em ho tro ho so tra gop",
+        "Buoi sang em gui thong tin sac pin",
+        "Bai nao cung co cho do xe rong",
+        "Khi nao cho em hen lai thu",
+        "Chi cho anh so dien thoai nhe",
+    ],
+)
+def test_guardrail_allows_accented_and_ascii_sales_regressions(message):
+    assert check_advisor_message(message).level == "ok"
+
+
+@pytest.mark.parametrize(
+    "message", ["ngủ với anh", "qua đêm với em", "oc cho", "thieu nang", "bac ky", "vcl", "clgt", "cmm"]
+)
+def test_guardrail_keeps_unambiguous_abuse(message):
+    assert check_advisor_message(message).level == "end_session"
+
+
+@pytest.mark.asyncio
+async def test_customer_can_quote_active_objection_figures(scenario, state):
+    state.active_objections = [UPSELL]
+    state.messages = [RoleplayMessage(role="advisor", content="Chào chị, chị lấy Plus luôn nhé?")]
+    model = CustomerModel({"reply": "Plus đắt hơn gần 50 triệu", "raised_objection_id": UPSELL})
+    turn = await CustomerAgent(model).generate_turn(scenario, state, mode="response")
+    assert "50 triệu" in turn.message.content
+    assert model.calls == 1
+
+
+def test_benefit_links_require_the_configured_need(scenario, state):
+    state.revealed_facts = ["budget", "driving_experience"]
+    analysis = TurnAnalysis(
+        linked_benefits=[
+            LinkedBenefit(benefit_id="adas", need_fact_key="budget"),
+            LinkedBenefit(benefit_id="airbags_7", need_fact_key="visible_goals"),
+        ]
+    )
+    updated = apply_turn_analysis(state, scenario, "Plus", analysis)
+    assert updated.linked_benefits == links("airbags_7")
+    assert UPSELL not in updated.resolved_objections
+    assert next(b for b in scenario.upsell_benefits if b.benefit_id == "airbags_7").linked_need_fact_keys == []
+
+
+@pytest.mark.asyncio
+async def test_accepted_eco_retires_upsell_without_credit_or_dropout():
+    graph, _, _, _ = runtime(
+        analyses=[{}, {"next_step_attempted": True}, {}, {}, {}],
+        replies=[
+            {"reply": "Plus có đáng không?", "raised_objection_id": UPSELL},
+            {"reply": "Chị đồng ý lái thử Eco.", "accepted_next_step": True, "accepted_outcome_id": "close_eco"},
+            {"reply": "Chị hẹn gặp em."},
+            {"reply": "Chị cảm ơn."},
+            {"reply": "Chị chào em."},
+        ],
+    )
+    await graph.start("session", SCENARIO_ID)
+    await graph.continue_session("session", "Chị xem Plus nhé.")
+    await graph.continue_session("session", "Mình chốt Eco và hẹn lái thử nhé?")
+    for _ in range(3):
+        view = await graph.continue_session("session", "Em gửi lịch, cả thông tin Plus để tham khảo nhé.")
+        assert view["termination_status"] == "active"
+        assert view["closing_outcome"] == "close_eco"
+    saved = await graph.get_session_state("session")
+    assert UPSELL not in saved.active_objections
+    assert UPSELL not in saved.resolved_objections
+
+
+@pytest.mark.parametrize("scenario_id,address", [("SCENARIO_01_VF5_TAXI", "Anh"), (SCENARIO_ID, "Chị")])
+@pytest.mark.asyncio
+async def test_misconduct_reply_matches_persona(scenario_id, address):
+    graph, _, _, _ = runtime()
+    await graph.start("session", scenario_id)
+    view = await graph.continue_session("session", "Đm đồ ngu")
+    assert view["messages"][-1]["content"] == f"{address} nghĩ mình nên dừng cuộc trao đổi ở đây. Chào em."
+
+
+def test_model_disclosure_contract_has_no_unreachable_fields(scenario, state):
+    from src.agents.roleplay.customer_agent import CustomerModelOutput
+    from src.agents.roleplay.prompts import CUSTOMER_SYSTEM_PROMPT
+
+    assert "disclosed_fact_keys" not in CustomerModelOutput.model_fields
+    assert "pending_disclosures" not in CustomerAgent._build_context(scenario, state, mode="response")
+    assert "disclosed_fact_keys" not in CUSTOMER_SYSTEM_PROMPT
+
+
+@pytest.mark.parametrize("source", ["visible_context", "customer_goals"])
+@pytest.mark.asyncio
+async def test_customer_can_quote_visible_scenario_figures(scenario, state, source):
+    scenario = scenario.model_copy(update={source: "Khách cân nhắc giá chênh 42 triệu."})
+    model = CustomerModel({"reply": "Chênh 42 triệu thì chị cần cân nhắc."})
+    turn = await CustomerAgent(model).generate_turn(scenario, state, mode="response")
+    assert "42 triệu" in turn.message.content
+
+
+@pytest.mark.asyncio
+async def test_inactive_objection_does_not_authorize_figures(scenario, state):
+    model = CustomerModel({"reply": "Plus đắt hơn gần 50 triệu"}, {"reply": "Chị cân nhắc thêm."})
+    turn = await CustomerAgent(model).generate_turn(scenario, state, mode="response")
+    assert turn.message.content == "Chị cân nhắc thêm."
+    assert model.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_guardrail_warning_is_logged_without_message_text(caplog):
+    graph, _, _, analyzer = runtime(analyses=[{}], replies=[{"reply": "Chị xem thêm nhé."}])
+    await graph.start("session", SCENARIO_ID)
+    await graph.continue_session("session", "Chém gió chút thôi")
+    assert "Advisor guardrail warning: session_id=session category=mild_unprofessional" in caplog.text
+    assert "Chém gió" not in caplog.text
+    assert analyzer.calls == 1
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["Chị cứ khi nao cho em lịch hẹn nhé", "Bãi bai nao cũng rộng", "Chị cho anh so điện thoại", "dap may sac se hu"],
+)
+def test_ambiguous_folded_phrases_do_not_terminate(message):
+    assert check_advisor_message(message).level == "ok"
