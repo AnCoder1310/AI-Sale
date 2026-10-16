@@ -6,7 +6,7 @@ const ids = (notice) => notice.actions.map((action) => action.id);
 const cases = [
   ['provider_unavailable', 'Khách hàng chưa phản hồi', 'Tin nhắn của bạn đã được lưu, hãy thử lại.', ['retry_reply', 'close']],
   ['evaluation_failed', 'Chưa thể chấm điểm', 'Chưa thể chấm điểm lúc này. Vui lòng thử lại.', ['retry_finish', 'close']],
-  ...['voice_not_configured', 'voice_failed', 'voice_invalid_audio'].map((code) => [code, 'Không dùng được giọng nói', 'Vui lòng nhập bằng bàn phím.', ['type_instead', 'close']]),
+  ...['voice_not_configured', 'voice_failed'].map((code) => [code, 'Không dùng được giọng nói', 'Vui lòng nhập bằng bàn phím.', ['type_instead', 'close']]),
 ];
 for (const [code, title, message, actionIds] of cases) {
   test(`${code}: exact copy and actions without technical details`, () => {
@@ -72,4 +72,28 @@ test('misconduct has no message and offers results only when already scored', ()
     assert.equal('message' in notice, false);
     assert.deepEqual(ids(notice), [scored ? 'view_result' : 'finish_and_score', 'new_session']);
   }
+});
+
+test('message_not_sent preserves resend intent', () => {
+  const notice = apiErrorNotice({ code: 'message_not_sent' });
+  assert.equal(notice.title, 'Chưa gửi được tin nhắn');
+  assert.equal(notice.message, 'Vui lòng gửi lại.');
+  assert.deepEqual(ids(notice), ['resend', 'close']);
+  assert.equal(notice.actions[0].kind, 'primary');
+});
+test('conflicts display curated Vietnamese detail', () => {
+  for (const code of ['assignment_conflict', 'review_conflict']) {
+    const notice = apiErrorNotice({ code, detail: 'Bài này đã được cập nhật.' });
+    assert.equal(notice.message, 'Bài này đã được cập nhật.');
+    assert.deepEqual(ids(notice), ['close']);
+  }
+});
+test('playback and recording slips have no dialog', () => {
+  for (const error of [
+    { context: 'playback', name: 'NotAllowedError' },
+    { context: 'playback', name: 'AbortError' },
+    { context: 'playback', name: 'Error' },
+    { context: 'recording', name: 'Error' },
+    { code: 'voice_invalid_audio' }, { code: 'voice_empty_transcript' },
+  ]) assert.equal(apiErrorNotice(error), null);
 });

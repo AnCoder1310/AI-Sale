@@ -3,7 +3,7 @@ const labels = {
   finish_and_score: 'Kết thúc & Chấm điểm', review_transcript: 'Xem hội thoại',
   view_result: 'Xem kết quả', new_session: 'Luyện tập phiên mới',
   retry_reply: 'Thử lại phản hồi', retry_finish: 'Thử chấm điểm lại',
-  type_instead: 'Nhập bằng bàn phím', login: 'Đăng nhập lại', close: 'Đóng',
+  resend: 'Gửi lại', type_instead: 'Nhập bằng bàn phím', login: 'Đăng nhập lại', close: 'Đóng',
 };
 const actions = (ids) => ids.map((id, index) => ({ id, label: labels[id], kind: index ? 'secondary' : 'primary' }));
 
@@ -23,10 +23,13 @@ export function terminationNotice(status, { scored = false } = {}) {
 // Null means the UI already prevents this case; callers only log it for developers.
 export function apiErrorNotice(error = {}, termination = null) {
   const code = error.status === 401 ? 'unauthenticated' : error.code;
+  if (error.context === 'playback' || (error.context === 'recording' && !['NotAllowedError', 'NotFoundError'].includes(error.name)) || ['voice_invalid_audio', 'voice_empty_transcript'].includes(code)) return null;
+  if (code === 'message_not_sent') return { tone: 'error', title: 'Chưa gửi được tin nhắn', message: 'Vui lòng gửi lại.', actions: actions(['resend', 'close']), dismissible: true };
+  if (['assignment_conflict', 'review_conflict'].includes(code)) return { tone: 'warning', title: 'Không thể cập nhật', message: error.detail || GENERIC_PRACTICE_ERROR, actions: actions(['close']), dismissible: true };
   if (code === 'session_busy' || code === 'voice_too_long') return null;
   if (code === 'session_finished') return terminationNotice(termination);
   if (code === 'unauthenticated') return { tone: 'warning', title: 'Phiên đăng nhập đã hết hạn', actions: actions(['login']), dismissible: false };
-  if (['voice_not_configured', 'voice_failed', 'voice_invalid_audio'].includes(code) || ['NotAllowedError', 'NotFoundError'].includes(error.name)) {
+  if (['voice_not_configured', 'voice_failed'].includes(code) || ['NotAllowedError', 'NotFoundError'].includes(error.name)) {
     return { tone: 'warning', title: 'Không dùng được giọng nói', message: 'Vui lòng nhập bằng bàn phím.', actions: actions(['type_instead', 'close']), dismissible: true };
   }
   if (code === 'provider_unavailable') return { tone: 'error', title: 'Khách hàng chưa phản hồi', message: 'Tin nhắn của bạn đã được lưu, hãy thử lại.', actions: actions(['retry_reply', 'close']), dismissible: true };

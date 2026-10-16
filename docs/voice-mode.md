@@ -25,9 +25,11 @@ The `practice_voice_usage` SQL table records each successful STT or TTS call wit
 
 ## Failure and retry behavior
 
-- Denied microphone permission, missing browser recording support, empty audio, or interrupted recording leaves the current Practice turn unchanged.
+- Only microphone access denied/unavailable (`NotAllowedError` or `NotFoundError` from getUserMedia) and backend `voice_not_configured`/`voice_failed` show the **Không dùng được giọng nói** dialog. Missing browser recording support, empty transcripts, short/silent audio, and other recorder failures show an inline retry hint and leave the draft and turn unchanged.
 - A failed transcription shows a retry message. The manual send setting leaves recognized text editable before sending. The automatic setting sends recognized text on release; empty recognized speech is counted as an STT call but does not advance the role-play.
-- A failed customer TTS call does not roll back the already saved customer reply. The advisor can retry playback or continue in Text Mode.
+- Browser playback failures, including autoplay denial and interrupted playback, only show **Nhấn nút loa để nghe lại.** inline and log console.debug; they never open a dialog or change mode. Backend TTS configuration/provider failures use the voice dialog. The saved customer reply remains available for replay.
+- A `message_not_sent` failure keeps/restores the composer draft and offers **Gửi lại** for the same text. Drafts clear only after successful sending or confirmation that the advisor message was saved.
+- Finish failures refresh the saved session and attempt: ended rooms disable input/recording, saved results reopen, and missing evaluations keep **Thử chấm điểm lại** available.
 - If customer reply generation fails after an advisor message is saved, the Practice Room displays **Thử lại phản hồi**. Retry generates only the missing customer reply; it does not resend or reanalyze the advisor message. In voice mode, a successful retry also plays the new customer reply. Sending another message or finishing is blocked until the pending reply is resolved.
 - Customer audio is cached only in the current browser view for replay, then released when leaving the room. Recording audio is not written to the database.
 
