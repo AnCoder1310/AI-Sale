@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -115,6 +116,22 @@ class RoleplayEvaluator:
         closing_outcome = getattr(state, "closing_outcome", None)
         context["final_state"]["closing_outcome"] = closing_outcome
         misconduct = str(state.termination_status) == "advisor_misconduct"
+        # Early sessions may offer no policy evidence. Never force the judge to
+        # invent transcript citations solely because the scenario lists policies.
+        policy_discussed = any(
+            claim.category in {"policy", "price", "promotion", "warranty"} for claim in state.factual_claims
+        ) or any(
+            message.role == "advisor"
+            and re.search(
+                r"chính sách|giá|ưu đãi|khuyến mãi|chiết khấu|bảo hành|vay|lãi suất|policy|price|warranty",
+                message.content,
+                re.I,
+            )
+            for message in state.messages
+        )
+        context["policy_assessment_required"] = bool(
+            scenario.policy_expectations and policy_discussed and not misconduct
+        )
         try:
             for attempt in range(2):
                 raw_draft = await self._model.evaluate(
@@ -128,7 +145,7 @@ class RoleplayEvaluator:
                             if evaluation.score is not None:
                                 evaluation.score = 1
                         draft.summary_weaknesses = ["Phiên luyện tập kết thúc do hành vi sai phạm của tư vấn viên."]
-                    if scenario.policy_expectations and any(
+                    if context["policy_assessment_required"] and any(
                         item.criterion is CriterionType.POLICY_ACCURACY and item.status is not CriterionStatus.ASSESSED
                         for item in draft.evaluations
                     ):
@@ -139,13 +156,21 @@ class RoleplayEvaluator:
                     self._validate_factual_sources(draft, state.messages, knowledge_evidence)
                     break
                 except EvaluationError as exc:
-                    # A single correction attempt for invalid transcript references.
+                    # A single correction attempt for repairable judge mistakes.
                     # The validator still rejects an invalid second draft.
                     if attempt or not (
                         str(exc).startswith("evidence quote is not exact")
                         or str(exc).startswith("evidence references unknown message_id")
+                        or str(exc).startswith("policy_accuracy must be assessed")
                     ):
                         raise
+                    if str(exc).startswith("policy_accuracy must be assessed"):
+                        context["correction_required"] = (
+                            "policy_accuracy must be assessed because the advisor discussed policy/price "
+                            "and the scenario has policy expectations. Return assessed with a score from 1 to 3 "
+                            "and exact transcript evidence; cite the relevant advisor policy/price turn."
+                        )
+                        continue
                     context["correction_required"] = (
                         "Your previous draft used an invalid transcript quote or message_id. "
                         "Copy each message_id and quote verbatim from the supplied transcript. "

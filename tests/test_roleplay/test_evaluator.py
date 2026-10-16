@@ -436,3 +436,58 @@ async def test_expected_policies_cannot_be_unassessed(scenario, completed_state)
         await RoleplayEvaluator(CapturingEvaluationModel(evaluation_output())).evaluate(
             scenario, completed_state, approved_evidence()
         )
+
+
+@pytest.mark.asyncio
+async def test_one_turn_misconduct_allows_unassessed_policy(scenario, completed_state):
+    scenario.policy_expectations = ScenarioRepository().get(scenario.scenario_id).policy_expectations
+    completed_state.termination_status = TerminationStatus.ADVISOR_MISCONDUCT
+    completed_state.messages = [RoleplayMessage(message_id="advisor-1", role="advisor", content="Đồ ngu")]
+    completed_state.factual_claims = []
+    output = evaluation_output()
+    output["evaluations"][0]["evidence"][0]["quote"] = "Đồ ngu"
+    output["factual_findings"] = []
+    result = await RoleplayEvaluator(CapturingEvaluationModel(output)).evaluate(scenario, completed_state, [])
+    assert result.evaluations[3].score is None
+
+
+@pytest.mark.asyncio
+async def test_policy_requirement_retries_with_specific_correction(scenario, completed_state):
+    scenario.policy_expectations = ScenarioRepository().get(scenario.scenario_id).policy_expectations
+
+    class CorrectingModel(CapturingEvaluationModel):
+        async def evaluate(self, *, system_prompt, context):
+            self.calls.append(context.copy())
+            output = evaluation_output()
+            if len(self.calls) == 2:
+                policy = next(item for item in output["evaluations"] if item["criterion"] == "policy_accuracy")
+                policy.update(
+                    status="assessed",
+                    score=1,
+                    evidence=[{"message_id": "advisor-2", "quote": completed_state.messages[-1].content}],
+                )
+            return output
+
+    model = CorrectingModel(None)
+    await RoleplayEvaluator(model).evaluate(scenario, completed_state, approved_evidence())
+    assert len(model.calls) == 2
+    assert "policy_accuracy" in model.calls[1]["correction_required"]
+
+
+@pytest.mark.asyncio
+async def test_no_policy_discussion_allows_unassessed_or_evidenced_missed_opportunity(scenario, completed_state):
+    scenario.policy_expectations = ScenarioRepository().get(scenario.scenario_id).policy_expectations
+    completed_state.messages[-1].content = "Anh có muốn đặt lịch lái thử không?"
+    completed_state.factual_claims = []
+    output = evaluation_output()
+    output["factual_findings"] = []
+    model = CapturingEvaluationModel(output)
+    await RoleplayEvaluator(model).evaluate(scenario, completed_state, [])
+    policy = next(item for item in output["evaluations"] if item["criterion"] == "policy_accuracy")
+    policy.update(
+        status="assessed",
+        score=1,
+        evidence=[{"message_id": "advisor-2", "quote": completed_state.messages[-1].content}],
+    )
+    result = await RoleplayEvaluator(model).evaluate(scenario, completed_state, [])
+    assert next(item for item in result.evaluations if item.criterion is CriterionType.POLICY_ACCURACY).score == 1
