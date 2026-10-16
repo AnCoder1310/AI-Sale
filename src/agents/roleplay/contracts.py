@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.models.evaluation import SessionEvaluationResult
 
@@ -51,7 +51,11 @@ ObjectionStage = Literal[
 ]
 
 
-class DisclosureRule(BaseModel):
+class ScenarioModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class DisclosureRule(ScenarioModel):
     fact_key: str = Field(min_length=1)
     trigger_intent: str = Field(
         ...,
@@ -65,20 +69,63 @@ class DisclosureRule(BaseModel):
     revealed_statement: str = Field(min_length=1)
 
 
-class ObjectionContract(BaseModel):
+class ObjectionContract(ScenarioModel):
     objection_id: str = Field(min_length=1)
-    trigger_stage: ObjectionStage
+    trigger_stage: ObjectionStage | None = None
+    trigger_keywords: list[str] = Field(default_factory=list)
     objection_text: str = Field(min_length=1)
     resolve_condition: str = Field(min_length=1)
     ideal_sales_response: str | None = None
 
+    @model_validator(mode="after")
+    def validate_trigger(self) -> "ObjectionContract":
+        if any(not keyword.strip() for keyword in self.trigger_keywords):
+            raise ValueError("trigger_keywords must not contain blank keywords")
+        if self.trigger_stage is None and not self.trigger_keywords:
+            raise ValueError("objection requires at least one trigger")
+        return self
 
-class TerminationConditions(BaseModel):
-    max_turns: int = Field(gt=0)
+
+class AcceptableOutcome(ScenarioModel):
+    outcome_id: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+    product: str
+    requires_resolved_objections: list[str] = Field(default_factory=list)
+    preferred: bool = False
+
+
+def default_acceptable_outcomes() -> list[AcceptableOutcome]:
+    """Compute a fresh legacy closing outcome without guessing a product."""
+    return [AcceptableOutcome(outcome_id="close", label="Chốt bước tiếp theo", product="")]
+
+
+class UpsellBenefit(ScenarioModel):
+    benefit_id: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    safety: bool
+    linked_need_fact_keys: list[str] = Field(default_factory=list)
+
+
+class UpsellRule(ScenarioModel):
+    objection_id: str = Field(min_length=1)
+    min_linked: int = Field(ge=1)
+    min_safety: int = Field(ge=0)
+
+
+class PolicyExpectation(ScenarioModel):
+    policy_id: str = Field(min_length=1)
+    level: Literal["expected", "bonus"]
+    description: str = Field(min_length=1)
+    source_ids: list[str]
+    requires_eligibility_check: bool = False
+
+
+class TerminationConditions(ScenarioModel):
+    max_turns: int = Field(ge=1, le=15)
     drop_out_trigger: str = Field(min_length=1)
 
 
-class ScenarioContract(BaseModel):
+class ScenarioContract(ScenarioModel):
     scenario_id: str = Field(min_length=1)
     title: str = Field(min_length=1)
     difficulty: str = Field(min_length=1)
@@ -96,6 +143,10 @@ class ScenarioContract(BaseModel):
     expected_discovery: str = Field(min_length=1)
     success_conditions: str = Field(min_length=1)
     termination_conditions: TerminationConditions
+    acceptable_outcomes: list[AcceptableOutcome] = Field(default_factory=default_acceptable_outcomes, min_length=1)
+    upsell_benefits: list[UpsellBenefit] = Field(default_factory=list)
+    upsell_rule: UpsellRule | None = None
+    policy_expectations: list[PolicyExpectation] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_scenario_references(self) -> "ScenarioContract":
@@ -116,6 +167,25 @@ class ScenarioContract(BaseModel):
         objection_ids = [objection.objection_id for objection in self.objections]
         if len(objection_ids) != len(set(objection_ids)):
             raise ValueError("objection_id values must be unique within a scenario")
+
+        outcome_ids = [outcome.outcome_id for outcome in self.acceptable_outcomes]
+        if len(outcome_ids) != len(set(outcome_ids)):
+            raise ValueError("outcome_id values must be unique within a scenario")
+        for outcome in self.acceptable_outcomes:
+            if set(outcome.requires_resolved_objections) - set(objection_ids):
+                raise ValueError("acceptable outcomes reference unknown objection ids")
+
+        benefit_ids = [benefit.benefit_id for benefit in self.upsell_benefits]
+        if len(benefit_ids) != len(set(benefit_ids)):
+            raise ValueError("benefit_id values must be unique within a scenario")
+        for benefit in self.upsell_benefits:
+            if set(benefit.linked_need_fact_keys) - self.hidden_facts.keys():
+                raise ValueError("upsell benefits reference unknown hidden facts")
+        if self.upsell_rule is not None:
+            if self.upsell_rule.objection_id not in objection_ids:
+                raise ValueError("upsell_rule references unknown objection id")
+            if not self.upsell_benefits:
+                raise ValueError("upsell_rule requires non-empty upsell_benefits")
 
         normalized_context = self.visible_context.casefold()
         leaked_fact_keys = [
