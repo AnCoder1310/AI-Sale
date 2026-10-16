@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TypedDict
 
 from langgraph.graph import END, StateGraph
@@ -16,6 +17,8 @@ from .scenario_loader import ScenarioNotFoundError, ScenarioRepository
 from .state import ConversationStage, EvaluationStatus, RoleplayMessage, RoleplayState, TerminationStatus
 from .state_reducer import apply_turn_analysis
 from .turn_analyzer import TurnAnalysis, TurnAnalyzer
+
+logger = logging.getLogger(__name__)
 
 
 class RoleplayRuntimeState(TypedDict, total=False):
@@ -59,6 +62,12 @@ def build_roleplay_turn_graph(
                 "analysis": TurnAnalysis(unsafe_or_abusive=True),
                 "misconduct_category": verdict.category or "code_abuse",
             }
+        if verdict.level == "warn":
+            logger.warning(
+                "Advisor guardrail warning: session_id=%s category=%s",
+                state["roleplay_state"].session_id,
+                verdict.category,
+            )
         analysis = await analyzer.analyze(
             state["advisor_message"],
             state["scenario"],
@@ -80,7 +89,8 @@ def build_roleplay_turn_graph(
             category = state.get("misconduct_category", "semantic_abuse")
             updated.misconduct_reason = category
             updated.termination_reason = f"Advisor misconduct: {category}."
-            reply = "Chị nghĩ mình nên dừng cuộc trao đổi ở đây. Chào em."
+            address = customer_agent.persona_address(state["scenario"])
+            reply = f"{address} nghĩ mình nên dừng cuộc trao đổi ở đây. Chào em."
             updated.messages.append(RoleplayMessage(role="customer", content=reply))
             return {"roleplay_state": updated, "customer_reply": reply}
         return {"roleplay_state": updated}
@@ -123,6 +133,18 @@ def build_roleplay_turn_graph(
                 turn.accepted_outcome_id, state["scenario"], prior
             )
             rule = state["scenario"].upsell_rule
+            outcome = next(
+                (item for item in state["scenario"].acceptable_outcomes if item.outcome_id == updated.closing_outcome),
+                None,
+            )
+            if rule and outcome and rule.objection_id not in outcome.requires_resolved_objections:
+                # Closing the base product declines the upsell; no resolution credit.
+                # closing_outcome preserves the reason, and removing unresolved
+                # prevents keyword/stage activation on later turns.
+                updated.active_objections = [key for key in updated.active_objections if key != rule.objection_id]
+                updated.unresolved_objections = [
+                    key for key in updated.unresolved_objections if key != rule.objection_id
+                ]
             if accepted_id is not None and (rule is None or accepted_id != rule.objection_id):
                 objection_id = accepted_id
                 updated.active_objections.remove(objection_id)
