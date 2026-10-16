@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, SendIcon, FlagIcon, TargetIcon, MicIcon, UsersIcon, VoiceModeIcon, SpeakerIcon, CloseIcon } from '../common/Icons';
+import { ChevronLeft, SendIcon, FlagIcon, TargetIcon, MicIcon, UsersIcon, PhoneIcon, SpeakerIcon } from '../common/Icons';
 import { Badge } from '../common/Badge';
 import { getVehicleImage } from '../../data/vehicleData';
 import { Button } from '../common/Button';
@@ -7,6 +7,9 @@ import { Modal } from '../common/Modal';
 import { practiceApi } from '../../api/practiceApi';
 import { createId } from '../../lib/id';
 import { usePushToTalk } from '../../hooks/usePushToTalk';
+import './PracticeRoomVoice.css';
+
+const VOICE_SEND_PREFERENCE_KEY = 'practice.voice.autoSend';
 
 export function PracticeRoom({
   scenario,
@@ -27,6 +30,23 @@ export function PracticeRoom({
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState('');
   const [mode, setMode] = useState('text');
+  const [autoSendPreference, setAutoSendPreference] = useState(() => {
+    try {
+      const saved = localStorage.getItem(VOICE_SEND_PREFERENCE_KEY);
+      return saved !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const autoSend = autoSendPreference;
+  const chooseAutoSend = (value) => {
+    setAutoSendPreference(value);
+    try {
+      localStorage.setItem(VOICE_SEND_PREFERENCE_KEY, String(value));
+    } catch {
+      // Storage may be unavailable; retain the preference for this room.
+    }
+  };
   const voiceGender = scenario?.voice_gender;
   const [transcribing, setTranscribing] = useState(false);
   const [voiceError, setVoiceError] = useState('');
@@ -50,8 +70,12 @@ export function PracticeRoom({
     setTranscribing(true);
     try {
       const result = await practiceApi.transcribeVoice(session.session_id, blob, durationSeconds);
+      if (!result.transcript.trim()) {
+        setVoiceError('Không nhận dạng được lời nói. Hãy giữ nút và nói lại.');
+        return;
+      }
       setInputMessage(result.transcript);
-      if (modeRef.current === 'voice' && result.transcript.trim()) {
+      if (autoSend) {
         setTranscribing(false);
         await sendHandlerRef.current?.(result.transcript, true);
       }
@@ -331,32 +355,51 @@ export function PracticeRoom({
         <div ref={chatEndRef} />
       </div>
 
-      {mode === 'voice' && terminationStatus === 'active' && (
+      {terminationStatus === 'active' && (
         <div className="practice-room-voice-stage">
-          <div className="practice-room-voice-stage-title">Trò chuyện bằng giọng nói</div>
-          <button
-            type="button"
-            className={`practice-room-voice-bubble ${recorder.recordingState === 'recording' ? 'recording' : ''}`}
-            onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); recorder.start(); }}
-            onPointerUp={recorder.stop}
-            onPointerCancel={recorder.stop}
-            onKeyDown={(event) => { if (!event.repeat && [' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.start(); } }}
-            onKeyUp={(event) => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.stop(); } }}
-            disabled={loading || finishing || pendingReply || transcribing || speakingId !== null}
-            aria-label="Bấm giữ để nói, thả để gửi"
-          >
-            <span className="practice-room-voice-glow" aria-hidden="true" />
-            <MicIcon aria-hidden="true" />
-          </button>
+          <div className="practice-room-voice-stage-title">{mode === 'voice' ? 'Trò chuyện bằng giọng nói' : 'Đọc tin nhắn bằng giọng nói'}</div>
+          <div className="practice-room-voice-controls">
+            <button
+              type="button"
+              className={`practice-room-voice-bubble ${recorder.recordingState === 'recording' ? 'recording' : ''}`}
+              onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); recorder.start(); }}
+              onPointerUp={recorder.stop}
+              onPointerCancel={recorder.stop}
+              onLostPointerCapture={recorder.stop}
+              onBlur={recorder.stop}
+              onKeyDown={(event) => { if (!event.repeat && [' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.start(); } }}
+              onKeyUp={(event) => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.stop(); } }}
+              disabled={loading || finishing || pendingReply || transcribing || speakingId !== null}
+              aria-label={autoSend ? 'Bấm giữ để nói, thả để gửi' : 'Bấm giữ để nói, thả để chép vào ô nhập'}
+            >
+              <span className="practice-room-voice-glow" aria-hidden="true" />
+              <MicIcon aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              role="switch"
+              className="practice-room-auto-send"
+              aria-checked={autoSend}
+              aria-label="Tự động gửi"
+              onClick={() => chooseAutoSend(!autoSend)}
+              disabled={loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle'}
+            >
+              <span className="practice-room-auto-send-track" aria-hidden="true">
+                <span className="practice-room-auto-send-knob" />
+              </span>
+              <span>Tự động gửi</span>
+            </button>
+          </div>
           <span className="practice-room-voice-label">Bấm giữ để nói</span>
           <span className="practice-room-voice-status" role="status">
             {recorder.recordingState === 'requesting' ? 'Đang xin quyền micro...'
-              : recorder.recordingState === 'recording' ? 'Đang ghi âm · Thả để gửi'
+              : recorder.recordingState === 'recording' ? (autoSend ? 'Đang ghi âm · Thả để gửi' : 'Đang ghi âm · Thả để chép vào ô nhập')
                 : transcribing ? 'Đang chuyển giọng nói thành chữ...'
                   : loading ? 'Khách hàng đang trả lời...'
                     : speakingId ? 'Đang phát giọng khách...'
-                      : 'Giữ tối đa 60 giây rồi thả để gửi tự động'}
+                      : (autoSend ? 'Giữ tối đa 60 giây rồi thả để gửi tự động' : 'Giữ tối đa 60 giây, thả rồi sửa bản chép và nhấn Gửi')}
           </span>
+
         </div>
       )}
 
@@ -388,22 +431,6 @@ export function PracticeRoom({
             rows={1}
             disabled={loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active'}
           />
-          {mode === 'text' && (
-            <button
-              type="button"
-              className={`practice-room-control practice-room-dictate ${recorder.recordingState === 'recording' ? 'recording' : ''}`}
-              onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); recorder.start(); }}
-              onPointerUp={recorder.stop}
-              onPointerCancel={recorder.stop}
-              onKeyDown={(event) => { if (!event.repeat && [' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.start(); } }}
-              onKeyUp={(event) => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); recorder.stop(); } }}
-              disabled={loading || finishing || pendingReply || transcribing || terminationStatus !== 'active'}
-              aria-label="Bấm giữ để đọc tin nhắn thành chữ"
-              title="Bấm giữ để đọc tin nhắn thành chữ"
-            >
-              <MicIcon aria-hidden="true" />
-            </button>
-          )}
           <button
             type="button"
             onClick={() => handleSendMessage()}
@@ -417,16 +444,16 @@ export function PracticeRoom({
           <button
             type="button"
             onClick={toggleVoiceMode}
-            disabled={recorder.recordingState !== 'idle' || transcribing}
+            disabled={recorder.recordingState !== 'idle' || transcribing || terminationStatus !== 'active'}
             className={`practice-room-control practice-room-mode-toggle ${mode === 'voice' ? 'active' : ''}`}
-            aria-label={mode === 'voice' ? 'Thoát chế độ hội thoại' : 'Bật chế độ hội thoại'}
+            aria-label={mode === 'voice' ? 'Tắt chế độ hội thoại' : 'Bật chế độ hội thoại'}
             aria-pressed={mode === 'voice'}
-            title={mode === 'voice' ? 'Thoát chế độ hội thoại' : 'Bật chế độ hội thoại'}
+            title={mode === 'voice' ? 'Tắt chế độ hội thoại' : 'Bật chế độ hội thoại'}
           >
-            {mode === 'voice' ? <CloseIcon aria-hidden="true" /> : <VoiceModeIcon aria-hidden="true" />}
+            <PhoneIcon aria-hidden="true" />
           </button>
         </div>
-        {mode === 'text' && transcribing && <p className="practice-room-composer-hint" role="status">Đang chuyển giọng nói thành chữ. Kiểm tra bản chép rồi nhấn Gửi.</p>}
+        {!autoSend && transcribing && <p className="practice-room-composer-hint" role="status">Đang chuyển giọng nói thành chữ. Kiểm tra bản chép rồi nhấn Gửi.</p>}
       </div>
 
       {/* FINISH MODAL */}
