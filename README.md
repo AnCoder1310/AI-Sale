@@ -8,11 +8,16 @@ TODO (team): ảnh chụp màn hình Practice Room / Copilot / Manager.
 
 ## Vấn đề
 
-Tư vấn viên bán hàng mới thường cần quản lý kèm cặp trực tiếp trong lúc trò chuyện với khách. Cách làm này tốn chi phí và thời gian của quản lý, trong khi những sai sót không được hướng dẫn kịp thời — như nói sai thông số xe, giá hay chính sách — làm giảm lòng tin của khách và khiến mất cơ hội bán hàng. Tư vấn viên cũng phải nắm lượng lớn thông số xe, chính sách pin/sạc, giá và biểu phí thay đổi liên tục, nhưng khó tra cứu nhanh có nguồn khi đang tư vấn.
+Đào tạo tư vấn viên bán hàng mới hiện gặp hai painpoint chính:
+
+1. **Tốn nhân lực và thời gian của quản lý:** tư vấn viên mới thường cần quản lý kèm cặp trực tiếp trong lúc trò chuyện với khách. Mỗi người mới lại chiếm thêm thời gian của quản lý, nên chi phí đào tạo tăng theo số người được tuyển.
+2. **Rủi ro tư vấn sai, mất khách:** khi không được hướng dẫn kịp thời, tư vấn viên dễ nói sai thông số xe, giá hay chính sách. Sai sót này làm giảm lòng tin của khách và khiến mất cơ hội bán hàng.
+
+Bên cạnh đó, thông số xe, chính sách pin/sạc, giá và biểu phí thay đổi liên tục, nên tư vấn viên khó tra cứu nhanh và có nguồn khi đang tư vấn.
 
 ## Giải pháp
 
-Ứng dụng cung cấp một môi trường luyện tập riêng, nơi tư vấn viên luyện đi luyện lại các tình huống với khách hàng AI để nâng cao năng lực trước khi gặp khách thật. Đồng thời, quản lý xem được lịch sử luyện tập role-play của từng tư vấn viên — transcript và bản đánh giá của mỗi buổi — vào bất cứ lúc nào thuận tiện, rồi đưa ra nhận xét có trọng tâm trong thời gian ngắn hơn nhiều.
+Ứng dụng cung cấp một môi trường luyện tập riêng, nơi tư vấn viên luyện đi luyện lại các tình huống với khách hàng AI để nâng cao năng lực trước khi gặp khách thật, giảm rủi ro tư vấn sai (painpoint 2). Đồng thời, để giảm thời gian kèm cặp (painpoint 1), quản lý xem được lịch sử luyện tập role-play của từng tư vấn viên — transcript và bản đánh giá của mỗi buổi — vào bất cứ lúc nào thuận tiện, rồi đưa ra nhận xét có trọng tâm trong thời gian ngắn hơn nhiều.
 
 MVP gồm **Copilot** tra cứu kiến thức xe/chính sách có trích nguồn và **Practice Room** trò chuyện nhiều lượt với AI Customer, nhận đánh giá có dẫn chứng từ transcript. Advisor xem lịch sử và bài được giao; manager giao kịch bản, xem hàng đợi, transcript, duyệt/sửa đánh giá và theo dõi năng lực đội ngũ từ các bài đã duyệt. Đây là sản phẩm học tập dùng corpus công khai và khách hàng giả lập, không phải kênh công bố chính sách chính thức của VinFast.
 
