@@ -91,7 +91,7 @@ def test_new_scenario_exposes_internal_contracts_only_on_private_lookup():
     assert len(scenario.upsell_benefits) == 4
     assert scenario.acceptable_outcomes[0].outcome_id == "close_eco"
     assert scenario.acceptable_outcomes[1].preferred is True
-    assert len(scenario.disclosure_rules) == 5
+    assert len(scenario.disclosure_rules) == 8
     assert "real_concern" not in {rule.fact_key for rule in scenario.disclosure_rules}
     summary = next(item for item in repository.list_public() if item.scenario_id == scenario.scenario_id)
     assert summary.outcome_labels == ["Chốt VF 6 Eco", "Upsell VF 6 Plus"]

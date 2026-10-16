@@ -367,10 +367,10 @@ async def test_first_customer_reply_introduces_eco_goal_and_preserves_disclosure
         if discover_vehicle
         else {}
     )
-    introduction = "Chào em, chị đang tìm hiểu chiếc VF 6 Eco để đi làm và đưa đón con."
+    introduction = "Chào em, chị đang tìm hiểu chiếc VF 6 Eco."
     graph, checkpoint, customer, _ = build_graph([{"reply": introduction}], [analysis])
     await graph.start("session-1", scenario_id)
-    greeting = "Em chào chị, em có thể giúp gì cho chị ạ?"
+    greeting = "Em chào chị, VF 6 đang có ưu đãi tốt ạ."
     if discover_vehicle:
         greeting += " Có ưu đãi 9% Vì Tương Lai Xanh; chị đang đi xe gì ạ?"
     result = await graph.continue_session("session-1", greeting)
@@ -384,6 +384,10 @@ async def test_first_customer_reply_introduces_eco_goal_and_preserves_disclosure
     assert ("current_vehicle" in saved.spoken_fact_message_ids) is discover_vehicle
     assert ("xe máy xăng" in saved.messages[-1].content) is discover_vehicle
     assert scenario.hidden_facts["budget"] not in str(context)
+    for key in ("family_usage", "weekend_trips", "priorities"):
+        assert scenario.hidden_facts[key] not in str(context)
+        assert key not in saved.revealed_facts
+        assert key not in saved.spoken_fact_message_ids
     if discover_vehicle:
         rule = next(rule for rule in scenario.disclosure_rules if rule.fact_key == "current_vehicle")
         assert rule.revealed_statement in saved.messages[-1].content

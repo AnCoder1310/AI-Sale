@@ -65,3 +65,23 @@ def test_realism_smoke_selects_scenario04_offline(monkeypatch):
     assert runs_for_scenario(SCENARIO_04_ID) is SCENARIO_04_RUNS
     assert runs_for_scenario(SCENARIO_ID) is RUNS
     assert all("chị" in turns[0] for turns in SCENARIO_04_RUNS.values())
+
+
+def test_strong_seeds_discover_usage_needs_before_customer_shares_them():
+    dataset = json.loads((ROOT / "eval/datasets/judge_seed_scenario04.json").read_text())
+    questions_and_answers = [
+        ("dùng xe hằng ngày", "đưa đón 2 con"),
+        ("cuối tuần", "chở cả nhà về quê"),
+        ("ưu tiên", "dùng lâu dài"),
+    ]
+    for case in dataset["cases"]:
+        if case["case_id"] == "S04_WEAK":
+            continue
+        messages = case["messages"]
+        for question, answer in questions_and_answers:
+            answer_index = next(
+                i
+                for i, message in enumerate(messages)
+                if message["role"] == "customer" and answer in message["content"].casefold()
+            )
+            assert question in messages[answer_index - 1]["content"].casefold()

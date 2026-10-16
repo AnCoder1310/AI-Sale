@@ -23,8 +23,10 @@ SCENARIO_ID = "SCENARIO_01_VF5_TAXI"
 SCENARIO_04_ID = "SCENARIO_04_VF6_ECO_PLUS_UPSELL"
 SCENARIO_04_RUNS = {
     "discovery_and_plus": [
-        "Chào chị, VF 6 có ưu đãi 9% Vì Tương Lai Xanh 2 khi đủ điều kiện. Chị đang đi xe gì, có đứng tên chị không?",
-        "Chị chủ yếu đi đâu, chở ai và dự tính ngân sách thế nào ạ?",
+        "Chào chị, VF 6 có ưu đãi 9% Vì Tương Lai Xanh 2 khi đủ điều kiện.",
+        "Chị đang đi xe gì, có đứng tên chị không?",
+        "Chị dùng xe hằng ngày vào việc gì, chở ai và dự tính ngân sách thế nào ạ?",
+        "Cuối tuần chị có đi xa hay về quê không? Khi chọn xe chị ưu tiên điều gì nhất?",
         "Chị lái xe lâu chưa, chỗ đỗ ở nhà và cơ quan thế nào, có chỗ sạc tại nhà không?",
         "Nếu đủ điều kiện, Eco từ 646 triệu còn 587,86 triệu; Plus từ 700 triệu còn 637 triệu, chênh 49,14 triệu. Chị thấy sao?",
         "Plus có 7 túi khí so với 4 trên Eco để thêm bảo vệ gia đình; camera 360° giúp quan sát khi đỗ ngõ hẹp. Chị muốn thử rồi cân nhắc không?",

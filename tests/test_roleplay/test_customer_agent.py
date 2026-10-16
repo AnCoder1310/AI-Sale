@@ -20,6 +20,14 @@ class CapturingCustomerModel:
         return self.output
 
 
+def test_first_reply_prompt_introduces_buying_intent_without_requesting_usage():
+    first_reply_instructions = CUSTOMER_SYSTEM_PROMPT.split("# First customer reply")[1].split(
+        "# Outcome and disclosure"
+    )[0]
+    assert "usage needs from customer_goals" not in first_reply_instructions
+    assert "buying intent from customer_goals only" in first_reply_instructions
+
+
 @pytest.fixture
 def scenario():
     return ScenarioRepository(SCENARIOS).get("SCENARIO_01_VF5_TAXI")

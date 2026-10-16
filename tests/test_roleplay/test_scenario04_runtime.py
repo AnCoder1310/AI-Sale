@@ -73,10 +73,41 @@ def state(scenario):
 
 
 def links(*ids):
-    return [
-        LinkedBenefit(benefit_id=key, need_fact_key="parking" if key == "camera_360" else "visible_goals")
-        for key in ids
-    ]
+    needs = {"airbags_7": "family_usage", "motor_150kw": "weekend_trips", "camera_360": "parking"}
+    return [LinkedBenefit(benefit_id=key, need_fact_key=needs[key]) for key in ids]
+
+
+@pytest.mark.parametrize(
+    "fact_key,intent,question",
+    [
+        ("family_usage", "ask_daily_usage", "Chị dùng xe hằng ngày vào việc gì, chở ai?"),
+        ("weekend_trips", "ask_long_trips", "Cuối tuần chị có đi xa hay về quê không?"),
+        ("priorities", "ask_priorities", "Khi chọn xe chị ưu tiên điều gì nhất?"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_usage_needs_are_spoken_only_after_relevant_discovery(scenario, fact_key, intent, question):
+    graph, _, customer, _ = runtime(
+        analyses=[{}, {"detected_intents": [intent], "discovered_fact_ids": [fact_key]}],
+        replies=[{"reply": "Chào em, chị đang tìm hiểu VF 6 Eco. Ưu đãi đó thế nào em?"}],
+    )
+    await graph.start("session", SCENARIO_ID)
+    await graph.continue_session("session", "Chào chị, VF 6 đang có ưu đãi tốt.")
+    before = await graph.get_session_state("session")
+    assert before.revealed_facts == []
+    view = await graph.continue_session("session", question)
+    after = await graph.get_session_state("session")
+    assert after.revealed_facts == [fact_key]
+    assert set(after.spoken_fact_message_ids) == {fact_key}
+    assert view["messages"][-1]["content"] == scenario.hidden_facts[fact_key]
+    assert customer.calls == 1  # Discovery uses the configured disclosure, without generation.
+
+
+@pytest.mark.parametrize("revealed", [False, True])
+def test_airbags_require_discovered_family_usage(scenario, state, revealed):
+    state.revealed_facts = ["family_usage"] if revealed else []
+    updated = apply_turn_analysis(state, scenario, "Plus", TurnAnalysis(linked_benefits=links("airbags_7")))
+    assert updated.linked_benefits == (links("airbags_7") if revealed else [])
 
 
 @pytest.mark.parametrize(
@@ -98,7 +129,7 @@ def test_keyword_triggered_objection_has_word_boundaries(scenario, state, messag
     ],
 )
 def test_upsell_rule_requires_distinct_benefits_and_safety(scenario, state, benefits, resolved):
-    state.revealed_facts = ["parking"]
+    state.revealed_facts = ["parking", "family_usage", "weekend_trips"]
     updated = apply_turn_analysis(state, scenario, "Plus", TurnAnalysis(linked_benefits=links(*benefits)))
     assert (UPSELL in updated.resolved_objections) is resolved
     assert (UPSELL in updated.unresolved_objections) is not resolved
@@ -114,7 +145,7 @@ def test_analyzer_cannot_bypass_upsell_rule(scenario, state):
 
 
 def test_benefit_links_and_policy_mentions_accumulate_and_deduplicate(scenario, state):
-    state.revealed_facts = ["parking"]
+    state.revealed_facts = ["parking", "family_usage"]
     first = apply_turn_analysis(
         state,
         scenario,
@@ -135,13 +166,14 @@ def test_benefit_links_and_policy_mentions_accumulate_and_deduplicate(scenario, 
 
 @pytest.mark.asyncio
 async def test_analyzer_filters_unknown_and_unrevealed_need_keys(scenario, state):
+    state.revealed_facts = ["family_usage"]
     model = AnalysisModel(
         {
             "linked_benefits": [
                 {"benefit_id": "camera_360", "need_fact_key": "parking"},
-                {"benefit_id": "airbags_7", "need_fact_key": "visible_goals"},
+                {"benefit_id": "airbags_7", "need_fact_key": "family_usage"},
                 {"benefit_id": "fake", "need_fact_key": "visible_goals"},
-                {"benefit_id": "airbags_7", "need_fact_key": "visible_goals"},
+                {"benefit_id": "airbags_7", "need_fact_key": "family_usage"},
             ],
             "policy_mentions": ["warranty", "fake", "warranty"],
             "mentioned_products": ["Eco"],
@@ -151,7 +183,7 @@ async def test_analyzer_filters_unknown_and_unrevealed_need_keys(scenario, state
     assert analysis.linked_benefits == links("airbags_7")
     assert analysis.policy_mentions == ["warranty"]
     context = _turn_analysis_context("Chào chị", scenario, state)
-    assert context["state"]["allowed_need_fact_keys"] == ["visible_goals"]
+    assert set(context["state"]["allowed_need_fact_keys"]) == {"visible_goals", "family_usage"}
     assert context["scenario"]["customer_goals"] == scenario.customer_goals
     for field in ("upsell_benefits", "acceptable_outcomes", "policy_expectations"):
         assert context["scenario"][field]
@@ -531,9 +563,11 @@ def test_benefit_links_require_the_configured_need(scenario, state):
         ]
     )
     updated = apply_turn_analysis(state, scenario, "Plus", analysis)
-    assert updated.linked_benefits == links("airbags_7")
+    assert updated.linked_benefits == []
     assert UPSELL not in updated.resolved_objections
-    assert next(b for b in scenario.upsell_benefits if b.benefit_id == "airbags_7").linked_need_fact_keys == []
+    assert next(b for b in scenario.upsell_benefits if b.benefit_id == "airbags_7").linked_need_fact_keys == [
+        "family_usage"
+    ]
 
 
 @pytest.mark.asyncio

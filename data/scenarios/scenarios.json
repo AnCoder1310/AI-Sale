@@ -309,7 +309,7 @@
     "title": "Chị Hà — VF 6 Eco hay nâng lên Plus?",
     "difficulty": "Medium",
     "sales_channel": "Showroom",
-    "scenario_version": "1.0",
+    "scenario_version": "1.1",
     "target_skills": [
       "need_discovery",
       "product_knowledge",
@@ -321,21 +321,22 @@
       "name": "Chị Hà",
       "age": 36,
       "occupation": "nhân viên văn phòng",
-      "family": "chồng và 2 con học tiểu học",
-      "current_car": null,
-      "communication_style": "Thân thiện, thực tế, quan tâm tiền và an toàn; không hỏi sâu thông số kỹ thuật; trả lời ngắn gọn."
+      "communication_style": "Thân thiện, thực tế; không hỏi sâu thông số kỹ thuật; chỉ trả lời đúng điều được hỏi, ngắn gọn."
     },
     "training_objective": "Khám phá nhu cầu, xác nhận điều kiện ưu đãi, chốt được VF 6 Eco hoặc upsell VF 6 Plus bằng lợi ích gắn với nhu cầu thật — cả hai đều là thành công.",
     "buyer_intent": "Mua VF 6 Eco đang có ưu đãi.",
     "visible_context": "Khách đến showroom xem VF 6 Eco vì thấy giá đang ưu đãi tốt.",
-    "customer_goals": "Tư vấn viên chào trước; chị đáp: “Chào em, chị đang tìm hiểu chiếc VF 6 Eco. Chị thấy giá đang có ưu đãi khá tốt nên muốn đến xem xe thực tế.” Chị chia sẻ nhu cầu: “Chị chủ yếu đi làm, đưa đón con đi học, cuối tuần thỉnh thoảng về quê. Chị muốn mua chiếc xe dùng lâu dài, an toàn mà cũng phải hợp lý về tiền.”",
+    "customer_goals": "Tư vấn viên chào trước; chị chỉ mở lời: “Chào em, chị đang tìm hiểu chiếc VF 6 Eco. Chị thấy giá đang có ưu đãi khá tốt nên muốn đến xem xe thực tế.” Nếu tư vấn viên nhắc đến ưu đãi, chị hỏi thêm về ưu đãi đó. Chị KHÔNG tự kể nhu cầu sử dụng, gia đình, ngân sách, kinh nghiệm lái, chỗ đỗ hoặc các ưu tiên; chị chỉ chia sẻ từng thông tin khi tư vấn viên hỏi câu hỏi liên quan.",
     "hidden_facts": {
       "current_vehicle": "chị đang đi xe máy xăng đứng tên chị",
       "driving_experience": "chị mới có bằng lái hơn 1 năm, đỗ xe chưa quen",
       "parking": "nhà chị trong ngõ nhỏ, chỗ làm phải đỗ hầm khá chật",
-      "budget": "chị chuẩn bị khoảng 600 triệu, nếu thật sự đáng thì thêm được tầm 50 triệu",
+      "budget": "Chị chuẩn bị khoảng 600 triệu, nếu thật sự đáng thì thêm được tầm 50 triệu.",
       "charging_access": "nhà chị có sân, cắm sạc ở nhà được",
-      "real_concern": "sợ bỏ thêm tiền cho những thứ không dùng tới"
+      "real_concern": "sợ bỏ thêm tiền cho những thứ không dùng tới",
+      "family_usage": "Chị đi làm hằng ngày và đưa đón 2 con đi học.",
+      "weekend_trips": "Cuối tuần thỉnh thoảng chị chở cả nhà về quê.",
+      "priorities": "Chị muốn xe dùng lâu dài, an toàn mà cũng phải hợp lý về tiền."
     },
     "disclosure_rules": [
       {
@@ -394,6 +395,47 @@
           "lắp sạc"
         ],
         "revealed_statement": "Nhà chị có sân, cắm sạc ở nhà được em ạ."
+      },
+      {
+        "fact_key": "family_usage",
+        "trigger_intent": "ask_daily_usage",
+        "trigger_keywords": [
+          "đi làm",
+          "đưa đón",
+          "chở ai",
+          "gia đình",
+          "mấy người",
+          "nhu cầu sử dụng",
+          "sử dụng xe",
+          "dùng xe vào việc gì",
+          "hằng ngày"
+        ],
+        "revealed_statement": "Chị đi làm hằng ngày và đưa đón 2 con đi học."
+      },
+      {
+        "fact_key": "weekend_trips",
+        "trigger_intent": "ask_long_trips",
+        "trigger_keywords": [
+          "đi xa",
+          "đường dài",
+          "về quê",
+          "cuối tuần",
+          "đi tỉnh",
+          "đi chơi xa"
+        ],
+        "revealed_statement": "Cuối tuần thỉnh thoảng chị chở cả nhà về quê."
+      },
+      {
+        "fact_key": "priorities",
+        "trigger_intent": "ask_priorities",
+        "trigger_keywords": [
+          "ưu tiên",
+          "quan trọng nhất",
+          "tiêu chí",
+          "quan tâm nhất",
+          "điều gì quan trọng"
+        ],
+        "revealed_statement": "Chị muốn xe dùng lâu dài, an toàn mà cũng phải hợp lý về tiền."
       }
     ],
     "objections": [
@@ -412,7 +454,7 @@
           "nâng cấp lên"
         ],
         "objection_text": "Chị thấy bên em có bản Plus đắt hơn gần 50 triệu. Nhưng chị nghĩ cùng là VF 6, cùng pin, cùng kích thước thì bản Eco đã đủ dùng rồi. Em thử giải thích giúp chị xem tại sao chị nên bỏ thêm số tiền đó để mua bản Plus nhé.",
-        "resolve_condition": "Tư vấn viên gắn ít nhất 2 lợi ích Plus, trong đó ít nhất 1 về an toàn, với nhu cầu chị đã chia sẻ; báo đúng chênh lệch sau ưu đãi khoảng 49,14 triệu đồng (Plus Tiêu chuẩn 1: 637 triệu, Eco: 587,86 triệu).",
+        "resolve_condition": "Tư vấn viên gắn ít nhất 2 lợi ích Plus, trong đó ít nhất 1 về an toàn, gắn với nhu cầu chị đã chia sẻ khi được hỏi; báo đúng chênh lệch sau ưu đãi khoảng 49,14 triệu đồng (Plus Tiêu chuẩn 1: 637 triệu, Eco: 587,86 triệu).",
         "ideal_sales_response": "Nếu chị thấy phù hợp, 7 túi khí hỗ trợ bảo vệ gia đình và camera 360° giúp quan sát khi đỗ hầm chật; Plus chênh 49,14 triệu sau ưu đãi. Mình có thể trải nghiệm trước, còn Eco vẫn là lựa chọn hợp lý nếu đáp ứng đủ nhu cầu chị."
       }
     ],
@@ -421,13 +463,16 @@
         "benefit_id": "airbags_7",
         "description": "7 túi khí so với 4 túi khí trên Eco",
         "safety": true,
-        "linked_need_fact_keys": []
+        "linked_need_fact_keys": [
+          "family_usage"
+        ]
       },
       {
         "benefit_id": "adas",
         "description": "ADAS: kiểm soát hành trình thích ứng, hỗ trợ giữ làn, phanh khẩn cấp tự động — người lái vẫn phải chủ động",
         "safety": true,
         "linked_need_fact_keys": [
+          "weekend_trips",
           "driving_experience"
         ]
       },
@@ -435,7 +480,9 @@
         "benefit_id": "motor_150kw",
         "description": "Động cơ 150 kW/310 Nm so với 130 kW/250 Nm, tăng tốc 0–100 km/h 8,89 giây",
         "safety": false,
-        "linked_need_fact_keys": []
+        "linked_need_fact_keys": [
+          "weekend_trips"
+        ]
       },
       {
         "benefit_id": "camera_360",
@@ -518,7 +565,7 @@
         "requires_eligibility_check": false
       }
     ],
-    "expected_discovery": "Khám phá xe hiện tại để xác nhận điều kiện ưu đãi, kinh nghiệm lái, chỗ đỗ/ngõ, ngân sách và sạc tại nhà. Nhu cầu chở con và về quê cuối tuần đã nằm trong mục tiêu khách hàng, được xem là nhu cầu đã biết khi khách chia sẻ; lợi ích có danh sách liên kết dữ kiện ẩn rỗng vẫn có thể gắn với các nhu cầu này.",
+    "expected_discovery": "Tư vấn viên phải hỏi để khám phá từng dữ kiện: xe hiện tại (current_vehicle) để xác nhận điều kiện ưu đãi, nhu cầu đi làm và đưa đón con (family_usage), chuyến đi xa cuối tuần (weekend_trips), ưu tiên khi mua xe (priorities), kinh nghiệm lái (driving_experience), chỗ đỗ/ngõ (parking), ngân sách (budget) và sạc tại nhà (charging_access). Chỉ gắn lợi ích Plus với nhu cầu chị đã chia sẻ khi được hỏi; không coi nhu cầu sử dụng là thông tin đã biết từ mục tiêu khách hàng.",
     "success_conditions": "Chốt VF 6 Eco hoặc upsell VF 6 Plus đều thành công nếu tư vấn viên khám phá nhu cầu, xác nhận điều kiện và báo đúng giá/ưu đãi, thống nhất bước tiếp theo phù hợp mà không gây sức ép. Upsell Plus chỉ đạt khi giải quyết phản đối về giá trị bằng ít nhất hai lợi ích gắn với nhu cầu đã chia sẻ, có ít nhất một lợi ích an toàn và báo đúng chênh lệch sau ưu đãi; không ép khách nâng bản hoặc hứa miễn phí bảo dưỡng.",
     "termination_conditions": {
       "max_turns": 12,

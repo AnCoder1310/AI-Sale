@@ -1,5 +1,5 @@
 {
-  "dataset_version": "scenario04-judge-seeds-v1",
+  "dataset_version": "scenario04-judge-seeds-v2",
   "transcript_origin": "curated_synthetic",
   "label_source": "author_draft_needs_expert_review",
   "transcript_note": "Draft seeds using judge case/message structure; expected ranges are not approved expert_labels. Separate from the fixed five-case calibration dataset; not an adapter input.",
@@ -8,7 +8,7 @@
       "case_id": "S04_STRONG_ECO",
       "session_id": "judge-seed-s04-strong_eco",
       "scenario_id": "SCENARIO_04_VF6_ECO_PLUS_UPSELL",
-      "scenario_version": "1.0",
+      "scenario_version": "1.1",
       "label_source": "author_draft_needs_expert_review",
       "messages": [
         {
@@ -24,12 +24,22 @@
         {
           "message_id": "S04-strong_eco-M03",
           "role": "advisor",
-          "content": "Xe máy xăng đứng tên chị phù hợp điều kiện chuyển đổi; em sẽ đối chiếu giấy tờ trước khi áp dụng. Chị mua xe chủ yếu đi đâu, thường chở ai ạ?"
+          "content": "Xe máy xăng đứng tên chị phù hợp điều kiện chuyển đổi; em sẽ đối chiếu giấy tờ trước khi áp dụng. Chị dùng xe hằng ngày vào việc gì, thường chở ai ạ?"
         },
         {
           "message_id": "S04-strong_eco-M04",
           "role": "customer",
-          "content": "Chị đi làm, đưa đón hai con học tiểu học, cuối tuần thỉnh thoảng về quê."
+          "content": "Chị đi làm hằng ngày và đưa đón 2 con đi học."
+        },
+        {
+          "message_id": "S04_STRONG_ECO-WEEKEND-Q",
+          "role": "advisor",
+          "content": "Cuối tuần chị có hay đi xa hoặc về quê không ạ?"
+        },
+        {
+          "message_id": "S04_STRONG_ECO-WEEKEND-A",
+          "role": "customer",
+          "content": "Cuối tuần thỉnh thoảng chị chở cả nhà về quê."
         },
         {
           "message_id": "S04-strong_eco-M05",
@@ -64,12 +74,12 @@
         {
           "message_id": "S04-strong_eco-M11",
           "role": "advisor",
-          "content": "Eco Tiêu chuẩn 1 niêm yết 646 triệu, giảm 9% còn 587,86 triệu khi hồ sơ đủ điều kiện; đây là giá xe, chưa phải giá lăn bánh. Chị thấy mức này hợp khả năng chi trả chưa ạ?"
+          "content": "Eco Tiêu chuẩn 1 niêm yết 646 triệu, giảm 9% còn 587,86 triệu khi hồ sơ đủ điều kiện; đây là giá xe, chưa phải giá lăn bánh. Chị thấy mức này hợp khả năng chi trả chưa ạ? Khi chọn xe, chị ưu tiên điều gì nhất ạ?"
         },
         {
           "message_id": "S04-strong_eco-M12",
           "role": "customer",
-          "content": "Mức đó chị thu xếp được, chị muốn dùng lâu dài và an toàn cho các con."
+          "content": "Mức đó chị thu xếp được. Chị muốn xe dùng lâu dài, an toàn mà cũng phải hợp lý về tiền."
         },
         {
           "message_id": "S04-strong_eco-M13",
@@ -122,7 +132,7 @@
       "case_id": "S04_STRONG_PLUS",
       "session_id": "judge-seed-s04-strong_plus",
       "scenario_id": "SCENARIO_04_VF6_ECO_PLUS_UPSELL",
-      "scenario_version": "1.0",
+      "scenario_version": "1.1",
       "label_source": "author_draft_needs_expert_review",
       "messages": [
         {
@@ -138,12 +148,22 @@
         {
           "message_id": "S04-strong_plus-M03",
           "role": "advisor",
-          "content": "Xe máy xăng đứng tên chị phù hợp điều kiện chuyển đổi; em sẽ đối chiếu giấy tờ trước khi áp dụng. Chị mua xe chủ yếu đi đâu, thường chở ai ạ?"
+          "content": "Xe máy xăng đứng tên chị phù hợp điều kiện chuyển đổi; em sẽ đối chiếu giấy tờ trước khi áp dụng. Chị dùng xe hằng ngày vào việc gì, thường chở ai ạ?"
         },
         {
           "message_id": "S04-strong_plus-M04",
           "role": "customer",
-          "content": "Chị đi làm, đưa đón hai con học tiểu học, cuối tuần thỉnh thoảng về quê."
+          "content": "Chị đi làm hằng ngày và đưa đón 2 con đi học."
+        },
+        {
+          "message_id": "S04_STRONG_PLUS-WEEKEND-Q",
+          "role": "advisor",
+          "content": "Cuối tuần chị có hay đi xa hoặc về quê không ạ?"
+        },
+        {
+          "message_id": "S04_STRONG_PLUS-WEEKEND-A",
+          "role": "customer",
+          "content": "Cuối tuần thỉnh thoảng chị chở cả nhà về quê."
         },
         {
           "message_id": "S04-strong_plus-M05",
@@ -178,12 +198,12 @@
         {
           "message_id": "S04-strong_plus-M11",
           "role": "advisor",
-          "content": "Eco Tiêu chuẩn 1 niêm yết 646 triệu, giảm 9% còn 587,86 triệu khi hồ sơ đủ điều kiện; đây là giá xe, chưa phải giá lăn bánh. Chị thấy mức này hợp khả năng chi trả chưa ạ?"
+          "content": "Eco Tiêu chuẩn 1 niêm yết 646 triệu, giảm 9% còn 587,86 triệu khi hồ sơ đủ điều kiện; đây là giá xe, chưa phải giá lăn bánh. Chị thấy mức này hợp khả năng chi trả chưa ạ? Khi chọn xe, chị ưu tiên điều gì nhất ạ?"
         },
         {
           "message_id": "S04-strong_plus-M12",
           "role": "customer",
-          "content": "Mức đó chị thu xếp được, chị muốn dùng lâu dài và an toàn cho các con."
+          "content": "Mức đó chị thu xếp được. Chị muốn xe dùng lâu dài, an toàn mà cũng phải hợp lý về tiền."
         },
         {
           "message_id": "S04-strong_plus-M13",
@@ -256,7 +276,7 @@
       "case_id": "S04_WEAK",
       "session_id": "judge-seed-s04-weak",
       "scenario_id": "SCENARIO_04_VF6_ECO_PLUS_UPSELL",
-      "scenario_version": "1.0",
+      "scenario_version": "1.1",
       "label_source": "author_draft_needs_expert_review",
       "messages": [
         {
@@ -267,7 +287,7 @@
         {
           "message_id": "S04-weak-M02",
           "role": "customer",
-          "content": "Chị đến xem Eco thôi, chị muốn vừa túi tiền."
+          "content": "Chào em, chị đang tìm hiểu chiếc VF 6 Eco. Ưu đãi đó áp dụng thế nào em?"
         },
         {
           "message_id": "S04-weak-M03",
@@ -287,7 +307,7 @@
         {
           "message_id": "S04-weak-M06",
           "role": "customer",
-          "content": "Thôi chị chưa mua, để chị về bàn với chồng."
+          "content": "Thôi chị chưa mua, để chị cân nhắc thêm."
         }
       ],
       "expected": {
