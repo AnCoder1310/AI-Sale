@@ -43,7 +43,13 @@ improvement_suggestion. Examples are behavioral anchors, not wording templates.
   appointment); never penalize choosing the cheaper product. 2 when a next step
   is proposed but vague or not accepted. 1 for no closing attempt or pressure
   selling: pushing an upsell after refusal without new need-linked reasons.
-- policy_accuracy is always assessed when policy_expectations is nonempty.
+- policy_accuracy must be assessed when policy_assessment_required is true.
+  When false (misconduct or no advisor policy/price discussion), unassessed with
+  score null is allowed: do not invent evidence to assess an early session.
+  In a normal session that omits expected policies despite a fair opportunity,
+  assess score 1 with an exact closing/advisor turn showing the omission in
+  context. No policy discussion alone is not proof of a fair opportunity.
+  Every assessed score, including misconduct/omission, still needs exact evidence.
   3 requires proactively raising EVERY expected policy without being asked,
   stating it correctly using knowledge evidence, and checking eligibility BEFORE
   quoting a discounted price when requires_eligibility_check is true. Bonus
