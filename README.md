@@ -12,7 +12,7 @@ Tư vấn viên bán hàng mới thường cần quản lý kèm cặp trực ti
 
 ## Giải pháp
 
-Ứng dụng cung cấp một môi trường luyện tập riêng, nơi tư vấn viên luyện đi luyện lại các tình huống với khách hàng AI để nâng cao năng lực trước khi gặp khách thật. Đồng thời, ứng dụng giúp quản lý giám sát gọn hơn: thay vì kèm cặp trực tiếp từng cuộc trò chuyện, quản lý xem lại transcript và bản đánh giá của từng buổi luyện tập một cách bất đồng bộ, rồi đưa ra nhận xét có trọng tâm trong thời gian ngắn hơn nhiều.
+Ứng dụng cung cấp một môi trường luyện tập riêng, nơi tư vấn viên luyện đi luyện lại các tình huống với khách hàng AI để nâng cao năng lực trước khi gặp khách thật. Đồng thời, quản lý xem được lịch sử luyện tập role-play của từng tư vấn viên — transcript và bản đánh giá của mỗi buổi — vào bất cứ lúc nào thuận tiện, rồi đưa ra nhận xét có trọng tâm trong thời gian ngắn hơn nhiều.
 
 MVP gồm **Copilot** tra cứu kiến thức xe/chính sách có trích nguồn và **Practice Room** trò chuyện nhiều lượt với AI Customer, nhận đánh giá có dẫn chứng từ transcript. Advisor xem lịch sử và bài được giao; manager giao kịch bản, xem hàng đợi, transcript, duyệt/sửa đánh giá và theo dõi năng lực đội ngũ từ các bài đã duyệt. Đây là sản phẩm học tập dùng corpus công khai và khách hàng giả lập, không phải kênh công bố chính sách chính thức của VinFast.
 
