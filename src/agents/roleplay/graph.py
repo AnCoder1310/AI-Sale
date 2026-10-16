@@ -11,8 +11,9 @@ from src.models.evaluation import SessionEvaluationResult
 
 from .contracts import CheckpointContract, ScenarioContract
 from .customer_agent import CustomerAgent
+from .guardrails import check_advisor_message
 from .scenario_loader import ScenarioNotFoundError, ScenarioRepository
-from .state import ConversationStage, EvaluationStatus, RoleplayState, TerminationStatus
+from .state import ConversationStage, EvaluationStatus, RoleplayMessage, RoleplayState, TerminationStatus
 from .state_reducer import apply_turn_analysis
 from .turn_analyzer import TurnAnalysis, TurnAnalyzer
 
@@ -25,6 +26,7 @@ class RoleplayRuntimeState(TypedDict, total=False):
     advisor_message: str
     analysis: TurnAnalysis
     customer_reply: str
+    misconduct_category: str
 
 
 class RoleplayGraphError(ValueError):
@@ -51,6 +53,12 @@ def build_roleplay_turn_graph(
     """Build one advisor-turn graph with persistence before provider generation."""
 
     async def analyze_advisor_turn(state: RoleplayRuntimeState) -> RoleplayRuntimeState:
+        verdict = check_advisor_message(state["advisor_message"])
+        if verdict.level == "end_session":
+            return {
+                "analysis": TurnAnalysis(unsafe_or_abusive=True),
+                "misconduct_category": verdict.category or "code_abuse",
+            }
         analysis = await analyzer.analyze(
             state["advisor_message"],
             state["scenario"],
@@ -68,6 +76,13 @@ def build_roleplay_turn_graph(
         updated.pending_next_step_attempted = (
             state["analysis"].next_step_attempted if updated.termination_status is TerminationStatus.ACTIVE else False
         )
+        if updated.termination_status is TerminationStatus.ADVISOR_MISCONDUCT:
+            category = state.get("misconduct_category", "semantic_abuse")
+            updated.misconduct_reason = category
+            updated.termination_reason = f"Advisor misconduct: {category}."
+            reply = "Chị nghĩ mình nên dừng cuộc trao đổi ở đây. Chào em."
+            updated.messages.append(RoleplayMessage(role="customer", content=reply))
+            return {"roleplay_state": updated, "customer_reply": reply}
         return {"roleplay_state": updated}
 
     async def route_pending_turn(state: RoleplayRuntimeState) -> RoleplayRuntimeState:
@@ -100,11 +115,15 @@ def build_roleplay_turn_graph(
         updated.messages.append(message)
         updated.pending_next_step_attempted = False
         for rule in pending:
-            if rule.revealed_statement in message.content:
+            if rule.fact_key in turn.disclosed_fact_keys or rule.revealed_statement in message.content:
                 updated.spoken_fact_message_ids[rule.fact_key] = message.message_id
         if turn.accepted_next_step and prior.pending_next_step_attempted:
             accepted_id = focus_id or next(iter(updated.active_objections), None)
-            if accepted_id is not None:
+            updated.closing_outcome = customer_agent.validated_outcome_id(
+                turn.accepted_outcome_id, state["scenario"], prior
+            )
+            rule = state["scenario"].upsell_rule
+            if accepted_id is not None and (rule is None or accepted_id != rule.objection_id):
                 objection_id = accepted_id
                 updated.active_objections.remove(objection_id)
                 if objection_id in updated.unresolved_objections:

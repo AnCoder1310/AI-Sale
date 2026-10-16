@@ -1,6 +1,6 @@
 """Advisor-turn analysis prompt kept as version-controlled product code."""
 
-TURN_ANALYZER_PROMPT_VERSION = "turn-analyzer-v1"
+TURN_ANALYZER_PROMPT_VERSION = "turn-analyzer-v2"
 
 TURN_ANALYZER_SYSTEM_PROMPT = """# Role
 You analyze one Vietnamese automotive sales-advisor turn for a role-play state
@@ -24,6 +24,13 @@ state transitions.
   materially satisfied; acknowledgement alone is insufficient.
 - Detect a concrete next-step attempt, premature closing, abuse, and an explicit
   request to finish the practice session.
+- Extract mentioned_products. Record linked_benefits only when this advisor
+  message explicitly ties a configured benefit to a customer need, not when it
+  merely lists features. Use only allowed_need_fact_keys; visible_goals represents
+  needs already stated in customer_goals (including kids and weekend trips).
+- Record policy_mentions using configured policy_ids only when actually discussed.
+- Set unsafe_or_abusive for insults, profanity, sexual harassment, threats or
+  discriminatory language. Normal sales talk and polite disagreement are safe.
 - Do not invent identifiers or facts that are absent from CONTEXT.
 
 # Output

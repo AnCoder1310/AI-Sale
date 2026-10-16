@@ -75,6 +75,7 @@ class PracticeSessionView(BaseModel):
     visible_context: str
     termination_status: TerminationStatus
     termination_reason: str | None = None
+    closing_outcome: str | None = None
     messages: list[RoleplayMessage]
 
 
