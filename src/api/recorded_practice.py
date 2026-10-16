@@ -6,7 +6,6 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Path, Query, Request, Response, status
 from pydantic import BaseModel
 
-from src.agents.roleplay.customer_agent import CustomerResponseError
 from src.agents.roleplay.graph import (
     RoleplayScenarioNotFoundError,
     RoleplaySessionConflictError,
@@ -14,22 +13,19 @@ from src.agents.roleplay.graph import (
 )
 from src.agents.roleplay.scenario_loader import ScenarioSummary
 from src.agents.roleplay.state_reducer import StateTransitionError
-from src.agents.roleplay.turn_analyzer import TurnAnalysisError
 from src.api.practice import AdvisorMessageRequest, CreatePracticeSessionRequest
 from src.api.practice_errors import PracticeAPIError, PracticeRoute, session_conflict
 from src.integrations.voice_usage import VoiceUsageSummary
 from src.models.auth import AuthenticatedUser
-from src.services.practice import PracticeEvaluationUnavailableError, PracticeResultView, PracticeSessionView
+from src.services.practice import PracticeResultView, PracticeSessionView
 from src.services.practice_records import (
     AdvisorPerformance,
-    AssignmentConflictError,
     AssignmentRecord,
     AttemptNotFoundError,
     AttemptSummary,
     CreateAssignmentInput,
     ManagerReviewDecision,
     ManagerReviewRecord,
-    ReviewConflictError,
     TeamOverview,
 )
 from src.services.recorded_practice import RecordedAttemptDetail, RecordedPracticeService
@@ -84,8 +80,6 @@ def create_recorded_practice_routers(
             )
         except RoleplayScenarioNotFoundError as exc:
             raise PracticeAPIError("session_not_found") from exc
-        except AssignmentConflictError as exc:
-            raise PracticeAPIError("validation_error", status_code=409) from exc
 
     @practice.get("/assignments", response_model=list[AssignmentRecord])
     async def advisor_assignments(identity: actor) -> list[AssignmentRecord]:
@@ -108,10 +102,6 @@ def create_recorded_practice_routers(
             raise PracticeAPIError("session_not_found") from exc
         except (RoleplaySessionConflictError, StateTransitionError) as exc:
             raise session_conflict(exc) from exc
-        except CustomerResponseError as exc:
-            raise PracticeAPIError("provider_unavailable") from exc
-        except TurnAnalysisError as exc:
-            raise PracticeAPIError("provider_unavailable") from exc
 
     @practice.post("/{session_id}/retry-reply", response_model=PracticeSessionView)
     async def retry_customer_reply(session_id: SessionId, identity: actor) -> PracticeSessionView:
@@ -122,8 +112,6 @@ def create_recorded_practice_routers(
             raise PracticeAPIError("session_not_found") from exc
         except RoleplaySessionConflictError as exc:
             raise session_conflict(exc) from exc
-        except CustomerResponseError as exc:
-            raise PracticeAPIError("provider_unavailable") from exc
 
     if voice_service is not None:
 
@@ -179,8 +167,6 @@ def create_recorded_practice_routers(
             raise PracticeAPIError("session_not_found") from exc
         except RoleplaySessionConflictError as exc:
             raise session_conflict(exc) from exc
-        except PracticeEvaluationUnavailableError as exc:
-            raise PracticeAPIError("evaluation_failed") from exc
 
     @practice.get("/{session_id}/result", response_model=PracticeResultView)
     async def advisor_result(session_id: SessionId, identity: actor) -> PracticeResultView:
@@ -240,10 +226,7 @@ def create_recorded_practice_routers(
     @manager.post("/assignments", response_model=AssignmentRecord, status_code=status.HTTP_201_CREATED)
     async def create_assignment(request: CreateAssignmentInput, identity: actor) -> AssignmentRecord:
         require_role(identity, "manager")
-        try:
-            return await service.create_assignment(identity.user_id, request)
-        except AssignmentConflictError as exc:
-            raise PracticeAPIError("validation_error", status_code=409) from exc
+        return await service.create_assignment(identity.user_id, request)
 
     @manager.get("/reviews/{session_id}", response_model=RecordedAttemptDetail)
     async def manager_detail(session_id: SessionId, identity: actor) -> RecordedAttemptDetail:
@@ -270,7 +253,5 @@ def create_recorded_practice_routers(
             return await service.approve(session_id, identity.user_id, decision)
         except AttemptNotFoundError as exc:
             raise PracticeAPIError("session_not_found") from exc
-        except ReviewConflictError as exc:
-            raise PracticeAPIError("validation_error", status_code=409) from exc
 
     return practice, manager

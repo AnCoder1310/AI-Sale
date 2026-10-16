@@ -90,7 +90,11 @@ def links(*ids):
 async def test_eligibility_confirmation_after_two_prompts_resolves_without_dropout(scenario, reply):
     graph, checkpoint, customer, analyzer = runtime(
         analyses=[
-            {"factual_claims": [{"text": "Eco giá 646 triệu", "category": "price"}]},
+            {
+                "factual_claims": [{"text": "Eco giá 646 triệu", "category": "price"}],
+                "detected_intents": ["ask_current_vehicle_or_promo"],
+                "discovered_fact_ids": ["current_vehicle"],
+            },
             {},
             {},
             {"addressed_objection_ids": [ELIGIBILITY], "resolved_objection_ids": [ELIGIBILITY]},
@@ -112,7 +116,7 @@ async def test_eligibility_confirmation_after_two_prompts_resolves_without_dropo
         ],
     )
     await graph.start("session", SCENARIO_ID)
-    await graph.continue_session("session", "Eco giá 646 triệu")
+    await graph.continue_session("session", "Eco giá 646 triệu. Chị đang đi xe gì?")
     await graph.continue_session("session", "Để em kiểm tra.")
     await graph.continue_session("session", "Em đang xem lại điều kiện.")
     before = await graph.get_session_state("session")
@@ -295,7 +299,7 @@ async def test_acceptance_cannot_resolve_upsell_objection_without_benefits():
 @pytest.mark.asyncio
 async def test_customer_price_leak_guard_retries(scenario, state):
     model = CustomerModel({"reply": "Bản Plus giá 637 triệu nhé."}, {"reply": "Chị muốn xem xe thực tế."})
-    turn = await CustomerAgent(model).generate_turn(scenario, state, mode="opening")
+    turn = await CustomerAgent(model).generate_turn(scenario, state, mode="response")
     assert turn.message.content == "Chị muốn xem xe thực tế."
     assert model.calls == 2
 
@@ -305,7 +309,7 @@ async def test_customer_price_leak_guard_retries(scenario, state):
 async def test_customer_rejects_repeated_unsupported_figures(scenario, state, reply):
     model = CustomerModel({"reply": reply}, {"reply": reply})
     with pytest.raises(CustomerResponseError, match="unsupported price or specification"):
-        await CustomerAgent(model).generate_turn(scenario, state, mode="opening")
+        await CustomerAgent(model).generate_turn(scenario, state, mode="response")
 
 
 @pytest.mark.asyncio

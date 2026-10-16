@@ -13,9 +13,9 @@ scenario identity, difficulty, persona, stages, turn count, trust/interest, visi
 and hidden facts, objections, discoveries, termination state, and message history.
 New sessions have an empty transcript, stage `opening`, and turn count zero.
 The advisor speaks first in every scenario; the first advisor message counts as
-turn one. The first customer reply introduces the buying intent and usage needs
-from `customer_goals`. Disclosures triggered by that opening still use configured
-revealed statements and are recorded against the first customer reply. Creating
+turn one. The first customer reply introduces only buying intent from `customer_goals`;
+usage needs are discovered through relevant advisor questions. Disclosures
+triggered by that opening still use configured revealed statements and are recorded against the first customer reply. Creating
 a session makes no customer model call; the existing maximum advisor-turn limit
 is unchanged.
 

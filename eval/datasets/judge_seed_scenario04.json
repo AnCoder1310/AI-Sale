@@ -8,7 +8,7 @@
       "case_id": "S04_STRONG_ECO",
       "session_id": "judge-seed-s04-strong_eco",
       "scenario_id": "SCENARIO_04_VF6_ECO_PLUS_UPSELL",
-      "scenario_version": "1.2",
+      "scenario_version": "1.3",
       "label_source": "author_draft_needs_expert_review",
       "messages": [
         {
@@ -132,7 +132,7 @@
       "case_id": "S04_STRONG_PLUS",
       "session_id": "judge-seed-s04-strong_plus",
       "scenario_id": "SCENARIO_04_VF6_ECO_PLUS_UPSELL",
-      "scenario_version": "1.2",
+      "scenario_version": "1.3",
       "label_source": "author_draft_needs_expert_review",
       "messages": [
         {
@@ -276,7 +276,7 @@
       "case_id": "S04_WEAK",
       "session_id": "judge-seed-s04-weak",
       "scenario_id": "SCENARIO_04_VF6_ECO_PLUS_UPSELL",
-      "scenario_version": "1.2",
+      "scenario_version": "1.3",
       "label_source": "author_draft_needs_expert_review",
       "messages": [
         {

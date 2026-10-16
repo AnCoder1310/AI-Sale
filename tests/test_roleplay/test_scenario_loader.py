@@ -87,7 +87,7 @@ def test_non_array_dataset_is_rejected(tmp_path):
 def test_new_scenario_exposes_internal_contracts_only_on_private_lookup():
     repository = ScenarioRepository(SCENARIOS)
     scenario = repository.get("SCENARIO_04_VF6_ECO_PLUS_UPSELL")
-    assert scenario.scenario_version == "1.2"
+    assert scenario.scenario_version == "1.3"
     assert [objection.objection_id for objection in scenario.objections] == [
         "OBJ_VF6_PROMO_ELIGIBILITY",
         "OBJ_VF6_PLUS_WORTH",

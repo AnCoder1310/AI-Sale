@@ -9,8 +9,10 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
 from src.agents.roleplay.customer_agent import CustomerResponseError
+from src.agents.roleplay.graph import RoleplaySessionConflictError
 from src.agents.roleplay.turn_analyzer import TurnAnalysisError
 from src.services.practice import PracticeEvaluationUnavailableError
+from src.services.practice_records import AssignmentConflictError, ReviewConflictError
 from src.services.voice import MAX_AUDIO_SECONDS
 
 logger = logging.getLogger(__name__)
@@ -22,6 +24,9 @@ PracticeErrorCode = Literal[
     "forbidden",
     "unauthenticated",
     "provider_unavailable",
+    "message_not_sent",
+    "assignment_conflict",
+    "review_conflict",
     "evaluation_failed",
     "voice_not_configured",
     "voice_invalid_audio",
@@ -32,6 +37,9 @@ PracticeErrorCode = Literal[
 ]
 
 ERRORS: dict[PracticeErrorCode, tuple[int, str]] = {
+    "message_not_sent": (503, "Chưa gửi được tin nhắn. Vui lòng gửi lại."),
+    "assignment_conflict": (409, "Không thể giao hoặc bắt đầu bài luyện tập này."),
+    "review_conflict": (409, "Không thể duyệt lượt luyện tập này."),
     "session_finished": (409, "Phiên luyện tập đã kết thúc và không nhận thêm tin nhắn."),
     "session_busy": (409, "Khách hàng đang trả lời, vui lòng đợi giây lát."),
     "session_not_found": (404, "Không tìm thấy phiên luyện tập."),
@@ -49,9 +57,9 @@ ERRORS: dict[PracticeErrorCode, tuple[int, str]] = {
 
 
 class PracticeAPIError(HTTPException):
-    def __init__(self, code: PracticeErrorCode, *, status_code: int | None = None) -> None:
+    def __init__(self, code: PracticeErrorCode, *, status_code: int | None = None, detail: str | None = None) -> None:
         default_status, message = ERRORS[code]
-        super().__init__(status_code=status_code or default_status, detail=message)
+        super().__init__(status_code=status_code or default_status, detail=detail or message)
         self.code = code
 
 
@@ -69,12 +77,23 @@ async def practice_exception_handler(request: Request, exc: PracticeAPIError) ->
 
 def session_conflict(exc: Exception) -> PracticeAPIError:
     """Graph/reducer errors distinguish terminal state from an outstanding reply."""
-    message = str(exc).lower()
-    if "finished" in message or "terminated" in message:
-        return PracticeAPIError("session_finished")
-    if "pending" in message and not message.startswith("no "):
-        return PracticeAPIError("session_busy")
+    if isinstance(exc, RoleplaySessionConflictError):
+        return PracticeAPIError(exc.code, status_code=409)
     return PracticeAPIError("validation_error", status_code=409)
+
+
+# The records subsystem currently exposes legacy reason strings. Translate only
+# known reasons; unknown diagnostics must never become client-visible text.
+CONFLICT_REASONS = {
+    "Advisor does not exist or is inactive.": "Tư vấn viên không tồn tại hoặc đã ngừng hoạt động.",
+    "Practice scenario was not found.": "Không tìm thấy kịch bản luyện tập.",
+    "Due date cannot be in the past.": "Hạn hoàn thành không được ở trong quá khứ.",
+    "Assignment does not match this advisor and scenario.": "Bài được giao không khớp với tư vấn viên và kịch bản này.",
+    "Assignment is already completed.": "Bài được giao này đã hoàn thành.",
+    "attempt is unfinished or already reviewed": "Lượt luyện tập chưa hoàn thành hoặc đã được duyệt.",
+    "attempt is already reviewed": "Lượt luyện tập này đã được duyệt.",
+    "only assessed criteria may receive score overrides": "Chỉ được sửa điểm của tiêu chí đã được đánh giá.",
+}
 
 
 class PracticeRoute(APIRoute):
@@ -90,7 +109,13 @@ class PracticeRoute(APIRoute):
                 raise
             except PracticeEvaluationUnavailableError as exc:
                 raise PracticeAPIError("evaluation_failed") from exc
-            except (CustomerResponseError, TurnAnalysisError) as exc:
+            except TurnAnalysisError as exc:
+                raise PracticeAPIError("message_not_sent") from exc
+            except AssignmentConflictError as exc:
+                raise PracticeAPIError("assignment_conflict", detail=CONFLICT_REASONS.get(str(exc))) from exc
+            except ReviewConflictError as exc:
+                raise PracticeAPIError("review_conflict", detail=CONFLICT_REASONS.get(str(exc))) from exc
+            except CustomerResponseError as exc:
                 raise PracticeAPIError("provider_unavailable") from exc
             except HTTPException as exc:
                 codes: dict[int, PracticeErrorCode] = {

@@ -8,7 +8,7 @@
       "turns": 5,
       "termination": "active",
       "concern_prompt_counts": {
-        "OBJ_VF6_PRICE_ELIGIBILITY": 2
+        "OBJ_VF6_PROMO_ELIGIBILITY": 2
       },
       "spoken_fact_message_ids": {
         "budget": "bc14bc16-97cc-4467-a203-07333ec407ec",
@@ -19,7 +19,7 @@
       },
       "closing_outcome": null,
       "active_objections": [
-        "OBJ_VF6_PRICE_ELIGIBILITY"
+        "OBJ_VF6_PROMO_ELIGIBILITY"
       ],
       "resolved_objections": [
         "OBJ_VF6_PLUS_WORTH"

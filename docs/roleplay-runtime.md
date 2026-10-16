@@ -8,7 +8,7 @@ must reference a fact key already revealed before that advisor turn. A feature
 list alone is not a linked benefit: the analyzer must identify an explicit link
 in the advisor's message to the customer's need.
 
-SCENARIO_04 version 1.1 keeps daily family usage, weekend trips and buying
+SCENARIO_04 version 1.3 keeps daily family usage, weekend trips and buying
 priorities private until the advisor asks a relevant discovery question. The
 first customer reply introduces interest in VF 6 Eco and may ask about the
 promotion; it does not volunteer usage needs. Its Plus benefits all require
@@ -18,7 +18,17 @@ none receives credit through `visible_goals`.
 Objections activate on their stage or a case-insensitive whole-word keyword.
 An upsell objection can resolve only after the configured number of distinct
 linked benefits and safety benefits has accumulated. Neither analyzer resolution
-signals nor customer acceptance can bypass this rule.
+signals nor customer acceptance can bypass this rule. Objections can declare
+`requires_revealed_facts`, validated against `hidden_facts`; resolution requires
+those facts to be revealed before the advisor turn. Scenario 04 promotion
+eligibility requires `current_vehicle`; a bare confirmation before discovery
+cannot resolve it.
+
+Analysis failures happen before advisor-turn persistence and return HTTP 503
+`message_not_sent` (resend the message). Customer-generation failures happen after
+persistence and return `provider_unavailable` (retry the pending customer reply).
+Session conflicts use explicit exception codes. Assignment and review conflicts
+return `assignment_conflict` and `review_conflict` with localized reasons.
 
 Customer acceptance records `closing_outcome` only for a concrete proposed next
 step. Outcomes must exist and have all prerequisite objections resolved. Invalid

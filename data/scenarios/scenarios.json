@@ -309,7 +309,7 @@
     "title": "Chị Hà — VF 6 Eco hay nâng lên Plus?",
     "difficulty": "Medium",
     "sales_channel": "Showroom",
-    "scenario_version": "1.2",
+    "scenario_version": "1.3",
     "target_skills": [
       "need_discovery",
       "product_knowledge",
@@ -441,6 +441,7 @@
     "objections": [
       {
         "objection_id": "OBJ_VF6_PROMO_ELIGIBILITY",
+        "requires_revealed_facts": ["current_vehicle"],
         "trigger_stage": "presentation",
         "objection_text": "Giá vẫn hơi cao so với dự tính của chị. Ưu đãi 9% đó chị có được áp dụng không em?",
         "resolve_condition": "Sale xác nhận rõ ràng chị đủ điều kiện nhận ưu đãi (kể cả câu trả lời ngắn như “Dạ được ạ” hay “Chị đủ điều kiện” khi đang trả lời đúng câu hỏi về xe máy xăng đứng tên chị). Giá sau ưu đãi và các chính sách khác là điểm cộng cho policy_accuracy, KHÔNG bắt buộc để giải tỏa băn khoăn này.",

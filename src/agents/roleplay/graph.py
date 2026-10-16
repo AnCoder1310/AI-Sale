@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from langgraph.graph import END, StateGraph
 from pydantic import ValidationError
@@ -45,7 +45,16 @@ class RoleplaySessionNotFoundError(RoleplayGraphError):
 
 
 class RoleplaySessionConflictError(RoleplayGraphError):
-    """Raised when a session identifier is reused incompatibly."""
+    """A stable conflict code independent of internal diagnostic wording."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: Literal["session_finished", "session_busy", "validation_error"] = "validation_error",
+    ) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 def build_roleplay_turn_graph(
@@ -145,7 +154,13 @@ def build_roleplay_turn_graph(
                 updated.unresolved_objections = [
                     key for key in updated.unresolved_objections if key != rule.objection_id
                 ]
-            if accepted_id is not None and (rule is None or accepted_id != rule.objection_id):
+            accepted_objection = next(
+                (item for item in state["scenario"].objections if item.objection_id == accepted_id), None
+            )
+            facts_known = accepted_objection is not None and set(accepted_objection.requires_revealed_facts).issubset(
+                prior.revealed_facts
+            )
+            if accepted_id is not None and facts_known and (rule is None or accepted_id != rule.objection_id):
                 objection_id = accepted_id
                 updated.active_objections.remove(objection_id)
                 if objection_id in updated.unresolved_objections:
@@ -228,9 +243,13 @@ class RoleplayGraph:
         if existing is not None:
             state = self._validate_checkpoint(existing, session_id)
             if state.scenario_id != scenario_id:
-                raise RoleplaySessionConflictError("session_id already belongs to a different scenario")
+                raise RoleplaySessionConflictError(
+                    "session_id already belongs to a different scenario", code="validation_error"
+                )
             if max_turns is not None and state.max_turns != max_turns:
-                raise RoleplaySessionConflictError("session_id already has a different turn limit")
+                raise RoleplaySessionConflictError(
+                    "session_id already has a different turn limit", code="validation_error"
+                )
             return state.advisor_visible_context()
 
         state = RoleplayState.from_scenario(session_id, scenario, max_turns=max_turns)
@@ -247,15 +266,17 @@ class RoleplayGraph:
             raise RoleplaySessionNotFoundError(f"unknown session_id: {session_id}")
         state = self._validate_checkpoint(checkpoint_data, session_id)
         if state.termination_status is not TerminationStatus.ACTIVE:
-            raise RoleplaySessionConflictError("cannot continue a finished practice session")
+            raise RoleplaySessionConflictError("cannot continue a finished practice session", code="session_finished")
         if state.pending_customer_reply:
-            raise RoleplaySessionConflictError("customer reply is pending; retry it before sending another message")
+            raise RoleplaySessionConflictError(
+                "customer reply is pending; retry it before sending another message", code="session_busy"
+            )
         return await self._run_turn(state, advisor_message)
 
     async def retry_customer_reply(self, session_id: str) -> dict:
         state = await self.get_session_state(session_id)
         if not state.pending_customer_reply:
-            raise RoleplaySessionConflictError("no customer reply is pending")
+            raise RoleplaySessionConflictError("no customer reply is pending", code="validation_error")
         return await self._run_turn(state, state.messages[-1].content)
 
     async def _run_turn(self, state: RoleplayState, advisor_message: str) -> dict:
@@ -287,7 +308,9 @@ class RoleplayGraph:
     async def finish_session(self, session_id: str) -> RoleplayState:
         state = await self.get_session_state(session_id)
         if state.pending_customer_reply:
-            raise RoleplaySessionConflictError("customer reply is pending; retry it before finishing")
+            raise RoleplaySessionConflictError(
+                "customer reply is pending; retry it before finishing", code="session_busy"
+            )
         if state.termination_status is TerminationStatus.ACTIVE:
             state.termination_status = TerminationStatus.ADVISOR_ENDED
             state.termination_reason = "Advisor ended the practice session."
@@ -300,12 +323,14 @@ class RoleplayGraph:
     async def save_evaluation_result(self, session_id: str, result: SessionEvaluationResult) -> RoleplayState:
         state = await self.get_session_state(session_id)
         if state.termination_status is TerminationStatus.ACTIVE:
-            raise RoleplaySessionConflictError("cannot evaluate an active practice session")
+            raise RoleplaySessionConflictError("cannot evaluate an active practice session", code="validation_error")
         if result.session_id != session_id or result.scenario_id != state.scenario_id:
-            raise RoleplaySessionConflictError("evaluation does not match practice session")
+            raise RoleplaySessionConflictError("evaluation does not match practice session", code="validation_error")
         if state.evaluation_result is not None:
             if state.evaluation_result != result:
-                raise RoleplaySessionConflictError("practice session already has an evaluation")
+                raise RoleplaySessionConflictError(
+                    "practice session already has an evaluation", code="validation_error"
+                )
             return state
         state.evaluation_result = result
         state.evaluation_status = EvaluationStatus.COMPLETE

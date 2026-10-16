@@ -5,7 +5,6 @@ from typing import Annotated
 from fastapi import APIRouter, Path, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.agents.roleplay.customer_agent import CustomerResponseError
 from src.agents.roleplay.graph import (
     RoleplayScenarioNotFoundError,
     RoleplaySessionConflictError,
@@ -13,10 +12,8 @@ from src.agents.roleplay.graph import (
 )
 from src.agents.roleplay.scenario_loader import ScenarioSummary
 from src.agents.roleplay.state_reducer import StateTransitionError
-from src.agents.roleplay.turn_analyzer import TurnAnalysisError
 from src.api.practice_errors import PracticeAPIError, PracticeRoute, session_conflict
 from src.services.practice import (
-    PracticeEvaluationUnavailableError,
     PracticeResultView,
     PracticeService,
     PracticeSessionView,
@@ -90,8 +87,6 @@ def create_practice_router(service: PracticeService) -> APIRouter:
             raise PracticeAPIError("session_not_found") from exc
         except (RoleplaySessionConflictError, StateTransitionError) as exc:
             raise session_conflict(exc) from exc
-        except (CustomerResponseError, TurnAnalysisError) as exc:
-            raise PracticeAPIError("provider_unavailable") from exc
 
     @router.post("/{session_id}/finish", response_model=PracticeResultView)
     async def finish_session(
@@ -103,8 +98,6 @@ def create_practice_router(service: PracticeService) -> APIRouter:
             raise PracticeAPIError("session_not_found") from exc
         except RoleplaySessionConflictError as exc:
             raise session_conflict(exc) from exc
-        except PracticeEvaluationUnavailableError as exc:
-            raise PracticeAPIError("evaluation_failed") from exc
 
     @router.get("/{session_id}/result", response_model=PracticeResultView)
     async def get_result(

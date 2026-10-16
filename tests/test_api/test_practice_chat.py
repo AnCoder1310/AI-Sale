@@ -257,7 +257,7 @@ async def test_get_missing_session_returns_404(client):
 async def test_message_conflicts_have_distinct_localized_codes(client, service, reason, code, detail):
     from src.agents.roleplay.graph import RoleplaySessionConflictError
 
-    service.message_error = RoleplaySessionConflictError(reason)
+    service.message_error = RoleplaySessionConflictError(reason, code=code)
     response = await client.post("/api/v1/practice/session-1/message", json={"message": "Xin chào"})
     assert response.status_code == 409
     assert response.json() == {"code": code, "detail": detail}

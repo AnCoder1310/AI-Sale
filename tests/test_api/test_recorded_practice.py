@@ -440,7 +440,7 @@ async def test_real_auth_cookie_is_used_for_practice_ownership_and_manager_acces
             "message",
             "POST",
             "send_message",
-            RoleplaySessionConflictError("cannot continue a finished practice session"),
+            RoleplaySessionConflictError("cannot continue a finished practice session", code="session_finished"),
             409,
             "session_finished",
             "Phiên luyện tập đã kết thúc và không nhận thêm tin nhắn.",
@@ -449,7 +449,9 @@ async def test_real_auth_cookie_is_used_for_practice_ownership_and_manager_acces
             "message",
             "POST",
             "send_message",
-            RoleplaySessionConflictError("customer reply is pending; retry it before sending another message"),
+            RoleplaySessionConflictError(
+                "customer reply is pending; retry it before sending another message", code="session_busy"
+            ),
             409,
             "session_busy",
             "Khách hàng đang trả lời, vui lòng đợi giây lát.",

@@ -97,7 +97,11 @@ def apply_turn_analysis(
     if rule and eligible_upsell:
         resolution_ids.append(rule.objection_id)
         addressed_objections.add(rule.objection_id)
+    objections_by_id = {item.objection_id: item for item in scenario.objections}
     for objection_id in dict.fromkeys(resolution_ids):
+        objection = objections_by_id.get(objection_id)
+        if objection is None or not set(objection.requires_revealed_facts).issubset(state.revealed_facts):
+            continue
         if rule and objection_id == rule.objection_id and not eligible_upsell:
             continue
         if objection_id not in addressed_objections:

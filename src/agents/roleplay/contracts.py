@@ -76,6 +76,7 @@ class ObjectionContract(ScenarioModel):
     objection_text: str = Field(min_length=1)
     resolve_condition: str = Field(min_length=1)
     ideal_sales_response: str | None = None
+    requires_revealed_facts: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_trigger(self) -> "ObjectionContract":
@@ -167,6 +168,10 @@ class ScenarioContract(ScenarioModel):
         objection_ids = [objection.objection_id for objection in self.objections]
         if len(objection_ids) != len(set(objection_ids)):
             raise ValueError("objection_id values must be unique within a scenario")
+
+        for objection in self.objections:
+            if set(objection.requires_revealed_facts) - self.hidden_facts.keys():
+                raise ValueError("objection prerequisites reference unknown hidden facts")
 
         outcome_ids = [outcome.outcome_id for outcome in self.acceptable_outcomes]
         if len(outcome_ids) != len(set(outcome_ids)):

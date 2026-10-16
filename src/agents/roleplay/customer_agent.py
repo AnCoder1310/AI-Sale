@@ -13,7 +13,7 @@ from .contracts import ScenarioContract
 from .prompts import CUSTOMER_PROMPT_VERSION, CUSTOMER_SYSTEM_PROMPT
 from .state import RoleplayMessage, RoleplayState
 
-CustomerTurnMode = Literal["opening", "response"]
+CustomerTurnMode = Literal["response"]
 logger = logging.getLogger(__name__)
 
 ENGLISH_PROSE_MARKERS = {
@@ -166,8 +166,8 @@ class CustomerAgent:
         if state.scenario_id != scenario.scenario_id:
             raise CustomerResponseError("state and scenario identifiers do not match")
 
-        pending = self.pending_disclosures(scenario, state) if mode == "response" else []
-        first_reply = mode == "response" and not any(message.role == "customer" for message in state.messages)
+        pending = self.pending_disclosures(scenario, state)
+        first_reply = not any(message.role == "customer" for message in state.messages)
         if pending and not first_reply:
             reply = " ".join(rule.revealed_statement for rule in pending)
             return CustomerTurn(
@@ -175,12 +175,7 @@ class CustomerAgent:
                 disclosed_fact_keys=tuple(rule.fact_key for rule in pending),
             )
 
-        if (
-            mode == "response"
-            and state.active_objections
-            and self.focus_objection_id(state) is None
-            and not consider_next_step
-        ):
+        if state.active_objections and self.focus_objection_id(state) is None and not consider_next_step:
             address = self.persona_address(scenario)
             address_lower = address.lower()
             return CustomerTurn(
@@ -338,8 +333,7 @@ class CustomerAgent:
                 "resolved_objection_ids": list(state.resolved_objections),
                 "upsell_objection_id": scenario.upsell_rule.objection_id if scenario.upsell_rule else None,
                 "turn_mode": mode,
-                "replying_to_advisor_opening": mode == "response"
-                and not any(message.role == "customer" for message in state.messages),
+                "replying_to_advisor_opening": not any(message.role == "customer" for message in state.messages),
                 "focus_objection_id": focus_id,
                 "focus_objection_prompt_number": state.concern_prompt_counts.get(focus_id, 0) + 1 if focus_id else None,
                 "sales_channel": state.sales_channel,
