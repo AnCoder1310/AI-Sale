@@ -5,7 +5,7 @@
     "difficulty": "Medium",
     "sales_channel": "Fanpage",
     "training_objective": "Khai thác nhu cầu chạy dịch vụ, trao đổi chi phí sử dụng một cách trung thực và chốt bước kiểm chứng phù hợp.",
-    "scenario_version": "2.2",
+    "scenario_version": "2.3",
     "target_skills": ["need_discovery", "objection_handling", "closing_next_step"],
     "persona": {
       "name": "Anh Nam",
@@ -17,7 +17,7 @@
     "customer_goals": "So chi phí sử dụng theo quãng đường thực tế với Vios, kiểm tra điều kiện sạc cho xe biển vàng và chọn bước xác minh trước khi đổi xe",
     "visible_context": "Khách nhắn tin qua Fanpage hỏi: 'VF 5 Plus lăn bánh bao nhiêu em? Anh đang chạy Vios dịch vụ tính đổi sang xe điện mà sợ không ăn thua.'",
     "hidden_facts": {
-      "budget": "Có sẵn 150 triệu, muốn vay trả góp phần còn lại",
+      "budget": "Có sẵn khoảng 300 triệu để trả trước, cân nhắc vay phần còn lại",
       "daily_distance": "Chạy trung bình 180 km/ngày (khoảng 5.000 km/tháng)",
       "fuel_cost_month": "Theo ghi chép chi tiêu ba tháng gần đây, tiền xăng Vios khoảng 8,5 triệu đồng mỗi tháng; đây là dữ kiện giả lập của khách, không phải thông số Toyota",
       "registration_location": "Anh dự định đăng ký xe tại Hà Nội và chạy biển vàng",
@@ -35,7 +35,7 @@
         "fact_key": "budget",
         "trigger_intent": "ask_budget_or_financing",
         "trigger_keywords": ["tài chính", "ngân sách", "trả trước", "vay vốn", "góp"],
-        "revealed_statement": "Anh dồn hết vốn liếng trong tay chỉ có tầm 150 triệu thôi, còn lại phải vay ngân hàng thì mới kham nổi."
+        "revealed_statement": "Anh có khoảng 300 triệu để trả trước. Nếu đổi xe thì phần còn lại chắc vẫn phải vay, nhưng anh muốn xem chi phí chạy hằng tháng có hợp lý không đã."
       },
       {
         "fact_key": "fuel_cost_month",
