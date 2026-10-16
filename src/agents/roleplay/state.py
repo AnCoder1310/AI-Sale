@@ -26,6 +26,7 @@ class TerminationStatus(StrEnum):
     ADVISOR_ENDED = "advisor_ended"
     DROPPED_OUT = "dropped_out"
     MAX_TURNS = "max_turns"
+    ADVISOR_MISCONDUCT = "advisor_misconduct"
 
 
 class EvaluationStatus(StrEnum):
@@ -47,6 +48,11 @@ class AdvisorFactualClaim(BaseModel):
     message_id: str = Field(min_length=1)
     text: str = Field(min_length=1)
     category: ClaimCategory
+
+
+class LinkedBenefit(BaseModel):
+    benefit_id: str
+    need_fact_key: str
 
 
 class RoleplayState(BaseModel):
@@ -77,6 +83,10 @@ class RoleplayState(BaseModel):
     pending_next_step_attempted: bool = False
     termination_status: TerminationStatus = TerminationStatus.ACTIVE
     termination_reason: str | None = None
+    closing_outcome: str | None = None
+    linked_benefits: list[LinkedBenefit] = Field(default_factory=list)
+    policy_mentions: list[str] = Field(default_factory=list)
+    misconduct_reason: str | None = None
     evaluation_status: EvaluationStatus = EvaluationStatus.NOT_STARTED
     evaluation_result: SessionEvaluationResult | None = None
     messages: list[RoleplayMessage] = Field(default_factory=list)
@@ -178,5 +188,6 @@ class RoleplayState(BaseModel):
             "visible_context": self.visible_context,
             "termination_status": self.termination_status.value,
             "termination_reason": self.termination_reason,
+            "closing_outcome": self.closing_outcome,
             "messages": [message.model_dump() for message in self.messages],
         }

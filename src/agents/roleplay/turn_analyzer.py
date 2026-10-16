@@ -8,7 +8,7 @@ from typing import Any, Protocol
 from pydantic import BaseModel, Field, ValidationError
 
 from .contracts import ClaimCategory, ScenarioContract
-from .state import RoleplayState
+from .state import LinkedBenefit, RoleplayState
 
 
 class FactualClaim(BaseModel):
@@ -19,6 +19,9 @@ class FactualClaim(BaseModel):
 class TurnAnalysis(BaseModel):
     """Signals used by deterministic state logic and later evaluation."""
 
+    mentioned_products: list[str] = Field(default_factory=list)
+    linked_benefits: list[LinkedBenefit] = Field(default_factory=list)
+    policy_mentions: list[str] = Field(default_factory=list)
     detected_intents: list[str] = Field(default_factory=list)
     discovered_fact_ids: list[str] = Field(default_factory=list)
     factual_claims: list[FactualClaim] = Field(default_factory=list)
@@ -48,6 +51,22 @@ class TurnAnalysisError(ValueError):
 
 def _unique(items: list[str]) -> list[str]:
     return list(dict.fromkeys(items))
+
+
+def validated_benefit_links(
+    links: list[LinkedBenefit], scenario: ScenarioContract, state: RoleplayState
+) -> list[LinkedBenefit]:
+    """Allow only configured benefits linked to needs available before this turn."""
+    benefit_ids = {benefit.benefit_id for benefit in scenario.upsell_benefits}
+    need_keys = {*state.revealed_facts, "visible_goals"}
+    seen: set[tuple[str, str]] = set()
+    result = []
+    for link in links:
+        key = (link.benefit_id, link.need_fact_key)
+        if link.benefit_id in benefit_ids and link.need_fact_key in need_keys and key not in seen:
+            seen.add(key)
+            result.append(link)
+    return result
 
 
 class TurnAnalyzer:
@@ -109,6 +128,13 @@ class TurnAnalyzer:
 
         return analysis.model_copy(
             update={
+                "mentioned_products": _unique(analysis.mentioned_products),
+                "linked_benefits": validated_benefit_links(analysis.linked_benefits, scenario, state),
+                "policy_mentions": [
+                    item
+                    for item in _unique(analysis.policy_mentions)
+                    if item in {policy.policy_id for policy in scenario.policy_expectations}
+                ],
                 "detected_intents": detected_intents,
                 "discovered_fact_ids": discovered_fact_ids,
                 "addressed_objection_ids": addressed_objection_ids,

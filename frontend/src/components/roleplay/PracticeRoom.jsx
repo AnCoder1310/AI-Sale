@@ -367,7 +367,9 @@ export function PracticeRoom({
           </div>
         )}
         {(voiceError || recorder.recordingError) && <p role="alert" style={{ color: '#991B1B', fontSize: '0.82rem', marginBottom: 8 }}>{voiceError || recorder.recordingError}</p>}
-        {terminationStatus !== 'active' && <p style={{ fontSize: '0.82rem', marginBottom: 8 }}>Cuộc trò chuyện đã kết thúc. Hãy xem đánh giá.</p>}
+        {terminationStatus !== 'active' && <p role="status" style={{ fontSize: '0.82rem', marginBottom: 8, color: terminationStatus === 'advisor_misconduct' ? '#991B1B' : undefined }}>{terminationStatus === 'advisor_misconduct'
+          ? 'Phiên luyện tập đã dừng do ngôn từ không phù hợp.'
+          : 'Cuộc trò chuyện đã kết thúc. Hãy xem đánh giá.'}</p>}
         <div className="practice-room-composer-form">
           <textarea
             value={inputMessage}

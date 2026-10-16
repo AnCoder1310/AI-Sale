@@ -105,6 +105,8 @@ class CustomerModelOutput(BaseModel):
     reply: str = Field(min_length=1, max_length=800)
     raised_objection_id: str | None = None
     accepted_next_step: bool = False
+    accepted_outcome_id: str | None = None
+    disclosed_fact_keys: list[str] = Field(default_factory=list)
 
     @field_validator("reply")
     @classmethod
@@ -135,6 +137,8 @@ class CustomerTurn:
     message: RoleplayMessage
     raised_objection_id: str | None = None
     accepted_next_step: bool = False
+    accepted_outcome_id: str | None = None
+    disclosed_fact_keys: tuple[str, ...] = ()
 
 
 class CustomerAgent:
@@ -166,7 +170,10 @@ class CustomerAgent:
         pending = self.pending_disclosures(scenario, state) if mode == "response" else []
         if pending:
             reply = " ".join(rule.revealed_statement for rule in pending)
-            return CustomerTurn(message=RoleplayMessage(role="customer", content=reply))
+            return CustomerTurn(
+                message=RoleplayMessage(role="customer", content=reply),
+                disclosed_fact_keys=tuple(rule.fact_key for rule in pending),
+            )
 
         if (
             mode == "response"
@@ -209,6 +216,7 @@ class CustomerAgent:
 
             try:
                 self._reject_private_fact_leak(output.reply, scenario, state)
+                self._reject_unsupported_figures(output.reply, scenario, state)
                 self._reject_private_persona_leak(output.reply, state.persona)
                 if _contains_system_prompt_excerpt(output.reply):
                     raise CustomerResponseError("customer response contains system prompt excerpt")
@@ -243,7 +251,48 @@ class CustomerAgent:
             message=RoleplayMessage(role="customer", content=output.reply),
             raised_objection_id=raised_id,
             accepted_next_step=output.accepted_next_step,
+            accepted_outcome_id=(
+                self.validated_outcome_id(output.accepted_outcome_id, scenario, state)
+                if output.accepted_next_step
+                else None
+            ),
+            disclosed_fact_keys=tuple(
+                dict.fromkeys(key for key in output.disclosed_fact_keys if key in {rule.fact_key for rule in pending})
+            ),
         )
+
+    @staticmethod
+    def validated_outcome_id(outcome_id: str | None, scenario: ScenarioContract, state: RoleplayState) -> str | None:
+        eligible = [
+            outcome
+            for outcome in scenario.acceptable_outcomes
+            if set(outcome.requires_resolved_objections) <= set(state.resolved_objections)
+        ]
+        selected = next((outcome for outcome in eligible if outcome.outcome_id == outcome_id), None)
+        if selected:
+            return selected.outcome_id
+        base = [outcome for outcome in eligible if not outcome.requires_resolved_objections]
+        fallback = next((outcome for outcome in base if outcome.preferred), next(iter(base), None))
+        return fallback.outcome_id if fallback else None
+
+    @staticmethod
+    def _reject_unsupported_figures(reply: str, scenario: ScenarioContract, state: RoleplayState) -> None:
+        # Model names (VF 6), appointments and ordinary counts are allowed; numeric
+        # product specifications and prices must have been supplied explicitly.
+        figures = re.findall(
+            r"(?<!\w)\d+(?:[.,]\d+)*\s*(?:triệu|tr\b|tỷ|đ\b|vnđ|vnd|km(?:/h)?|kwh|kw|mm|nm|hp|ps|%|túi\s+khí|mã\s+lực|chỗ|inch|°)",
+            reply,
+            re.IGNORECASE,
+        )
+        allowed = [message.content for message in state.messages if message.role == "advisor"]
+        allowed.extend(
+            rule.revealed_statement for rule in scenario.disclosure_rules if rule.fact_key in state.revealed_facts
+        )
+        normalized = [" ".join(text.casefold().split()) for text in allowed]
+        for figure in figures:
+            exact = " ".join(figure.casefold().split())
+            if not any(re.search(r"(?<![\w.,])" + re.escape(exact) + r"(?!\w)", text) for text in normalized):
+                raise CustomerResponseError("customer response contains unsupported price or specification")
 
     @staticmethod
     def pending_disclosures(scenario: ScenarioContract, state: RoleplayState):
@@ -274,6 +323,13 @@ class CustomerAgent:
         context.update(
             {
                 "prompt_version": CUSTOMER_PROMPT_VERSION,
+                "acceptable_outcomes": [item.model_dump(mode="json") for item in scenario.acceptable_outcomes],
+                "resolved_objection_ids": list(state.resolved_objections),
+                "upsell_objection_id": scenario.upsell_rule.objection_id if scenario.upsell_rule else None,
+                "pending_disclosures": [
+                    {"fact_key": rule.fact_key, "statement": rule.revealed_statement}
+                    for rule in CustomerAgent.pending_disclosures(scenario, state)
+                ],
                 "turn_mode": mode,
                 "focus_objection_id": focus_id,
                 "focus_objection_prompt_number": state.concern_prompt_counts.get(focus_id, 0) + 1 if focus_id else None,

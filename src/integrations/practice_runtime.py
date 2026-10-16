@@ -187,6 +187,10 @@ def _turn_analysis_context(
             "disclosure_rules": [rule.model_dump(mode="json") for rule in scenario.disclosure_rules],
             "objections": [objection.model_dump(mode="json") for objection in scenario.objections],
             "success_conditions": scenario.success_conditions,
+            "acceptable_outcomes": [item.model_dump(mode="json") for item in scenario.acceptable_outcomes],
+            "upsell_benefits": [item.model_dump(mode="json") for item in scenario.upsell_benefits],
+            "policy_expectations": [item.model_dump(mode="json") for item in scenario.policy_expectations],
+            "customer_goals": scenario.customer_goals,
             "termination_conditions": {
                 **scenario.termination_conditions.model_dump(mode="json"),
                 "max_turns": state.max_turns,
@@ -195,6 +199,7 @@ def _turn_analysis_context(
         "state": {
             "conversation_stage": state.conversation_stage.value,
             "revealed_fact_ids": list(state.revealed_facts),
+            "allowed_need_fact_keys": list(dict.fromkeys([*state.revealed_facts, "visible_goals"])),
             "active_objection_ids": list(state.active_objections),
             "resolved_objection_ids": list(state.resolved_objections),
             "unresolved_objection_ids": list(state.unresolved_objections),
