@@ -5,7 +5,45 @@
     "difficulty": "Medium",
     "sales_channel": "Fanpage",
     "training_objective": "Khai thác nhu cầu chạy dịch vụ, trao đổi chi phí sử dụng một cách trung thực và chốt bước kiểm chứng phù hợp.",
-    "scenario_version": "2.3",
+    "scenario_version": "2.4",
+    "policy_expectations": [
+      {
+        "policy_id": "vtlx2",
+        "level": "expected",
+        "description": "Vì Tương Lai Xanh 2 giảm 9% giá niêm yết sau khi xác nhận khách sở hữu xe đủ điều kiện (ô tô xăng, xe máy xăng, xe máy điện hoặc ô tô điện VinFast); áp dụng 19/09–19/12/2026, không cộng gộp VinClub/Tri ân.",
+        "source_ids": [
+          "PROMOTION_SALES_VINFAST_20260921"
+        ],
+        "requires_eligibility_check": true
+      },
+      {
+        "policy_id": "charging",
+        "level": "expected",
+        "description": "Miễn phí 10 lượt sạc đầu tiên/xe/tháng tại V-GREEN đến 10/02/2029 theo điều kiện chính sách hiện hành. Xe biển vàng kinh doanh cần kiểm tra khung giờ ưu đãi: Thứ 6, Thứ 7 và Chủ Nhật chỉ áp dụng 23:00–06:00 và 14:00–16:00; các ngày còn lại được áp dụng cả các khung giờ khác.",
+        "source_ids": [
+          "POLICY_CHARGING_VINFAST_20260919"
+        ],
+        "requires_eligibility_check": false
+      },
+      {
+        "policy_id": "warranty",
+        "level": "bonus",
+        "description": "Bảo hành xe 7 năm/160.000 km, pin 8 năm/160.000 km, tùy điều kiện nào đến trước.",
+        "source_ids": [
+          "FAQ_VF5_20260922"
+        ],
+        "requires_eligibility_check": false
+      },
+      {
+        "policy_id": "zero_down",
+        "level": "bonus",
+        "description": "Mua xe 0 Đồng: vay đến 100% giá trị xe, áp dụng 04/01–31/12/2026, cần ngân hàng xét duyệt.",
+        "source_ids": [
+          "PROMOTION_SALES_VINFAST_20260921"
+        ],
+        "requires_eligibility_check": false
+      }
+    ],
     "target_skills": ["need_discovery", "objection_handling", "closing_next_step"],
     "persona": {
       "name": "Anh Nam",
@@ -85,7 +123,45 @@
     "difficulty": "Hard",
     "sales_channel": "Tin nhắn tư vấn",
     "training_objective": "Khám phá nhu cầu gia đình và người cùng ra quyết định, sau đó so sánh giá trị mà không hạ thấp đối thủ hoặc đưa ra cam kết khấu hao thiếu căn cứ.",
-    "scenario_version": "2.0",
+    "scenario_version": "2.1",
+    "policy_expectations": [
+      {
+        "policy_id": "vtlx2",
+        "level": "expected",
+        "description": "Vì Tương Lai Xanh 2 giảm 5% giá niêm yết sau khi xác nhận khách sở hữu xe đủ điều kiện (ô tô xăng, xe máy xăng, xe máy điện hoặc ô tô điện VinFast); áp dụng 19/09–19/12/2026, không cộng gộp VinClub/Tri ân. VF 7 được giảm 7% cho lực lượng vũ trang/VNPost đủ điều kiện.",
+        "source_ids": [
+          "PROMOTION_SALES_VINFAST_20260921"
+        ],
+        "requires_eligibility_check": true
+      },
+      {
+        "policy_id": "warranty",
+        "level": "expected",
+        "description": "Bảo hành xe và pin 10 năm/200.000 km theo điều kiện tiêu chuẩn, tùy điều kiện nào đến trước.",
+        "source_ids": [
+          "FAQ_VF7_20260922"
+        ],
+        "requires_eligibility_check": false
+      },
+      {
+        "policy_id": "charging",
+        "level": "bonus",
+        "description": "Miễn phí 10 lượt sạc đầu tiên/xe/tháng tại V-GREEN đến 10/02/2029 theo điều kiện chính sách hiện hành. Khách phải cam kết không dùng VF 7 kinh doanh dịch vụ.",
+        "source_ids": [
+          "POLICY_CHARGING_VINFAST_20260919"
+        ],
+        "requires_eligibility_check": false
+      },
+      {
+        "policy_id": "zero_down",
+        "level": "bonus",
+        "description": "Mua xe 0 Đồng: vay đến 100% giá trị xe, áp dụng 04/01–31/12/2026, cần ngân hàng xét duyệt.",
+        "source_ids": [
+          "PROMOTION_SALES_VINFAST_20260921"
+        ],
+        "requires_eligibility_check": false
+      }
+    ],
     "target_skills": ["product_knowledge", "objection_handling", "closing_next_step"],
     "persona": {
       "name": "Chị Thanh",
@@ -144,7 +220,45 @@
     "difficulty": "Easy",
     "sales_channel": "Chat trực tuyến",
     "training_objective": "Khai thác quãng đường và khả năng tiếp cận điểm sạc để xử lý lo ngại sạc tại chung cư bằng phương án có thể kiểm chứng.",
-    "scenario_version": "2.0",
+    "scenario_version": "2.1",
+    "policy_expectations": [
+      {
+        "policy_id": "vtlx2",
+        "level": "expected",
+        "description": "Vì Tương Lai Xanh 2 giảm 9% giá niêm yết sau khi xác nhận khách sở hữu xe đủ điều kiện (ô tô xăng, xe máy xăng, xe máy điện hoặc ô tô điện VinFast); áp dụng 19/09–19/12/2026, không cộng gộp VinClub/Tri ân.",
+        "source_ids": [
+          "PROMOTION_SALES_VINFAST_20260921"
+        ],
+        "requires_eligibility_check": true
+      },
+      {
+        "policy_id": "charging",
+        "level": "expected",
+        "description": "Miễn phí 10 lượt sạc đầu tiên/xe/tháng tại V-GREEN đến 10/02/2029 theo điều kiện chính sách hiện hành.",
+        "source_ids": [
+          "POLICY_CHARGING_VINFAST_20260919"
+        ],
+        "requires_eligibility_check": false
+      },
+      {
+        "policy_id": "warranty",
+        "level": "bonus",
+        "description": "Bảo hành xe 7 năm/160.000 km, pin 8 năm/160.000 km, tùy điều kiện nào đến trước.",
+        "source_ids": [
+          "FAQ_VF6_20260922"
+        ],
+        "requires_eligibility_check": false
+      },
+      {
+        "policy_id": "home_charger",
+        "level": "bonus",
+        "description": "Bộ sạc AC 7,4 kW giá 11.000.000đ.",
+        "source_ids": [
+          "PRICE_LIST_VINFAST_20260921"
+        ],
+        "requires_eligibility_check": false
+      }
+    ],
     "target_skills": ["need_discovery", "objection_handling"],
     "persona": {
       "name": "Anh Tuấn",
@@ -188,6 +302,227 @@
     "termination_conditions": {
       "max_turns": 6,
       "drop_out_trigger": "Nếu tư vấn viên bỏ qua câu hỏi sạc mà chuyển sang ép chốt cọc."
+    }
+  },
+  {
+    "scenario_id": "SCENARIO_04_VF6_ECO_PLUS_UPSELL",
+    "title": "Chị Hà — VF 6 Eco hay nâng lên Plus?",
+    "difficulty": "Medium",
+    "sales_channel": "Showroom",
+    "scenario_version": "1.0",
+    "target_skills": [
+      "need_discovery",
+      "product_knowledge",
+      "objection_handling",
+      "policy_accuracy",
+      "closing_next_step"
+    ],
+    "persona": {
+      "name": "Chị Hà",
+      "age": 36,
+      "occupation": "nhân viên văn phòng",
+      "family": "chồng và 2 con học tiểu học",
+      "current_car": null,
+      "communication_style": "Thân thiện, thực tế, quan tâm tiền và an toàn; không hỏi sâu thông số kỹ thuật; trả lời ngắn gọn."
+    },
+    "training_objective": "Khám phá nhu cầu, xác nhận điều kiện ưu đãi, chốt được VF 6 Eco hoặc upsell VF 6 Plus bằng lợi ích gắn với nhu cầu thật — cả hai đều là thành công.",
+    "buyer_intent": "Mua VF 6 Eco đang có ưu đãi.",
+    "visible_context": "Khách đến showroom xem VF 6 Eco vì thấy giá đang ưu đãi tốt.",
+    "customer_goals": "Tư vấn viên chào trước; chị đáp: “Chào em, chị đang tìm hiểu chiếc VF 6 Eco. Chị thấy giá đang có ưu đãi khá tốt nên muốn đến xem xe thực tế.” Chị chia sẻ nhu cầu: “Chị chủ yếu đi làm, đưa đón con đi học, cuối tuần thỉnh thoảng về quê. Chị muốn mua chiếc xe dùng lâu dài, an toàn mà cũng phải hợp lý về tiền.”",
+    "hidden_facts": {
+      "current_vehicle": "chị đang đi xe máy xăng đứng tên chị",
+      "driving_experience": "chị mới có bằng lái hơn 1 năm, đỗ xe chưa quen",
+      "parking": "nhà chị trong ngõ nhỏ, chỗ làm phải đỗ hầm khá chật",
+      "budget": "chị chuẩn bị khoảng 600 triệu, nếu thật sự đáng thì thêm được tầm 50 triệu",
+      "charging_access": "nhà chị có sân, cắm sạc ở nhà được",
+      "real_concern": "sợ bỏ thêm tiền cho những thứ không dùng tới"
+    },
+    "disclosure_rules": [
+      {
+        "fact_key": "current_vehicle",
+        "trigger_intent": "ask_current_vehicle_or_promo",
+        "trigger_keywords": [
+          "đang đi xe gì",
+          "xe hiện tại",
+          "chuyển đổi",
+          "Vì Tương Lai Xanh",
+          "xe xăng",
+          "ưu đãi 9%"
+        ],
+        "revealed_statement": "Chị đang đi xe máy xăng, xe đứng tên chị em nhé."
+      },
+      {
+        "fact_key": "driving_experience",
+        "trigger_intent": "ask_driving_experience",
+        "trigger_keywords": [
+          "bằng lái",
+          "lái xe lâu chưa",
+          "kinh nghiệm lái",
+          "quen lái chưa"
+        ],
+        "revealed_statement": "Chị mới có bằng lái hơn một năm thôi, đỗ xe vẫn chưa quen lắm."
+      },
+      {
+        "fact_key": "parking",
+        "trigger_intent": "ask_parking_conditions",
+        "trigger_keywords": [
+          "chỗ đỗ",
+          "ngõ",
+          "hầm xe",
+          "đỗ ở đâu"
+        ],
+        "revealed_statement": "Nhà chị trong ngõ nhỏ, còn chỗ làm phải đỗ hầm khá chật."
+      },
+      {
+        "fact_key": "budget",
+        "trigger_intent": "ask_budget_or_financing",
+        "trigger_keywords": [
+          "ngân sách",
+          "tài chính",
+          "dự tính bao nhiêu",
+          "thêm tiền"
+        ],
+        "revealed_statement": "Chị chuẩn bị khoảng 600 triệu, nếu thật sự đáng thì thêm được tầm 50 triệu."
+      },
+      {
+        "fact_key": "charging_access",
+        "trigger_intent": "ask_home_charging_access",
+        "trigger_keywords": [
+          "sạc tại nhà",
+          "chỗ sạc",
+          "sân nhà",
+          "lắp sạc"
+        ],
+        "revealed_statement": "Nhà chị có sân, cắm sạc ở nhà được em ạ."
+      }
+    ],
+    "objections": [
+      {
+        "objection_id": "OBJ_VF6_PRICE_ELIGIBILITY",
+        "trigger_stage": "presentation",
+        "objection_text": "Giá vẫn hơi cao so với dự tính của chị. Ưu đãi đó chị có được áp dụng không em?",
+        "resolve_condition": "Tư vấn viên xác nhận điều kiện Vì Tương Lai Xanh 2 bằng xe máy xăng đứng tên chị, báo đúng giá VF 6 Eco Tiêu chuẩn 1 sau ưu đãi: 646 triệu − 9% = 587,86 triệu đồng, và nêu thêm ít nhất một ưu đãi/chính sách hiện hành (sạc miễn phí, bảo hành hoặc Mua xe 0 Đồng).",
+        "ideal_sales_response": "Dạ chị đang sở hữu xe gì và có đứng tên chị không ạ? Nếu đủ điều kiện Vì Tương Lai Xanh 2, Eco còn 587,86 triệu đồng; xe còn được ưu đãi 10 lượt sạc/tháng theo chính sách hiện hành."
+      },
+      {
+        "objection_id": "OBJ_VF6_PLUS_WORTH",
+        "trigger_keywords": [
+          "Plus",
+          "bản cao hơn",
+          "nâng cấp lên"
+        ],
+        "objection_text": "Chị thấy bên em có bản Plus đắt hơn gần 50 triệu. Nhưng chị nghĩ cùng là VF 6, cùng pin, cùng kích thước thì bản Eco đã đủ dùng rồi. Em thử giải thích giúp chị xem tại sao chị nên bỏ thêm số tiền đó để mua bản Plus nhé.",
+        "resolve_condition": "Tư vấn viên gắn ít nhất 2 lợi ích Plus, trong đó ít nhất 1 về an toàn, với nhu cầu chị đã chia sẻ; báo đúng chênh lệch sau ưu đãi khoảng 49,14 triệu đồng (Plus Tiêu chuẩn 1: 637 triệu, Eco: 587,86 triệu).",
+        "ideal_sales_response": "Nếu chị thấy phù hợp, 7 túi khí hỗ trợ bảo vệ gia đình và camera 360° giúp quan sát khi đỗ hầm chật; Plus chênh 49,14 triệu sau ưu đãi. Mình có thể trải nghiệm trước, còn Eco vẫn là lựa chọn hợp lý nếu đáp ứng đủ nhu cầu chị."
+      }
+    ],
+    "upsell_benefits": [
+      {
+        "benefit_id": "airbags_7",
+        "description": "7 túi khí so với 4 túi khí trên Eco",
+        "safety": true,
+        "linked_need_fact_keys": []
+      },
+      {
+        "benefit_id": "adas",
+        "description": "ADAS: kiểm soát hành trình thích ứng, hỗ trợ giữ làn, phanh khẩn cấp tự động — người lái vẫn phải chủ động",
+        "safety": true,
+        "linked_need_fact_keys": [
+          "driving_experience"
+        ]
+      },
+      {
+        "benefit_id": "motor_150kw",
+        "description": "Động cơ 150 kW/310 Nm so với 130 kW/250 Nm, tăng tốc 0–100 km/h 8,89 giây",
+        "safety": false,
+        "linked_need_fact_keys": []
+      },
+      {
+        "benefit_id": "camera_360",
+        "description": "Camera 360° thay vì camera lùi",
+        "safety": false,
+        "linked_need_fact_keys": [
+          "parking",
+          "driving_experience"
+        ]
+      }
+    ],
+    "upsell_rule": {
+      "objection_id": "OBJ_VF6_PLUS_WORTH",
+      "min_linked": 2,
+      "min_safety": 1
+    },
+    "acceptable_outcomes": [
+      {
+        "outcome_id": "close_eco",
+        "label": "Chốt VF 6 Eco",
+        "product": "VF 6 Eco Tiêu chuẩn 1 – 646.000.000đ",
+        "requires_resolved_objections": []
+      },
+      {
+        "outcome_id": "upsell_plus",
+        "label": "Upsell VF 6 Plus",
+        "product": "VF 6 Plus Tiêu chuẩn 1 – 700.000.000đ",
+        "requires_resolved_objections": [
+          "OBJ_VF6_PLUS_WORTH"
+        ],
+        "preferred": true
+      }
+    ],
+    "policy_expectations": [
+      {
+        "policy_id": "vtlx2",
+        "level": "expected",
+        "description": "Vì Tương Lai Xanh 2 giảm 9% giá niêm yết sau khi xác nhận khách sở hữu xe đủ điều kiện (ô tô xăng, xe máy xăng, xe máy điện hoặc ô tô điện VinFast); áp dụng 19/09–19/12/2026, không cộng gộp VinClub/Tri ân. Sau ưu đãi: Eco Tiêu chuẩn 1 còn 587,86 triệu đồng, Plus Tiêu chuẩn 1 còn 637 triệu đồng; chênh 49,14 triệu đồng. Không có chính sách miễn phí bảo dưỡng; Eco có tầm hoạt động NEDC cao hơn Plus (485 km so với 460 km), phạm vi thực tế phụ thuộc điều kiện sử dụng.",
+        "source_ids": [
+          "PROMOTION_SALES_VINFAST_20260921",
+          "FAQ_VF6_20260922",
+          "PRICE_LIST_VINFAST_20260921"
+        ],
+        "requires_eligibility_check": true
+      },
+      {
+        "policy_id": "charging",
+        "level": "bonus",
+        "description": "Miễn phí 10 lượt sạc đầu tiên/xe/tháng tại V-GREEN đến 10/02/2029 theo điều kiện chính sách hiện hành.",
+        "source_ids": [
+          "POLICY_CHARGING_VINFAST_20260919"
+        ],
+        "requires_eligibility_check": false
+      },
+      {
+        "policy_id": "warranty",
+        "level": "bonus",
+        "description": "Bảo hành xe 7 năm/160.000 km, pin 8 năm/160.000 km, tùy điều kiện nào đến trước.",
+        "source_ids": [
+          "FAQ_VF6_20260922"
+        ],
+        "requires_eligibility_check": false
+      },
+      {
+        "policy_id": "zero_down",
+        "level": "bonus",
+        "description": "Mua xe 0 Đồng: vay đến 100% giá trị xe, áp dụng 04/01–31/12/2026, cần ngân hàng xét duyệt.",
+        "source_ids": [
+          "PROMOTION_SALES_VINFAST_20260921"
+        ],
+        "requires_eligibility_check": false
+      },
+      {
+        "policy_id": "deposit",
+        "level": "bonus",
+        "description": "Đặt cọc theo điều khoản hiện hành (tiền cọc không hoàn lại); ký hợp đồng mua bán trong 7 ngày làm việc kể từ khi hoàn tất đặt cọc.",
+        "source_ids": [
+          "POLICY_DEPOSIT_TERMS_20260922"
+        ],
+        "requires_eligibility_check": false
+      }
+    ],
+    "expected_discovery": "Khám phá xe hiện tại để xác nhận điều kiện ưu đãi, kinh nghiệm lái, chỗ đỗ/ngõ, ngân sách và sạc tại nhà. Nhu cầu chở con và về quê cuối tuần đã nằm trong mục tiêu khách hàng, được xem là nhu cầu đã biết khi khách chia sẻ; lợi ích có danh sách liên kết dữ kiện ẩn rỗng vẫn có thể gắn với các nhu cầu này.",
+    "success_conditions": "Chốt VF 6 Eco hoặc upsell VF 6 Plus đều thành công nếu tư vấn viên khám phá nhu cầu, xác nhận điều kiện và báo đúng giá/ưu đãi, thống nhất bước tiếp theo phù hợp mà không gây sức ép. Upsell Plus chỉ đạt khi giải quyết phản đối về giá trị bằng ít nhất hai lợi ích gắn với nhu cầu đã chia sẻ, có ít nhất một lợi ích an toàn và báo đúng chênh lệch sau ưu đãi; không ép khách nâng bản hoặc hứa miễn phí bảo dưỡng.",
+    "termination_conditions": {
+      "max_turns": 12,
+      "drop_out_trigger": "Khách bị ép mua Plus khi chưa thấy lợi ích phù hợp nhu cầu hoặc tư vấn viên nói sai giá/ưu đãi."
     }
   }
 ]
