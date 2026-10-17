@@ -62,7 +62,7 @@ def test_found_and_lookup_date_forwarded():
     assert result.status == "found"
     assert result.sources[0].version == "1"
     assert retriever.calls[0][1] == dict(
-        product_model="VF 6", document_type="promotion", top_k=3, target_date=date(2026, 10, 17)
+        product_model="VF 6", document_type="promotion", policy_type="general", top_k=3, target_date=date(2026, 10, 17)
     )
 
 
@@ -161,3 +161,67 @@ def test_anchor_matching_is_case_insensitive_and_missing_anchor_falls_back():
     assert application_window(MIXED_PROGRAMMES, "mua xe 0 đồng")[1] == date(2026, 12, 31)
     text = "Thời gian áp dụng: 19/09/2026 – 19/12/2026"
     assert application_window(text, "missing programme")[1] == date(2026, 12, 19)
+
+
+def real_promotion_chunks():
+    from src.knowledge.chunking import load_and_chunk_corpus
+
+    return [item for item in load_and_chunk_corpus() if item.document_id == "PROMOTION_SALES_VINFAST_20260921"]
+
+
+def test_real_chunks_use_full_programme_windows():
+    import json
+    from pathlib import Path
+
+    from src.integrations.practice_policy import get_policy_window_index, valid_policy_chunk
+
+    chunks = real_promotion_chunks()
+    document = next(
+        doc
+        for doc in json.loads(Path("data/knowledge/corpus.json").read_text())
+        if doc["document_id"] == chunks[0].document_id
+    )
+    index = get_policy_window_index()
+    vtlx = [item for item in chunks if "1. | Chính sách “Vì Tương Lai Xanh 2”:" in (item.metadata.section_title or "")]
+    assert len(vtlx) >= 5
+    for item in vtlx:
+        assert document["content"][item.metadata.start_char : item.metadata.end_char] == item.content
+        assert valid_policy_chunk(item, date(2026, 10, 17))
+        assert not valid_policy_chunk(item, date(2026, 12, 20))
+        assert index.window_for_chunk(item)[1] == date(2026, 12, 19)
+        # Older indexes may have section paths without source offsets.
+        without_offset = item.model_copy(update={"metadata": item.metadata.model_copy(update={"start_char": None})})
+        assert index.window_for_chunk(without_offset)[1] == date(2026, 12, 19)
+    zero_down = next(item for item in chunks if "7. |" in (item.metadata.section_title or ""))
+    assert valid_policy_chunk(zero_down, date(2026, 12, 20))
+    scenario = policy_scenario()
+    scenario.policy_expectations[0].lookup.query = "Mua xe 0 Đồng"
+    result = ScenarioPolicyResolver(FakeRetriever([zero_down])).resolve(scenario, date(2026, 12, 20))[0]
+    assert result.sources[0].valid_until == date(2026, 12, 31)
+    tri_an = [item for item in chunks if "6. |" in (item.metadata.section_title or "")]
+    assert tri_an
+    for item in tri_an:
+        assert index.window_for_chunk(item) == (None, None)
+        assert valid_policy_chunk(item, date(2026, 12, 20))
+    resolver = ScenarioPolicyResolver(FakeRetriever(vtlx))
+    assert resolver.resolve(policy_scenario(), date(2026, 12, 20))[0].status == "not_applicable"
+
+
+def test_new_and_legacy_session_dates(caplog):
+    from src.agents.roleplay.scenario_loader import ScenarioRepository
+    from src.agents.roleplay.state import RoleplayState
+    from src.knowledge.validity import today_in_vietnam
+
+    repository = ScenarioRepository()
+    scenario = repository.get(repository.list_public()[0].scenario_id)
+    state = RoleplayState.from_scenario("new", scenario)
+    assert state.created_at is not None
+    payload = state.model_dump()
+    payload.pop("created_at")
+    payload["session_id"] = "legacy"
+    legacy = RoleplayState.model_validate(payload)
+    assert legacy.created_at is None
+    assert legacy.target_date == today_in_vietnam()
+    assert "session_id=legacy" in caplog.text
+    state.created_at = datetime(2026, 10, 17, 23, 30, tzinfo=UTC)
+    assert state.target_date == date(2026, 10, 18)

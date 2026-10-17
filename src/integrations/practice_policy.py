@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import date
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Protocol
 
@@ -23,6 +24,7 @@ class PolicyRetriever(Protocol):
         *,
         product_model: str | None = None,
         document_type: str | None = None,
+        policy_type: str | None = None,
         top_k: int = 3,
         target_date: date | None = None,
     ) -> list[KnowledgeChunk]: ...
@@ -81,8 +83,45 @@ def application_window(text: str, anchor: str | None = None) -> tuple[date | Non
     return windows[0] if len(windows) == 1 else (None, None)
 
 
+class PolicyWindowIndex:
+    """Programme windows from full source documents, shared across split chunks."""
+
+    def __init__(self, paths: list[Path]) -> None:
+        self.sections: dict[tuple[str, str], list[tuple[int, int, str, tuple[date | None, date | None]]]] = {}
+        for path in paths:
+            for doc in json.loads(path.read_text(encoding="utf-8")):
+                text = doc["content"]
+                headings = list(re.finditer(r"^\s*\d+\.\s*\|[^\n]*", text, re.M))
+                sections = []
+                for index, heading in enumerate(headings):
+                    end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
+                    sections.append(
+                        (heading.start(), end, heading.group().strip(), application_window(text[heading.start() : end]))
+                    )
+                self.sections[(doc["document_id"], str(doc["version"]))] = sections
+
+    def window_for_chunk(self, chunk: KnowledgeChunk, anchor: str | None = None) -> tuple[date | None, date | None]:
+        sections = self.sections.get((chunk.document_id, chunk.metadata.version), [])
+        offset = chunk.metadata.start_char
+        if offset is not None:
+            for start, end, _, window in sections:
+                if start <= offset < end:
+                    return window
+        title = chunk.metadata.section_title or ""
+        for _, _, heading, window in sections:
+            if heading in title.split(" > "):
+                return window
+        return application_window(chunk.content, anchor)
+
+
+@lru_cache(maxsize=1)
+def get_policy_window_index() -> PolicyWindowIndex:
+    knowledge = Path(__file__).resolve().parents[2] / "data" / "knowledge"
+    return PolicyWindowIndex([knowledge / "corpus.json", knowledge / "faq.json"])
+
+
 def valid_policy_chunk(chunk: KnowledgeChunk, target_date: date, anchor: str | None = None) -> bool:
-    start, end = application_window(chunk.content, anchor)
+    start, end = get_policy_window_index().window_for_chunk(chunk, anchor)
     return (
         is_document_retrievable(chunk.metadata, target_date)
         and (start is None or start <= target_date)
@@ -102,6 +141,7 @@ class ScenarioPolicyResolver:
                 lookup.query,
                 product_model=lookup.product_model,
                 document_type=lookup.document_type,
+                policy_type=lookup.policy_type,
                 top_k=3,
                 target_date=target_date,
             )
@@ -116,7 +156,7 @@ class ScenarioPolicyResolver:
                 if key in seen:
                     continue
                 seen.add(key)
-                end = application_window(chunk.content, lookup.query)[1]
+                end = get_policy_window_index().window_for_chunk(chunk, lookup.query)[1]
                 expiry = parse_target_date(chunk.metadata.expiry_date)
                 sources.append(
                     ResolvedPolicySource(
@@ -204,8 +244,14 @@ class OfflinePolicyRetriever:
         *,
         product_model: str | None = None,
         document_type: str | None = None,
+        policy_type: str | None = None,
         top_k: int = 3,
         target_date: date | None = None,
     ) -> list[KnowledgeChunk]:
         chunks = self.matching(query, product_model=product_model, document_type=document_type)
-        return [chunk for chunk in chunks if is_document_retrievable(chunk.metadata, target_date)][:top_k]
+        return [
+            chunk
+            for chunk in chunks
+            if (not policy_type or chunk.metadata.policy_type == policy_type)
+            and is_document_retrievable(chunk.metadata, target_date)
+        ][:top_k]

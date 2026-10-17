@@ -44,6 +44,7 @@ class RecordingRetriever:
         top_k: int = 4,
         product_model: str | None = None,
         document_type: str | None = None,
+        policy_type: str | None = None,
         target_date: date | None = None,
     ):
         self.queries.append(query)
