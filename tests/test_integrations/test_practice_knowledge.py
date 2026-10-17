@@ -315,3 +315,31 @@ async def test_charging_claim_without_charging_sources_falls_back_to_general():
 
     assert [call[3] for call in retriever.calls] == ["policy", None]
     assert [item.source_id for item in evidence] == ["faq"]
+
+
+@pytest.mark.asyncio
+async def test_promotion_claim_prefers_section_naming_the_same_program():
+    scenario, state = scenario_and_state()
+    text = "Chương trình Vì Tương Lai Xanh 2 đang giảm 15% giá niêm yết cho VF 6 chị ạ."
+    state.factual_claims = [AdvisorFactualClaim(message_id="m1", text=text, category="promotion")]
+
+    class Retriever:
+        def retrieve(self, query, **kwargs):
+            # Vector order puts the named program's rate section fourth.
+            sections = [
+                ("summer", "3. | Chương trình Mùa Hè Rực Rỡ - Vinfascination:\n\no | 2% MSRP với các dòng xe còn lại."),
+                ("gratitude", "6. | Chương trình Tri ân Khách hàng xe xăng VinFast chuyển đổi Xanh:"),
+                ("voucher", "- | Voucher có giá trị sử dụng khi Khách hàng hoặc người thân"),
+                ("vtlx2", "1. | Chính sách “Vì Tương Lai Xanh 2”:\n\n• | Các dòng xe còn lại: Ưu đãi 9% MSRP."),
+            ]
+            result = []
+            for chunk_id, content in sections:
+                chunk = knowledge_chunk(chunk_id, content)
+                chunk.document_id = "PROMOTION_SALES_VINFAST_test"
+                result.append(chunk)
+            return result
+
+    evidence = await RetrievalKnowledgeEvidenceProvider(Retriever()).for_session(scenario, state)
+
+    assert evidence[0].source_id == "vtlx2"
+    assert len(evidence) == 3

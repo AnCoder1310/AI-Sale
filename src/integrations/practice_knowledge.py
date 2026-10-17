@@ -152,6 +152,7 @@ class RetrievalKnowledgeEvidenceProvider:
             price_evidence = [chunk for chunk in price_evidence if valid_policy_chunk(chunk, state.target_date)]
             candidates.sort(
                 key=lambda chunk: (
+                    promotion and not _names_same_program(claim.text, chunk),
                     chunk.document_id.startswith("PRODUCT_"),
                     not bool(trim and re.search(rf"\b{trim.group(1)}\b", chunk.content, re.I)),
                 )
@@ -170,3 +171,11 @@ class RetrievalKnowledgeEvidenceProvider:
             )
             for chunk in chunks_by_id.values()
         ]
+
+
+def _names_same_program(claim_text: str, chunk: KnowledgeChunk) -> bool:
+    """Whether the chunk's section heading shares a three-word run with the claim, e.g. a program name."""
+    heading = next((line for line in chunk.content.splitlines() if line.strip()), "")
+    claim_words, heading_words = re.findall(r"\w+", claim_text.lower()), re.findall(r"\w+", heading.lower())
+    claim_runs = {tuple(claim_words[i : i + 3]) for i in range(len(claim_words) - 2)}
+    return any(tuple(heading_words[i : i + 3]) in claim_runs for i in range(len(heading_words) - 2))
