@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from src.agents.copilot.jev import selection_identity
 from src.agents.copilot.state import CopilotResponse
 from src.config import get_settings
 from src.knowledge.validity import is_document_retrievable, parse_target_date, today_in_vietnam
@@ -20,18 +21,6 @@ CONTEXT_DEPENDENT_PATTERNS = re.compile(
     r"\b(nó|xe này|xe đó|xe kia|bản này|bản đó|vừa nói|ở trên|trước đó|tôi|em|khách của em|hôm qua)\b",
     re.IGNORECASE,
 )
-
-
-def cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
-    """Legacy helper preserved for backward compatibility."""
-    if not vec_a or not vec_b or len(vec_a) != len(vec_b):
-        return 0.0
-    dot = sum(a * b for a, b in zip(vec_a, vec_b))
-    norm_a = sum(a * a for a in vec_a) ** 0.5
-    norm_b = sum(b * b for b in vec_b) ** 0.5
-    if norm_a == 0.0 or norm_b == 0.0:
-        return 0.0
-    return dot / (norm_a * norm_b)
 
 
 def normalize_query_text(text: str) -> str:
@@ -52,7 +41,7 @@ def build_cache_key(
     date_mode: str = "current",
     corpus_fingerprint: str = "",
     chunking_identity: str = "",
-    workflow_version: str = "v2",
+    workflow_version: str = "v9-evidence-review",
     provider_model: str = "",
 ) -> str:
     """Build deterministic exact cache key."""
@@ -73,9 +62,6 @@ class ExactCacheEnvelope(BaseModel):
 
     def is_expired(self) -> bool:
         return datetime.now(UTC) > self.expires_at
-
-
-SemanticCacheEntry = ExactCacheEnvelope
 
 
 class ExactCacheService:
@@ -176,7 +162,7 @@ class ExactCacheService:
             date_mode=date_mode,
             corpus_fingerprint=snapshot.fingerprint,
             chunking_identity=chunk_id,
-            workflow_version="v2",
+            workflow_version="v9-evidence-review:" + selection_identity(settings),
             provider_model=prov_model,
         )
 
@@ -290,7 +276,7 @@ class ExactCacheService:
             date_mode=date_mode,
             corpus_fingerprint=snapshot.fingerprint,
             chunking_identity=chunk_id,
-            workflow_version="v2",
+            workflow_version="v9-evidence-review:" + selection_identity(settings),
             provider_model=prov_model,
         )
 
@@ -309,5 +295,4 @@ class ExactCacheService:
         self._cache_map[key] = envelope
 
 
-SemanticCacheService = ExactCacheService
 semantic_cache = ExactCacheService()

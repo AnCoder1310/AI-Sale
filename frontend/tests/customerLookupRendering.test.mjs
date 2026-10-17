@@ -7,7 +7,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const server = await createServer({ root, cacheDir: '.tmp/vite-ssr-tests', server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
+const server = await createServer({ root, cacheDir: '.tmp/vite-ssr-tests', server: { middlewareMode: true, hmr: false }, appType: 'custom', logLevel: 'error' });
 const { CustomerKnowledgeTool } = await server.ssrLoadModule('/src/components/copilot/customerWorkspace/CustomerKnowledgeTool.jsx');
 const { CopilotView } = await server.ssrLoadModule('/src/components/copilot/CopilotView.jsx');
 const { ConversationWorkspace } = await server.ssrLoadModule('/src/components/copilot/customerWorkspace/ConversationWorkspace.jsx');
@@ -36,7 +36,8 @@ test('default view opens the personal dashboard and defers the customer workspac
 test('lookup offers general questions independently of the selected customer', () => {
   const html = render();
   assert.match(html, /So sánh VF 3 và VF 5/);
-  assert.match(html, /Lịch sử lưu riêng theo tài khoản sales/);
+  assert.match(html, /Lịch sử tra cứu xe/);
+  assert.doesNotMatch(html, /Lịch sử lưu riêng theo tài khoản sales/);
   assert.doesNotMatch(html, /Khách kiểm thử|Tra cứu riêng cho|Ngữ cảnh:/);
   assert.match(html, /maxLength="4000"/);
   assert.doesNotMatch(html, /Mở trang tra cứu đầy đủ|type="date"/);
@@ -44,7 +45,8 @@ test('lookup offers general questions independently of the selected customer', (
 
 test('shared Copilot drawer works without a selected customer', () => {
   const html = renderToStaticMarkup(React.createElement(CustomerToolsDrawer, { type: 'copilot', customer: null, knowledge: {} }));
-  assert.match(html, /Lịch sử lưu riêng theo tài khoản sales/);
+  assert.match(html, /Trợ lý Copilot/);
+  assert.match(html, /Lịch sử tra cứu xe/);
   assert.doesNotMatch(html, /Ngữ cảnh:|Tra cứu riêng cho/);
 });
 
@@ -113,7 +115,7 @@ test('summary is compact and explicit; stage editor never renders numeric lead s
   const stage = renderToStaticMarkup(React.createElement(LeadStageEditor, { customer }));
   assert.doesNotMatch(stage, /99|100|tiềm năng|lead-score/);
   const drawer = renderToStaticMarkup(React.createElement(CustomerToolsDrawer, { type: 'copilot', customer, knowledge: {} }));
-  assert.match(drawer, /Kiến thức xe/); assert.match(drawer, /Không gửi cho khách/); assert.doesNotMatch(drawer, /Theo khách đang chọn/);
+  assert.match(drawer, /Kiến thức xe/); assert.doesNotMatch(drawer, /Không gửi cho khách|Theo khách đang chọn/);
 });
 
 test('summary and former profile entry show concise intelligence and keep fact editing collapsed', () => {

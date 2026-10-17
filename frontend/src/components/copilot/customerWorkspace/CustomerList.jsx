@@ -1,8 +1,8 @@
-import { Search, SlidersHorizontal, ChevronDown, Users, Inbox, AlertCircle, Sparkles } from 'lucide-react';
+import { Search, SlidersHorizontal, ChevronDown, Users, Inbox, AlertCircle } from 'lucide-react';
 import { Avatar, StageBadge, IconButton } from './WorkspacePrimitives';
 import { filterCustomers } from './workspaceData';
 
-export function CustomerList({ customers, selectedId, onSelect, query, onQueryChange, filter, onFilterChange, status, error, onRetry, onOpenCopilot }) {
+export function CustomerList({ customers, selectedId, onSelect, query, onQueryChange, filter, onFilterChange, status, error, onRetry }) {
   const filtered = filterCustomers(customers, query, filter);
   const tabs = [
     { id: 'all', title: 'Tất cả', count: customers.length },
@@ -11,7 +11,6 @@ export function CustomerList({ customers, selectedId, onSelect, query, onQueryCh
   ];
   return <section className="sw-customer-list" aria-label="Danh sách khách hàng">
     <div className="sw-list-heading"><h2>Khách hàng <span>({customers.length})</span></h2><Users size={18} /></div>
-    {onOpenCopilot && <button type="button" className="sw-secondary-button sw-list-copilot" onClick={onOpenCopilot}><Sparkles size={15} />Hỏi Copilot</button>}
     <div className="sw-list-search-row"><label className="sw-search sw-list-search"><Search size={17} /><input aria-label="Tìm kiếm khách hàng" placeholder="Tìm kiếm khách hàng..." value={query} onChange={(event) => onQueryChange(event.target.value)} /></label><IconButton label={filter === 'attention' ? 'Bỏ lọc khách cần chú ý' : 'Lọc khách cần chú ý'} className={filter === 'attention' ? 'is-active' : ''} onClick={() => onFilterChange(filter === 'attention' ? 'all' : 'attention')}><SlidersHorizontal size={17} /></IconButton></div>
     <div className="sw-customer-filters" aria-label="Lọc trạng thái khách hàng">{tabs.map((tab) => <button key={tab.id} type="button" aria-pressed={filter === tab.id} className={filter === tab.id ? 'is-active' : ''} onClick={() => onFilterChange(tab.id)}>{tab.title}<span>{tab.count}</span></button>)}</div>
     <div className="sw-list-sort"><span>{filtered.length} khách hàng</span><span>Tin nhắn gần nhất <ChevronDown size={12} /></span></div>
@@ -30,6 +29,5 @@ export function CustomerList({ customers, selectedId, onSelect, query, onQueryCh
         </button>;
       })}
     </div>
-    <div className="sw-list-footer"><span className="sw-channel-dot" />Khách hàng và hội thoại từ hệ thống</div>
   </section>;
 }

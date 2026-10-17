@@ -73,15 +73,6 @@ export function taskGroups(tasks, now = Date.now()) {
   ].map(([id, label, matches]) => ({ id, label, tasks: tasks.filter((task) => task.status !== 'cancelled' && matches(task)) }));
 }
 
-export function headerFacts(customer) {
-  const unverified = new Set(customer.facts.filter((fact) => ['inferred', 'conflicted'].includes(fact.verification_status)).map((fact) => fact.field));
-  return [
-    ['interested_models', customer.model],
-    ['down_payment_vnd', customer.deposit ? `Trả trước ${customer.deposit}` : ''],
-    ['payment_method', customer.payment],
-  ].filter(([field, value]) => !unverified.has(field) && value && !value.startsWith('Chưa')).map(([, value]) => value.length > 42 ? `${value.slice(0, 39)}…` : value);
-}
-
 export function mergeMessages(existing, incoming) {
   return [...new Map([...existing, ...incoming].map((message) => [message.id, message])).values()].sort((a, b) => a.seq - b.seq);
 }

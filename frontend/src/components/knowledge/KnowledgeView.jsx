@@ -35,8 +35,9 @@ import {
   INGESTION_GUIDE,
 } from '../../data/requiredDocsData';
 import { copilotApi } from '../../api/copilotApi';
+import { sourceHighlight, verifySourceReference } from './sourceReference';
 
-export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
+export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId, sourceReference }) {
   const [subTab, setSubTab] = useState('policies'); // 'policies' | 'fees' | 'vehicles' | 'faq' | 'checklist'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -51,10 +52,15 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
     if (!sourceDocumentId) return;
     let active = true;
     copilotApi.getSource(sourceDocumentId)
-      .then((document) => { if (active) setSelectedDocument(document); })
-      .catch(() => { if (active) setSourceError('Không mở được tài liệu gốc. Vui lòng thử lại.'); });
+      .then((document) => {
+        if (!active) return;
+        verifySourceReference(document, sourceReference);
+        setSourceError('');
+        setSelectedDocument({ ...document, sourceHighlight: sourceHighlight(document, sourceReference) });
+      })
+      .catch((error) => { if (active) { setSelectedDocument(null); setSourceError(error.message || 'Không mở được tài liệu gốc. Vui lòng thử lại.'); } });
     return () => { active = false; };
-  }, [sourceDocumentId]);
+  }, [sourceDocumentId, sourceReference]);
 
   const handleCopyText = (text, id) => {
     if (!text) return;
@@ -1212,6 +1218,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.78rem', color: '#737373', borderBottom: '1px solid #F0F0EE', paddingBottom: 10, flexWrap: 'wrap' }}>
               <span>Mã văn bản: <strong>{selectedDocument.document_id}</strong></span>
+              {selectedDocument.version && <span>Phiên bản: <strong>{selectedDocument.version}</strong></span>}
               <span>•</span>
               <span>Ngày hiệu lực: <strong>{selectedDocument.effective_date}</strong></span>
               <span>•</span>
@@ -1234,7 +1241,7 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
                 border: '1px solid #ECECE8',
               }}
             >
-              {selectedDocument.content}
+              {selectedDocument.sourceHighlight ? <>{selectedDocument.sourceHighlight.before}<mark ref={(node) => { if (node) requestAnimationFrame(() => { if (node.isConnected) node.scrollIntoView({ block: 'center' }); }); }}>{selectedDocument.sourceHighlight.text}</mark>{selectedDocument.sourceHighlight.after}</> : selectedDocument.content}
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10, borderTop: '1px solid #F0F0EE' }}>

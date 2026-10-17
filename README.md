@@ -162,6 +162,14 @@ Không biến giá niêm yết thành “giá lăn bánh” hay tự suy ra mọ
 
 ### Giám sát Copilot
 
+Xem [workflow Copilot: từng node, state và prompt](docs/copilot-workflow.md) để theo dõi luồng hiện tại.
+
+Copilot dùng Structured Outputs cho phân tích, lập kế hoạch, sinh câu trả lời và kiểm tra từng phát biểu; code xác định độ bao phủ requirement và gắn citation trước khi công bố.
+
+Workflow `v9-evidence-review` mặc định dùng Jev qua OpenRouter để chọn evidence (`COPILOT_EVIDENCE_SELECTION_STRATEGY=jev_context`); có fallback RRF khi Jev lỗi và log quyết định từng cụm nguồn.
+
+Kết quả Copilot ngày 17/10/2026 được giữ local tại `eval/results/copilot-benchmark-20261017/` và trên LangSmith; raw artifacts không đưa vào Git. Xem [runbook đánh giá](docs/copilot-benchmark-runbook.md) để đọc kết quả, chạy CLI và hiểu giới hạn của lượt đánh giá.
+
 Dùng `.venv` làm môi trường Python chính. Dependency trực tiếp nằm trong `requirements.txt`; local, CI và Docker cài phiên bản chính xác từ `requirements.lock`. CI cấu hình Python 3.11. Cấu hình LangSmith qua các biến `LANGSMITH_*` trong `.env.example`; mỗi request Copilot có `X-Request-ID` để tìm log và trace.
 
 ### Kiến trúc, kiểm thử và bằng chứng

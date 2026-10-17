@@ -26,6 +26,7 @@ from src.services.semantic_cache import semantic_cache
 
 logger = logging.getLogger(__name__)
 
+
 class CopilotStreamingResponse(StreamingResponse):
     """Release admission even when the socket fails before the body iterator starts."""
 
@@ -75,12 +76,12 @@ async def query_copilot(
             timeout=runtime.timeout(get_settings().copilot_request_timeout_seconds),
         )
         final = CopilotResponse.model_validate(result["final_response"])
-        trace = result.get("trace", [])
+        trace = runtime.events
         llm_events = [event for event in trace if event.get("llm")]
         annotate(
             outcome=final.status,
             reason_code=final.reason_code,
-            workflow_version="2",
+            workflow_version="9-evidence-review",
             generation_attempt=result.get("generation_count"),
             corrective_round=result.get("corrective_retrieval_count"),
             provider_retry=runtime.provider_retries,
@@ -115,17 +116,19 @@ async def query_copilot(
         provider_status = failure.get("provider_status") or getattr(cause, "status_code", None)
         logger.error(
             "Copilot dependency failed",
-            extra={"telemetry": {
-                "event": "copilot_dependency_failure",
-                "request_id": request_id,
-                "error_type": type(exc).__name__,
-                "cause_type": type(cause).__name__,
-                "failure_stage": failure.get("failure_stage") or failure.get("node") or "readiness",
-                "failure_kind": failure.get("failure_kind"),
-                "provider_status": provider_status,
-                "provider_error_kind": failure.get("provider_error_kind"),
-                "elapsed_seconds": round(time.perf_counter() - started, 3),
-            }},
+            extra={
+                "telemetry": {
+                    "event": "copilot_dependency_failure",
+                    "request_id": request_id,
+                    "error_type": type(exc).__name__,
+                    "cause_type": type(cause).__name__,
+                    "failure_stage": failure.get("failure_stage") or failure.get("node") or "readiness",
+                    "failure_kind": failure.get("failure_kind"),
+                    "provider_status": provider_status,
+                    "provider_error_kind": failure.get("provider_error_kind"),
+                    "elapsed_seconds": round(time.perf_counter() - started, 3),
+                }
+            },
         )
         detail = (
             "Hạn mức dịch vụ AI không đủ để tạo câu trả lời. Vui lòng liên hệ quản trị viên."
@@ -134,11 +137,19 @@ async def query_copilot(
         )
         raise HTTPException(status_code=503, detail=detail) from exc
     except Exception as exc:
-        logger.error("Copilot request failed", extra={"telemetry": {
-            "event": "copilot_internal_failure", "request_id": request_id,
-            "error_type": type(exc).__name__,
-            "failure_stage": runtime.events[-1].get("node") if getattr(runtime, "events", None) else "initialization",
-        }})
+        logger.error(
+            "Copilot request failed",
+            extra={
+                "telemetry": {
+                    "event": "copilot_internal_failure",
+                    "request_id": request_id,
+                    "error_type": type(exc).__name__,
+                    "failure_stage": runtime.events[-1].get("node")
+                    if getattr(runtime, "events", None)
+                    else "initialization",
+                }
+            },
+        )
         raise HTTPException(status_code=500, detail="Không thể xử lý câu hỏi lúc này.") from None
 
 
@@ -159,20 +170,29 @@ async def query_owned_session(
     scope_kwargs = {}
     if advisor_lookup:
         session_id = await bounded_io(
-            lambda: repository.advisor_session(user.user_id, create=True), runtime.timeout(20),
+            lambda: repository.advisor_session(user.user_id, create=True),
+            runtime.timeout(20),
         )
         context = ""
         scope_kwargs = {"advisor": True}
-        payload = payload.model_copy(update={
-            "session_id": session_id, "customer_context": "", "domain": "all", "target_date": None,
-        })
+        payload = payload.model_copy(
+            update={
+                "session_id": session_id,
+                "customer_context": "",
+                "domain": "all",
+                "target_date": None,
+            }
+        )
         annotate(source_surface="advisor_lookup", session_id=session_id)
     elif customer_conversation_id:
         try:
             context = await bounded_io(
                 lambda: build_customer_context(
-                    request.app.state.sales_copilot_repository, customer_conversation_id, user.user_id,
-                ), runtime.timeout(20),
+                    request.app.state.sales_copilot_repository,
+                    customer_conversation_id,
+                    user.user_id,
+                ),
+                runtime.timeout(20),
             )
         except LookupError as exc:
             raise HTTPException(status_code=404, detail="Không tìm thấy cuộc hội thoại.") from exc
@@ -181,9 +201,14 @@ async def query_owned_session(
             runtime.timeout(20),
         )
         scope_kwargs = {"customer_conversation_id": customer_conversation_id}
-        payload = payload.model_copy(update={
-            "session_id": session_id, "customer_context": context, "domain": "all", "target_date": None,
-        })
+        payload = payload.model_copy(
+            update={
+                "session_id": session_id,
+                "customer_context": context,
+                "domain": "all",
+                "target_date": None,
+            }
+        )
         annotate(source_surface="customer_lookup", conversation_id=customer_conversation_id, session_id=session_id)
     else:
         annotate(source_surface="standalone_lookup", session_id=session_id)
@@ -193,7 +218,8 @@ async def query_owned_session(
         try:
             with span("session.load", backend="session"):
                 stored = await bounded_io(
-                    lambda: repository.load(session_id, user.user_id, **scope_kwargs), runtime.timeout(20),
+                    lambda: repository.load(session_id, user.user_id, **scope_kwargs),
+                    runtime.timeout(20),
                 )
         except CopilotSessionNotFoundError as exc:
             raise HTTPException(status_code=404, detail="Không tìm thấy phiên Copilot.") from exc
@@ -268,7 +294,8 @@ async def query_owned_session(
             raise HTTPException(status_code=409, detail="Phiên đã thay đổi. Vui lòng gửi lại câu hỏi.") from exc
 
     # Save to exact cache if standalone, verified answered, and not already from cache
-    if is_standalone and not from_cache and result.status == "answered" and result.citations:
+    decision_degraded = any(e.get("decision") and e.get("route") == "unscored" for e in runtime.events)
+    if is_standalone and not from_cache and result.status == "answered" and result.citations and not decision_degraded:
         try:
             semantic_cache.put(
                 query=payload.query,
@@ -287,12 +314,16 @@ async def query_owned_session(
     # Check background summarization
     if background_tasks:
         try:
+
             def schedule_summary():
                 total_msgs = repository.get_conversation_last_seq(session_id) or len(dialogue)
                 maybe_trigger_background_summarization(
-                    session_id=session_id, repository=repository,
-                    background_tasks=background_tasks, current_message_count=total_msgs,
+                    session_id=session_id,
+                    repository=repository,
+                    background_tasks=background_tasks,
+                    current_message_count=total_msgs,
                 )
+
             await bounded_io(schedule_summary, runtime.timeout(20))
         except Exception as bg_err:
             logger.debug("Failed to trigger background summarization: %s", type(bg_err).__name__)
@@ -309,8 +340,12 @@ async def customer_lookup_history(request, user, conversation_id, *, before_seq=
         )
         return await bounded_io(
             lambda: request.app.state.copilot_sessions.customer_history(
-                user.user_id, conversation_id, before_seq=before_seq, limit=limit,
-            ), runtime.timeout(20),
+                user.user_id,
+                conversation_id,
+                before_seq=before_seq,
+                limit=limit,
+            ),
+            runtime.timeout(20),
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail="Không tìm thấy cuộc hội thoại.") from exc
@@ -323,8 +358,11 @@ async def advisor_lookup_history(request, user, *, before_seq=None, limit=20):
     try:
         return await bounded_io(
             lambda: request.app.state.copilot_sessions.advisor_history(
-                user.user_id, before_seq=before_seq, limit=limit,
-            ), runtime.timeout(20),
+                user.user_id,
+                before_seq=before_seq,
+                limit=limit,
+            ),
+            runtime.timeout(20),
         )
     except (SQLAlchemyError, OSError, TimeoutError, BudgetExhaustedError, CopilotDependencyError) as exc:
         annotate(error_type=type(exc).__name__, failure_stage="advisor_history")
@@ -340,7 +378,13 @@ def _response_data(result, payload, customer_conversation_id):
 
 
 async def run_copilot_request(
-    payload, request, user, *, background_tasks=None, stream=False, customer_conversation_id=None,
+    payload,
+    request,
+    user,
+    *,
+    background_tasks=None,
+    stream=False,
+    customer_conversation_id=None,
     advisor_lookup=False,
 ):
     """One admission/deadline and one graph execution for either HTTP entry point."""
@@ -355,7 +399,8 @@ async def run_copilot_request(
             admission.acquire(user.user_id)
     except AdmissionError as exc:
         raise HTTPException(
-            status_code=exc.status_code, detail="Đang có nhiều yêu cầu. Vui lòng thử lại sau.",
+            status_code=exc.status_code,
+            detail="Đang có nhiều yêu cầu. Vui lòng thử lại sau.",
             headers={"Retry-After": str(exc.retry_after)},
         ) from exc
 
@@ -372,14 +417,19 @@ async def run_copilot_request(
             try:
                 await bounded_io(
                     lambda: authorize_customer(
-                        request.app.state.sales_copilot_repository, customer_conversation_id, user.user_id,
-                    ), runtime.timeout(20),
+                        request.app.state.sales_copilot_repository,
+                        customer_conversation_id,
+                        user.user_id,
+                    ),
+                    runtime.timeout(20),
                 )
             except LookupError as exc:
                 raise HTTPException(status_code=404, detail="Không tìm thấy cuộc hội thoại.") from exc
     except (SQLAlchemyError, OSError, TimeoutError, BudgetExhaustedError, CopilotDependencyError) as exc:
         release()
-        raise HTTPException(status_code=503, detail="Dịch vụ tra cứu tạm thời không khả dụng. Vui lòng thử lại.") from exc
+        raise HTTPException(
+            status_code=503, detail="Dịch vụ tra cứu tạm thời không khả dụng. Vui lòng thử lại."
+        ) from exc
     except BaseException:
         release()
         raise
@@ -388,17 +438,32 @@ async def run_copilot_request(
         try:
             result = await asyncio.wait_for(
                 query_owned_session(
-                    payload, request, user, runtime, background_tasks=background_tasks,
-                    progress_queue=queue, customer_conversation_id=customer_conversation_id,
+                    payload,
+                    request,
+                    user,
+                    runtime,
+                    background_tasks=background_tasks,
+                    progress_queue=queue,
+                    customer_conversation_id=customer_conversation_id,
                     advisor_lookup=advisor_lookup,
-                ), timeout=runtime.remaining(),
+                ),
+                timeout=runtime.remaining(),
             )
             if advisor_lookup:
                 capture_knowledge_output(result[0].model_dump())
             return result
-        except (CopilotDependencyError, BudgetExhaustedError, IndexNotReadyError, TimeoutError, SQLAlchemyError, OSError) as exc:
+        except (
+            CopilotDependencyError,
+            BudgetExhaustedError,
+            IndexNotReadyError,
+            TimeoutError,
+            SQLAlchemyError,
+            OSError,
+        ) as exc:
             annotate(error_type=type(exc).__name__)
-            raise HTTPException(status_code=503, detail="Dịch vụ tra cứu tạm thời không khả dụng. Vui lòng thử lại.") from exc
+            raise HTTPException(
+                status_code=503, detail="Dịch vụ tra cứu tạm thời không khả dụng. Vui lòng thử lại."
+            ) from exc
 
     if not stream:
         try:
@@ -441,13 +506,17 @@ async def run_copilot_request(
                 yield event("status", {"step": "cached", "text": "Phản hồi từ bộ nhớ đệm xác thực"})
             # These deltas contain only the checked AND persisted final answer, never an LLM draft.
             for offset in range(0, len(result.answer), 256):
-                yield event("delta", {"text": result.answer[offset:offset + 256]})
+                yield event("delta", {"text": result.answer[offset : offset + 256]})
             yield event("final", _response_data(result, payload, customer_conversation_id))
             if result.product_insights:
-                yield event("insights", {
-                    "product_insights": [item.model_dump() for item in result.product_insights],
-                    "request_id": result.request_id, "session_id": result.session_id,
-                })
+                yield event(
+                    "insights",
+                    {
+                        "product_insights": [item.model_dump() for item in result.product_insights],
+                        "request_id": result.request_id,
+                        "session_id": result.session_id,
+                    },
+                )
             yield event("done", {})
         except Exception as exc:
             cause = exc.__cause__ or exc
@@ -458,8 +527,9 @@ async def run_copilot_request(
             await cleanup()
 
     return CopilotStreamingResponse(
-        events(), media_type="text/event-stream", background=background_tasks,
+        events(),
+        media_type="text/event-stream",
+        background=background_tasks,
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         cleanup=cleanup,
     )
-

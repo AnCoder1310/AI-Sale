@@ -27,8 +27,8 @@ from src.models.sales_copilot import (
     SalesPreferences,
 )
 from src.services.copilot_query import customer_lookup_history, run_copilot_request
-from src.services.sales_conversation_service import SalesConversationService
 from src.services.sales_agenda_service import SalesAgendaService, validate_interval
+from src.services.sales_conversation_service import SalesConversationService
 from src.services.sales_copilot_analyzer import SalesCopilotAnalyzer
 from src.services.sales_copilot_assistant import SalesCopilotAssistant
 

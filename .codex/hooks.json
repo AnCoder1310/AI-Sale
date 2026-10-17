@@ -7,8 +7,9 @@
           {
             "name": "log-prompt",
             "type": "command",
-            "command": "bash scripts/_pyrun.sh scripts/log_hook.py --tool=codex",
-            "timeout": 10
+            "command": "p=\"$PWD\"; while [ ! -f \"$p/scripts/_pyrun.sh\" ]; do [ \"$p\" != / ] || exit 1; p=\"$(dirname \"$p\")\"; done; bash \"$p/scripts/_pyrun.sh\" \"$p/scripts/log_hook.py\" --tool=codex",
+            "timeout": 10,
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$p=(Get-Location).Path; while (-not (Test-Path -LiteralPath (Join-Path $p 'scripts/log_codex.ps1'))) { $parent=Split-Path $p -Parent; if (-not $parent) { throw 'AI log launcher not found' }; $p=$parent }; & (Join-Path $p 'scripts/log_codex.ps1')\""
           }
         ]
       }

@@ -50,12 +50,12 @@ export function LeadStageEditor({ customer, busy, onSave }) {
     </form></div>;
 }
 
-export function CustomerToolsDrawer({ type, customer, onClose, onSourceClick, onToggleTask, onCreateTask, taskBusy, knowledge, onSearch, onLoadHistory, onQueryChange, ownerId, onEditTask, onConfirmFact, creatingTask, onCancelCreate, onCreate, highlightedTaskId, onAnalyze, analyzing, analysisChanges, onShowTool }) {
+export function CustomerToolsDrawer({ onOpenDocument, type, customer, onClose, onSourceClick, onToggleTask, onCreateTask, taskBusy, knowledge, onSearch, onLoadHistory, onQueryChange, ownerId, onEditTask, onConfirmFact, creatingTask, onCancelCreate, onCreate, highlightedTaskId, onAnalyze, analyzing, analysisChanges, onShowTool }) {
   const title = { profile: 'Bối cảnh khách hàng', activities: 'Mốc chăm sóc', tasks: 'Công việc', copilot: 'Trợ lý Copilot', summary: 'Bối cảnh khách hàng' }[type];
   return <ContextDrawerHost title={title} onClose={onClose}>
     {['summary', 'profile'].includes(type) && <ConversationSummary customer={customer} onAnalyze={onAnalyze} analyzing={analyzing} changes={analysisChanges} onSourceClick={onSourceClick} onConfirmFact={onConfirmFact} onHistory={() => onShowTool('activities')} />}
     {type === 'activities' && <Activities customer={customer} onSourceClick={onSourceClick} />}
     {type === 'tasks' && <Tasks customer={customer} onToggle={onToggleTask} onCreate={onCreateTask} busy={taskBusy} ownerId={ownerId} creating={creatingTask} onCancelCreate={onCancelCreate} onSaveCreate={onCreate} onEdit={onEditTask} onSourceClick={onSourceClick} highlightedTaskId={highlightedTaskId} />}
-    {type === 'copilot' && <CustomerKnowledgeTool lookup={knowledge} onSearch={onSearch} onLoadHistory={onLoadHistory} onQueryChange={onQueryChange} />}
+    {type === 'copilot' && <CustomerKnowledgeTool onOpenDocument={onOpenDocument} lookup={knowledge} onSearch={onSearch} onLoadHistory={onLoadHistory} onQueryChange={onQueryChange} />}
   </ContextDrawerHost>;
 }

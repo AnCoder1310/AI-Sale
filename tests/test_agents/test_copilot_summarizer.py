@@ -1,6 +1,7 @@
 """Unit tests for background rolling conversation summarizer."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from src.agents.copilot.summarizer import (
@@ -117,7 +118,7 @@ def test_save_memory_summary_prevents_version_and_watermark_regression(tmp_path)
 def test_planner_accepts_model_from_memory_summary():
     """Verify Đợt 4: model present only in memory_summary is accepted by planner validation."""
     from src.agents.copilot.nodes import planning
-    from src.agents.copilot.state import IntakeDecision, PlannedSearch, Requirement, SearchPlan, GuardDecision
+    from src.agents.copilot.state import GuardDecision, IntakeDecision, PlannedSearch, Requirement, SearchPlan
 
     req = Requirement(requirement_id="R1", description="Giá xe VF 6", kind="fact")
     decision = IntakeDecision(

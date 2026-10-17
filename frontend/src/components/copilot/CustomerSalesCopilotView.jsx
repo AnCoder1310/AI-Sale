@@ -10,7 +10,7 @@ import { useCustomerWorkspace } from './customerWorkspace/useCustomerWorkspace';
 import { useWorkspaceStorage } from './customerWorkspace/workspaceStorage';
 import './customerWorkspace/customerWorkspace.css';
 
-export function CustomerSalesCopilotView({ currentUser, active = true, navigationIntent }) {
+export function CustomerSalesCopilotView({ currentUser, active = true, navigationIntent, onOpenDocument }) {
   const workspace = useCustomerWorkspace(currentUser, active);
   const { customers, selectedId, draftEnabled } = workspace;
   const [query, setQuery] = useState('');
@@ -100,9 +100,9 @@ export function CustomerSalesCopilotView({ currentUser, active = true, navigatio
     if (selectedRef.current === id) { setToast(stage ? 'Đã lưu giai đoạn sales chọn.' : 'Đã dùng lại giai đoạn AI đề xuất.'); }
   }
 
-  return <div className={`sales-workspace sw-focused-workspace ${mobileView === 'conversation' ? 'sw-show-conversation' : 'sw-show-list'} ${drawer && (customer || drawer === 'copilot') ? 'sw-has-drawer' : ''}`}>
+  return <div className={`sales-workspace sw-focused-workspace ${mobileView === 'conversation' ? 'sw-show-conversation' : 'sw-show-list'} ${drawer && (customer || drawer === 'copilot') ? 'sw-has-drawer' : ''} ${drawer === 'copilot' ? 'sw-copilot-open' : ''}`}>
     <div className="sw-workspace-body">
-      <CustomerList customers={customers} selectedId={selectedId} onSelect={selectCustomer} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} status={workspace.listStatus} error={workspace.listError} onRetry={workspace.loadList} onOpenCopilot={() => showTool('copilot')} />
+      <CustomerList customers={customers} selectedId={selectedId} onSelect={selectCustomer} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} status={workspace.listStatus} error={workspace.listError} onRetry={workspace.loadList} />
       {customer ? <ConversationWorkspace key={selectedId} customer={customer} activeTool={drawer}
         onStar={() => storage.update('starred', selectedId, !starred[selectedId])}
         onCreateTask={openTasksDialog} highlight={highlight}
@@ -116,7 +116,7 @@ export function CustomerSalesCopilotView({ currentUser, active = true, navigatio
         draftEnabled={draftEnabled} onToggleDraft={() => runAction(workspace.toggleDraft)} preferenceBusy={workspace.preferenceBusy}
         onGenerateDraft={() => runAction(() => workspace.generateDraft(selectedId))} draftBusy={workspace.draftBusy} onInsertDraft={insertDraft}
       /> : <section className="sw-conversation"><div className="sw-empty"><MessageSquare size={32} /><strong>Không gian tư vấn khách hàng</strong><p>{workspace.listStatus === 'loading' ? 'Đang tải danh sách khách hàng…' : 'Chọn một khách hàng để xem hội thoại.'}</p></div></section>}
-    {drawer && (customer || drawer === 'copilot') && <CustomerToolsDrawer key={drawer === 'copilot' ? 'copilot' : `${selectedId}-${drawer}`} type={drawer} customer={customer} onClose={() => setDrawer(null)} onSourceClick={showSource}
+    {drawer && (customer || drawer === 'copilot') && <CustomerToolsDrawer onOpenDocument={onOpenDocument} key={drawer === 'copilot' ? 'copilot' : `${selectedId}-${drawer}`} type={drawer} customer={customer} onClose={() => setDrawer(null)} onSourceClick={showSource}
       onAnalyze={() => runAction(() => workspace.analyze(selectedId))} analyzing={workspace.analyzing} analysisChanges={workspace.analysisChanges} onShowTool={showTool}
       onToggleTask={(taskId) => runAction(() => workspace.toggleTask(selectedId, customer.tasks.find((task) => task.id === taskId)))}
       creatingTask={creatingTask} onCancelCreate={() => setCreatingTask(false)} onCreate={createTask} onCreateTask={openTasksDialog} taskBusy={workspace.taskBusy} onSaveStage={saveStage} stageBusy={workspace.stageBusy}
