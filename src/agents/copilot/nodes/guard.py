@@ -110,7 +110,10 @@ def resolve_date(query, supplied):
         # Event dates are facts used to evaluate a policy, not its lookup date.
         prefix = re.split(r"[.!?;\n]", query[: match.start()].lower())[-1][-100:]
         events = list(
-            re.finditer(r"mua|hóa đơn|hoá đơn|bàn giao|đặt cọc|ký hợp đồng|đăng ký|giao xe|phiên sạc|sạc lúc|sạc ngày|nhận xe", prefix)
+            re.finditer(
+                r"mua|hóa đơn|hoá đơn|bàn giao|đặt cọc|ký hợp đồng|đăng ký|giao xe|phiên sạc|sạc lúc|sạc ngày|nhận xe",
+                prefix,
+            )
         )
         lookups = list(
             re.finditer(r"tra cứu|đối chiếu|tính đến|hiệu lực|bảng giá|giá\s+(?:vào\s+|tại\s+)?ngày", prefix)
@@ -158,6 +161,8 @@ def atomic_requirements(decision):
                 attributes.append("Giá niêm yết (kèm pin)")
             else:
                 attributes.append("Giá niêm yết")
+            if re.search(r"vat", text, re.I):
+                attributes[-1] += " (giữ đúng điều kiện VAT trong yêu cầu)"
         if re.search(r"quãng đường|nedc|wltp", text, re.I):
             standard = "NEDC" if "nedc" in text.lower() else "WLTP" if "wltp" in text.lower() else "chuẩn công bố"
             attributes.append(f"Quãng đường di chuyển theo {standard}")
@@ -251,6 +256,12 @@ async def analyze_and_route(state):
         validator=lambda decision: _validate_intake(decision, state, history),
     )
     decision = atomic_requirements(decision)
+    if decision.route == "simple" and (
+        len([r for r in decision.requirements if r.kind == "fact"]) > 2
+        or decision.task == "comparison"
+        or len(decision.product_models) > 1
+    ):
+        decision = decision.model_copy(update={"route": "complex", "simple_search": None})
     if decision.route == "clarify" and (
         (decision.task == "comparison" and len(decision.product_models) >= 2)
         or (
@@ -283,6 +294,11 @@ async def analyze_and_route(state):
         "evidence_registry": [],
         "candidate_evidence": [],
         "selected_evidence": [],
+        "selected_anchor_ids": [],
+        "evidence_query_provenance": {},
+        "evidence_query_references": {},
+        "rejected_evidence_ids": [],
+        "evidence_selection_diagnostics": [],
         "retrieval_errors": 0,
         "parent_context_cache": {},
         "feedback": "",

@@ -85,6 +85,7 @@ export function EvaluationScorecard({ result, scenario, onRetry, onBackToCatalog
         <div className="evaluation-overview-body">
           <h2>Tổng quan đánh giá</h2>
           <p>{summary || 'Chưa có nhận xét tổng quan. Xem chi tiết từng tiêu chí bên dưới.'}</p>
+          {evaluation.closing_outcome_label && <p className="evaluation-closing-outcome">Kết quả chốt: <strong>{evaluation.closing_outcome_label}</strong></p>}
           <div className="evaluation-summary-grid">
             <div className="evaluation-summary-card strengths">
               <h3><span><CheckIcon aria-hidden="true" /></span>Điểm mạnh nổi bật</h3>

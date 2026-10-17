@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 
-const MAX_RECORDING_MS = 60_000;
+const MAX_RECORDING_MS = 90_000;
 const FORMATS = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm'];
 
 export function usePushToTalk(onRecorded) {
   const [recordingState, setRecordingState] = useState('idle');
   const [recordingError, setRecordingError] = useState('');
+  const [permissionError, setPermissionError] = useState(null);
   const recorderRef = useRef(null);
   const streamRef = useRef(null);
   const chunksRef = useRef([]);
@@ -35,6 +36,7 @@ export function usePushToTalk(onRecorded) {
   const start = async () => {
     if (recorderRef.current || recordingState !== 'idle') return;
     setRecordingError('');
+    setPermissionError(null);
     setRecordingState('requesting');
     pendingStopRef.current = false;
     failedRef.current = false;
@@ -44,7 +46,13 @@ export function usePushToTalk(onRecorded) {
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (error) {
+        if (['NotAllowedError', 'NotFoundError'].includes(error.name)) setPermissionError(error);
+        throw error;
+      }
       if (!mountedRef.current) {
         stream.getTracks().forEach((track) => track.stop());
         return;
@@ -73,7 +81,7 @@ export function usePushToTalk(onRecorded) {
         if (!mountedRef.current || failedRef.current) return;
         setRecordingState('idle');
         if (blob.size && durationSeconds >= 0.1) {
-          onRecordedRef.current(blob, Math.min(durationSeconds, 60));
+          onRecordedRef.current(blob, Math.min(durationSeconds, MAX_RECORDING_MS / 1000));
         } else {
           setRecordingError('Không có âm thanh. Giữ nút nói lâu hơn rồi thử lại.');
         }
@@ -102,5 +110,5 @@ export function usePushToTalk(onRecorded) {
     };
   }, []);
 
-  return { recordingState, recordingError, start, stop };
+  return { recordingState, recordingError, permissionError, start, stop };
 }

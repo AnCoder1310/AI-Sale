@@ -127,14 +127,29 @@ async def check_grounding(state):
 
     missing_fact_ids = [rid for rid in missing_ids if req_map.get(rid) and req_map[rid].kind == "fact"]
     has_missing_fact = bool(missing_fact_ids)
+    if not missing_ids and verdict.missing_information:
+        # Keep the conservative outcome, but expose inconsistent checker coverage.
+        event("verification.inconsistent_coverage", missing_information_count=len(verdict.missing_information))
 
     # Invariant: an answer with 0 citations when evidence exists and fact requirements exist cannot be grounded
     registry = {c.citation_id: c for c in all_citations}
     used_cids = [cid for cid in parsed_cits["cited_ids"] if cid in registry]
-    if verdict.grounded and not used_cids and state.get("selected_evidence") and any(r.kind == "fact" for r in state.get("requirements", [])):
-        verdict = verdict.model_copy(update={"grounded": False, "feedback": "Câu trả lời thiếu trích dẫn nguồn cho các dữ kiện."})
+    if (
+        verdict.grounded
+        and not used_cids
+        and state.get("selected_evidence")
+        and any(r.kind == "fact" for r in state.get("requirements", []))
+    ):
+        verdict = verdict.model_copy(
+            update={"grounded": False, "feedback": "Câu trả lời thiếu trích dẫn nguồn cho các dữ kiện."}
+        )
     if verdict.grounded and verdict.unsupported_claims:
-        verdict = verdict.model_copy(update={"grounded": False, "feedback": verdict.feedback or "Phát hiện phát biểu không được tài liệu nguồn hỗ trợ."})
+        verdict = verdict.model_copy(
+            update={
+                "grounded": False,
+                "feedback": verdict.feedback or "Phát hiện phát biểu không được tài liệu nguồn hỗ trợ.",
+            }
+        )
 
     if verdict.grounded:
         # Build snapshot for current grounded draft
@@ -192,21 +207,18 @@ async def check_grounding(state):
 
         # If there are missing factual requirements, evaluate targeted recovery
         if has_missing_fact:
-            ev_map = state.get("evidence_map") or {}
-            uncovered_missing_facts = [rid for rid in missing_fact_ids if not bool(ev_map.get(rid))]
-            all_missing_in_context = bool(ev_map) and not uncovered_missing_facts
-
-            # Case A: ALL missing fact requirements have candidate evidence already in context -> Try regenerate (60s gate)
-            if all_missing_in_context and can_regenerate(state):
+            # Relevance heuristics cannot establish factual support. Follow the
+            # checker; absent an explicit regeneration request, retrieve facts.
+            if verdict.recovery == "regenerate" and can_regenerate(state):
                 return {
                     "self_check": verdict,
                     "verified_snapshot": snapshot,
-                    "feedback": verdict.feedback or f"Bổ sung dữ kiện còn thiếu cho yêu cầu {', '.join(missing_fact_ids)}.",
+                    "feedback": verdict.feedback
+                    or f"Bổ sung dữ kiện còn thiếu cho yêu cầu {', '.join(missing_fact_ids)}.",
                     "recovery_requirement_ids": missing_fact_ids,
                     "route": "generate_answer",
                 }
-            # Case B: At least one missing fact has no evidence in context -> Try corrective search (95s gate)
-            if uncovered_missing_facts:
+            if verdict.recovery != "regenerate":
                 corrective = schedule_corrective(
                     state, feedback=verdict.feedback or "Tìm kiếm nguồn bổ sung cho dữ kiện còn thiếu."
                 )
@@ -214,7 +226,7 @@ async def check_grounding(state):
                     return {
                         "self_check": verdict,
                         "verified_snapshot": snapshot,
-                        "recovery_requirement_ids": uncovered_missing_facts,
+                        "recovery_requirement_ids": missing_fact_ids,
                         **corrective,
                     }
 
@@ -227,7 +239,7 @@ async def check_grounding(state):
         }
 
     # Not grounded (extrapolation or unsupported claims detected)
-    if getattr(verdict, "recovery", None) == "search" and has_missing_fact:
+    if verdict.recovery != "regenerate" and has_missing_fact:
         corrective = schedule_corrective(
             state,
             feedback=verdict.feedback or "Tìm kiếm nguồn bổ sung cho phát biểu thiếu dẫn chứng.",
@@ -235,7 +247,7 @@ async def check_grounding(state):
         if corrective:
             return {
                 "self_check": verdict,
-                "recovery_requirement_ids": missing_ids,
+                "recovery_requirement_ids": missing_fact_ids,
                 **corrective,
             }
 

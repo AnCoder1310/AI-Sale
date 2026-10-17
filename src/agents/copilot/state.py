@@ -50,6 +50,7 @@ class RetrievalHit(TypedDict):
     policy_type: str | None
     competitor_model: str | None
     citation_id: NotRequired[str]
+    search_requirement_ids: NotRequired[list[str]]
     retrieval_method: Literal["dense", "bm25"]
     native_score: float
     rank: int
@@ -219,7 +220,7 @@ class PlannedSearch(SearchRequest):
 
 
 class SearchPlan(StrictContract):
-    searches: list[PlannedSearch] = Field(min_length=1, max_length=2)
+    searches: list[PlannedSearch] = Field(min_length=1, max_length=3)
 
 
 class IntakeDecision(StrictContract):
@@ -408,6 +409,11 @@ class CopilotState(TypedDict, total=False):
     evidence_map: dict[str, list[str]]
     recovery_requirement_ids: list[str]
     overflow_anchor_ids: list[str]
+    evidence_selection_diagnostics: list[dict[str, Any]]
+    selected_anchor_ids: list[str]
+    evidence_query_provenance: dict[str, list[int]]
+    evidence_query_references: dict[str, list[str]]
+    rejected_evidence_ids: list[str]
     query: str
     target_date: date | str | None
     resolved_date: str
@@ -451,5 +457,3 @@ class CopilotState(TypedDict, total=False):
     request_id: str
     trace: list[dict[str, Any]]
     progress_queue: Any
-
-

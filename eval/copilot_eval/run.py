@@ -31,6 +31,10 @@ from eval.runner import (
 
 
 async def execute(args: Any) -> tuple[str, str, int]:
+    from src.config import get_settings
+
+    if getattr(args, "selection_strategy", None):
+        get_settings().copilot_evidence_selection_strategy = args.selection_strategy
     dataset = load_dataset(args.dataset)
     if dataset["benchmark_version"] == "gate3-v1":
         validate_gate3_benchmark_composition(dataset)
@@ -118,6 +122,10 @@ async def execute(args: Any) -> tuple[str, str, int]:
             "output_tokens_observed": sum(event.get("output_tokens") or 0 for event in model_events),
             "retrieved_document_ids": [chunk["document_id"] for chunk in chunks],
             "retrieved_chunk_ids": [chunk["chunk_id"] for chunk in chunks],
+            "selected_chunk_ids": [chunk["chunk_id"] for chunk in state.get("selected_evidence", [])],
+            "context_characters": len(state.get("answer_context", "")),
+            "corrective_retrieval_count": state.get("corrective_retrieval_count", 0),
+            "evidence_selection_diagnostics": state.get("evidence_selection_diagnostics", []),
         }
 
     def score_case(case: dict[str, Any], actual: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -185,6 +193,7 @@ async def execute(args: Any) -> tuple[str, str, int]:
         "graph": "src.agents.copilot.graph.copilot_agent",
         "context_chunks": 8,
         "repeat": args.repeat,
+        "selection_strategy": get_settings().copilot_evidence_selection_strategy,
         "selected_groups": args.group,
     }
     result_path, failed_path = write_component_reports(
@@ -208,6 +217,7 @@ def main() -> int:
     parser = build_parser("Run Gate 3 Copilot evaluation against the real LangGraph agent")
     parser.add_argument("--concurrency", type=int, choices=(1, 2), default=1)
     parser.add_argument("--reports-dir", type=Path)
+    parser.add_argument("--selection-strategy", choices=("legacy", "rrf_context"))
     parser.set_defaults(dataset=Path(__file__).resolve().parents[1] / "datasets" / "copilot_sales_benchmark.json")
     args = parser.parse_args()
     try:

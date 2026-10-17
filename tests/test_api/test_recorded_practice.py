@@ -4,9 +4,11 @@ import httpx
 import pytest
 from fastapi import FastAPI, Header, HTTPException
 
+from src.agents.roleplay.customer_agent import CustomerResponseError
 from src.agents.roleplay.graph import RoleplaySessionConflictError
 from src.agents.roleplay.scenario_loader import ScenarioRepository
 from src.api.auth import CurrentUserDependency, create_auth_router
+from src.api.practice_errors import PracticeAPIError, practice_exception_handler
 from src.api.recorded_practice import create_recorded_practice_routers
 from src.config import Settings
 from src.integrations.auth_repository import SQLAuthRepository
@@ -75,7 +77,8 @@ class StubPractice:
     async def get_result(self, session_id):
         return PracticeResultView(session_id=session_id, evaluation_status="not_started")
 
-    async def finish_session(self, session_id, *, on_saved=None):
+    async def finish_session(self, session_id, *, started_at=None, on_saved=None):
+        self.finish_started_at = started_at
         if on_saved is not None:
             await on_saved()
         raise PracticeEvaluationUnavailableError("Evaluator is unavailable")
@@ -100,6 +103,7 @@ async def test_retry_reply_route_requires_owner_and_pending_turn(tmp_path):
     service = RecordedPracticeService(practice, records)
     practice_router, _ = create_recorded_practice_routers(service, fake_identity)
     app = FastAPI()
+    app.add_exception_handler(PracticeAPIError, practice_exception_handler)
     app.include_router(practice_router, prefix="/api/v1")
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         created = await client.post(
@@ -127,6 +131,7 @@ async def test_history_and_review_routes_enforce_identity_and_ownership(tmp_path
     service = RecordedPracticeService(StubPractice(), records)
     practice_router, manager_router = create_recorded_practice_routers(service, fake_identity)
     app = FastAPI()
+    app.add_exception_handler(PracticeAPIError, practice_exception_handler)
     app.include_router(practice_router, prefix="/api/v1")
     app.include_router(manager_router, prefix="/api/v1")
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
@@ -175,6 +180,7 @@ async def test_manager_can_review_finished_attempt_once_and_advisor_sees_result(
     service = RecordedPracticeService(StubPractice(), records)
     practice_router, manager_router = create_recorded_practice_routers(service, fake_identity)
     app = FastAPI()
+    app.add_exception_handler(PracticeAPIError, practice_exception_handler)
     app.include_router(practice_router, prefix="/api/v1")
     app.include_router(manager_router, prefix="/api/v1")
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
@@ -216,6 +222,7 @@ async def test_failed_evaluation_attempt_remains_in_history_but_not_review_queue
     service = RecordedPracticeService(StubPractice(), records)
     practice_router, manager_router = create_recorded_practice_routers(service, fake_identity)
     app = FastAPI()
+    app.add_exception_handler(PracticeAPIError, practice_exception_handler)
     app.include_router(practice_router, prefix="/api/v1")
     app.include_router(manager_router, prefix="/api/v1")
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
@@ -267,6 +274,7 @@ async def test_assignment_flow_and_approved_performance_use_real_attempts(tmp_pa
     service = RecordedPracticeService(StubPractice(), records, AdvisorDirectoryStub())
     practice_router, manager_router = create_recorded_practice_routers(service, fake_identity)
     app = FastAPI()
+    app.add_exception_handler(PracticeAPIError, practice_exception_handler)
     app.include_router(practice_router, prefix="/api/v1")
     app.include_router(manager_router, prefix="/api/v1")
     manager = {"X-Test-Identity": "manager-a:manager"}
@@ -386,6 +394,7 @@ async def test_real_auth_cookie_is_used_for_practice_ownership_and_manager_acces
     current_user = CurrentUserDependency(auth, settings.auth_cookie_name)
     practice_router, manager_router = create_recorded_practice_routers(service, current_user)
     app = FastAPI()
+    app.add_exception_handler(PracticeAPIError, practice_exception_handler)
     app.include_router(create_auth_router(auth, settings), prefix="/api/v1")
     app.include_router(practice_router, prefix="/api/v1")
     app.include_router(manager_router, prefix="/api/v1")
@@ -422,3 +431,78 @@ async def test_real_auth_cookie_is_used_for_practice_ownership_and_manager_acces
         assert (await manager.get("/api/v1/practice/history")).status_code == 403
         assert [item["session_id"] for item in (await manager.get("/api/v1/manager/reviews")).json()] == [session_id]
         assert (await manager.get(f"/api/v1/manager/reviews/{session_id}")).status_code == 200
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("endpoint", "method", "service_method", "error", "status", "code", "detail"),
+    [
+        (
+            "message",
+            "POST",
+            "send_message",
+            RoleplaySessionConflictError("cannot continue a finished practice session", code="session_finished"),
+            409,
+            "session_finished",
+            "Phiên luyện tập đã kết thúc và không nhận thêm tin nhắn.",
+        ),
+        (
+            "message",
+            "POST",
+            "send_message",
+            RoleplaySessionConflictError(
+                "customer reply is pending; retry it before sending another message", code="session_busy"
+            ),
+            409,
+            "session_busy",
+            "Khách hàng đang trả lời, vui lòng đợi giây lát.",
+        ),
+        (
+            "retry-reply",
+            "POST",
+            "retry_customer_reply",
+            CustomerResponseError("private customer failure"),
+            503,
+            "provider_unavailable",
+            "Hệ thống AI tạm thời gián đoạn. Tin nhắn của bạn đã được lưu, hãy thử lại.",
+        ),
+        (
+            "finish",
+            "POST",
+            "finish_session",
+            PracticeEvaluationUnavailableError("private evaluation failure"),
+            503,
+            "evaluation_failed",
+            "Chưa thể chấm điểm lúc này. Vui lòng thử lại.",
+        ),
+        (
+            "result",
+            "GET",
+            "advisor_result",
+            PracticeEvaluationUnavailableError("private evaluation failure"),
+            503,
+            "evaluation_failed",
+            "Chưa thể chấm điểm lúc này. Vui lòng thử lại.",
+        ),
+    ],
+)
+async def test_recorded_practice_error_contract(endpoint, method, service_method, error, status, code, detail):
+    from unittest.mock import AsyncMock, Mock
+
+    service = Mock(spec=RecordedPracticeService)
+    setattr(service, service_method, AsyncMock(side_effect=error))
+    router, _ = create_recorded_practice_routers(service, fake_identity)
+    app = FastAPI()
+    app.add_exception_handler(PracticeAPIError, practice_exception_handler)
+    app.include_router(router, prefix="/api/v1")
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        kwargs = {"json": {"message": "Xin chào"}} if endpoint == "message" else {}
+        response = await client.request(
+            method,
+            f"/api/v1/practice/session-1/{endpoint}",
+            headers={"X-Test-Identity": "advisor-a:advisor"},
+            **kwargs,
+        )
+        assert response.status_code == status
+        assert response.json() == {"code": code, "detail": detail}
+        assert "private" not in response.text

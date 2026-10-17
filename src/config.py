@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     langsmith_project: str = Field(
         default="", validation_alias=AliasChoices("LANGSMITH_PROJECT", "LANGCHAIN_PROJECT", "langsmith_project")
     )
+    # Development opt-in: redacted shared Q&A, node state and model messages.
     langsmith_capture_content: bool = False
     langsmith_sampling_rate: float = Field(default=1.0, ge=0, le=1)
 
@@ -80,6 +81,9 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("deepseek_api_key", "DEEPSEEK_API_KEY"),
     )
 
+    practice_judge_provider: Literal["openai", "openrouter", "gemini", "grok", "deepseek"] = "openrouter"
+    practice_judge_model: str = "deepseek/deepseek-v3.2"
+
     # Model Configuration
     model_name: str = Field(
         default="openai/gpt-6-luna",
@@ -91,11 +95,15 @@ class Settings(BaseSettings):
     retrieval_timeout_seconds: float = Field(default=20.0, gt=0)
     copilot_request_timeout_seconds: float = Field(default=180.0, gt=0)
     copilot_max_retrieval_rounds: int = Field(default=2, ge=1, le=2)
-    copilot_max_search_calls: int = Field(default=4, ge=1, le=4)
+    copilot_max_queries_per_plan: int = Field(default=3, ge=1, le=3)
+    copilot_max_search_calls: int = Field(default=5, ge=1, le=5)
     copilot_session_ttl_hours: int = Field(default=8, ge=1, le=168)
     copilot_max_llm_attempts: int = Field(default=8, ge=3, le=8)
+    # Comma-separated task types enabled by the deployment administrator. Empty disables AI task creation.
+    sales_ai_task_rules: str = ""
     copilot_final_reserve_seconds: float = Field(default=10.0, gt=0)
     # Profile caps include all queries in a round and every expanded evidence chunk.
+    copilot_evidence_selection_strategy: Literal["legacy", "rrf_context"] = "rrf_context"
     copilot_simple_dense_top_k: int = Field(default=8, ge=1, le=20)
     copilot_simple_bm25_top_k: int = Field(default=8, ge=1, le=20)
     copilot_simple_candidate_pool: int = Field(default=8, ge=1, le=40)

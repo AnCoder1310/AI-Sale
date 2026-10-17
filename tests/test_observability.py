@@ -14,6 +14,7 @@ from langchain_core.language_models.fake_chat_models import FakeMessagesListChat
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 from pydantic import ValidationError
+from starlette.responses import StreamingResponse
 
 from src import observability as obs
 from src.agents.copilot.runtime import bounded_io
@@ -48,6 +49,58 @@ def make_app(client=None, **kwargs):
     app = FastAPI()
     app.add_middleware(obs.CopilotTelemetryMiddleware, service=service)
     return app, service
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method,path", [
+    ("POST", "/api/v1/copilot/query/stream"),
+    ("POST", "/api/v1/copilot/knowledge"),
+    ("POST", "/api/v1/copilot/knowledge/stream"),
+    ("GET", "/api/v1/copilot/knowledge"),
+])
+async def test_shared_knowledge_and_stream_routes_are_correlated(method, path, caplog):
+    caplog.set_level(logging.INFO, logger="src.telemetry")
+    recorder = RecordingClient()
+    app, _ = make_app(recorder)
+
+    async def endpoint():
+        return {"request_id": obs._request.get().request_id}
+
+    app.add_api_route(path, endpoint, methods=[method])
+    async with AsyncClient(transport=ASGITransport(app), base_url="http://test") as client:
+        response = await client.request(method, path)
+    assert response.status_code == 200
+    assert response.json()["request_id"] == response.headers["x-request-id"]
+    completed = next(record.telemetry for record in caplog.records
+                     if getattr(record, "telemetry", {}).get("event") == "request_end")
+    assert completed["route"] == path
+    assert completed["duration_ms"] >= 0
+    assert len(recorder.creates) == 1
+
+
+@pytest.mark.asyncio
+async def test_sse_dependency_failure_is_traced_even_with_http_200():
+    recorder = RecordingClient()
+    app, _ = make_app(recorder)
+
+    @app.post("/api/v1/copilot/knowledge/stream")
+    async def endpoint():
+        async def events():
+            # Match the real service: the worker inherits the request context.
+            async def worker():
+                obs.annotate(error_type="TimeoutError")
+            await asyncio.create_task(worker())
+            yield 'event: error\ndata: {"status":"error"}\n\n'
+        return StreamingResponse(events(), media_type="text/event-stream")
+
+    async with AsyncClient(transport=ASGITransport(app), base_url="http://test") as client:
+        response = await client.post("/api/v1/copilot/knowledge/stream")
+    assert response.status_code == 200
+    root = next(run for run in recorder.creates if run["name"] == "copilot.query")
+    completed = [run for run in recorder.updates if run["id"] == root["id"]][-1]
+    assert completed["error"] == "TimeoutError"
+    assert completed["extra"]["metadata"]["http_status"] == 200
+    assert completed["extra"]["metadata"]["error_type"] == "TimeoutError"
 
 
 @pytest.mark.parametrize("status", [200, 401, 404, 409, 429, 503])
@@ -252,6 +305,72 @@ def test_configuration_defaults_aliases_and_production_guard(monkeypatch):
     assert settings(app_env="production").langsmith_project == "p043-copilot-prod"
 
 
+def test_content_is_structured_redacted_and_bounded():
+    from src.agents.copilot.state import Requirement
+
+    class RuntimeSecret:
+        def __str__(self):
+            raise AssertionError("Runtime objects must not be serialized")
+
+    content = obs.safe_content({
+        "query": "VF 5 user@example.com 0901234567 sk-secret123",
+        "requirements": [Requirement(requirement_id="R1", description="VF 5", kind="fact")],
+        "analysis": {"decision": "allow", "OPENROUTER_API_KEY": "never-upload", "password": "hidden"},
+        "runtime": RuntimeSecret(), "snapshot": RuntimeSecret(), "progress_queue": RuntimeSecret(),
+        "customer_context": "private-crm", "unknown_state": "not-approved",
+    }, state=True)
+    assert content["requirements"][0]["description"] == "VF 5"
+    assert content["analysis"] == {"decision": "allow"}
+    serialized = json.dumps(content)
+    for secret in ["user@example.com", "0901234567", "sk-secret123", "never-upload", "private-crm", "not-approved"]:
+        assert secret not in serialized
+    large = obs.safe_content({"answer_context": "x" * 100000, "new_hits": [{"content": "y" * 16000}] * 100}, state=True)
+    assert len(json.dumps(large)) < 66000
+    assert "[TRUNCATED]" in json.dumps(large)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("capture", [False, True])
+async def test_shared_knowledge_content_exports_root_nodes_and_model_only_when_enabled(capture):
+    recorder = RecordingClient()
+    app, _ = make_app(recorder, langsmith_capture_content=capture, app_env="development")
+    model = FakeMessagesListChatModel(responses=[AIMessage(content="checked-answer")])
+
+    async def analyze(state):
+        await model.ainvoke([HumanMessage(content=state["query"])])
+        return {"analysis": {"route": "simple"}, "draft_answer": "node-draft", "runtime": object()}
+
+    graph = StateGraph(dict)
+    graph.add_node("analyze_and_route", analyze)
+    graph.add_edge(START, "analyze_and_route")
+    graph.add_edge("analyze_and_route", END)
+
+    @app.post("/api/v1/copilot/knowledge/stream")
+    async def query():
+        obs.capture_knowledge_input("VF 5 safe-question user@example.com")
+        await graph.compile().ainvoke({"query": "safe-question", "snapshot": object()}, config=obs.graph_config())
+        obs.capture_knowledge_output({"answer": "persisted-final-answer", "status": "answered"})
+        return {"ok": True}
+
+    async with AsyncClient(transport=ASGITransport(app), base_url="http://test") as http:
+        assert (await http.post("/api/v1/copilot/knowledge/stream")).status_code == 200
+    root = next(run for run in recorder.creates if run["name"] == "copilot.query")
+    completed = next(run for run in recorder.updates if run["id"] == root["id"])
+    node = next(run for run in recorder.creates if run["name"] == "analyze_and_route")
+    node_end = next(run for run in recorder.updates if run["id"] == node["id"])
+    payload = json.dumps([recorder.creates, recorder.updates], default=str)
+    for text in ["safe-question", "node-draft", "checked-answer", "persisted-final-answer"]:
+        assert (text in payload) == capture
+    assert "user@example.com" not in payload and "snapshot" not in payload and "runtime" not in payload
+    assert completed["extra"]["metadata"]["http_route"] == "/api/v1/copilot/knowledge/stream"
+    if capture:
+        assert "query" in completed["inputs"]
+        assert completed["outputs"]["answer"] == "persisted-final-answer"
+        assert node_end["outputs"]["analysis"]["route"] == "simple"
+    else:
+        assert not completed.get("inputs") and not completed.get("outputs") and not node_end["outputs"]
+
+
 def test_exporter_configuration_and_shutdown(monkeypatch):
     captured = {}
     recorder = RecordingClient()
@@ -391,7 +510,8 @@ async def test_model_parse_failure_is_safe_and_has_no_hidden_retry(monkeypatch):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("blocked", [False, True])
-async def test_real_copilot_http_graph_session_and_guard_export(client, tmp_path, monkeypatch, blocked):
+@pytest.mark.parametrize("surface", ["legacy", "knowledge", "knowledge_stream"])
+async def test_real_copilot_http_graph_session_and_guard_export(client, tmp_path, monkeypatch, blocked, surface):
     from src.agents.copilot import model_io
     from src.agents.copilot.nodes import retrieval
     from src.agents.copilot.tools import _make_hit
@@ -404,7 +524,8 @@ async def test_real_copilot_http_graph_session_and_guard_export(client, tmp_path
 
     recorder = RecordingClient()
     service = app.state.copilot_telemetry
-    for name, value in {"enabled": True, "client": recorder, "capture": blocked, "sampling": 1.0}.items():
+    knowledge = surface != "legacy"
+    for name, value in {"enabled": True, "client": recorder, "capture": blocked or knowledge, "sampling": 1.0}.items():
         monkeypatch.setattr(service, name, value)
     repository = SQLCopilotSessionsRepository(f"sqlite:///{tmp_path / 'sessions.db'}")
     monkeypatch.setattr(app.state, "copilot_sessions", repository)
@@ -445,12 +566,19 @@ async def test_real_copilot_http_graph_session_and_guard_export(client, tmp_path
     monkeypatch.setattr(retrieval, "get_dense_search_engine", lambda: search)
     monkeypatch.setattr(retrieval, "get_bm25_search_engine", lambda: search)
     try:
-        response = await client.post(
-            "/api/v1/copilot/query",
-            json={"query": "Quãng đường VF 5?", "customer_context": "private-context-never-upload"},
-        )
+        path = {"legacy": "/api/v1/copilot/query", "knowledge": "/api/v1/copilot/knowledge",
+                "knowledge_stream": "/api/v1/copilot/knowledge/stream"}[surface]
+        body = {"query": "Quãng đường VF 5?"}
+        if not knowledge:
+            body["customer_context"] = "private-context-never-upload"
+        response = await client.post(path, json=body)
         assert response.status_code == 200
-        assert response.json()["request_id"] == response.headers["x-request-id"]
+        if surface == "knowledge_stream":
+            import re
+            data = json.loads(re.search(r"event: final\ndata: (.*)", response.text).group(1))
+        else:
+            data = response.json()
+        assert data["request_id"] == response.headers["x-request-id"]
         root = next(r for r in recorder.creates if r["name"] == "copilot.query")
         metadata = next(r for r in recorder.updates if r["id"] == root["id"])["extra"]["metadata"]
         assert metadata["input_tokens"] == len(outputs) * 8
@@ -458,12 +586,20 @@ async def test_real_copilot_http_graph_session_and_guard_export(client, tmp_path
         assert metadata["outcome"] == ("abstained" if blocked else "answered")
         assert len([r for r in recorder.creates if r["run_type"] == "llm"]) == len(outputs)
         payload = json.dumps([recorder.creates, recorder.updates], ensure_ascii=False, default=str)
-        assert "private-context-never-upload" not in payload and "Quãng đường VF 5?" not in payload
+        assert "private-context-never-upload" not in payload
+        assert ("Quãng đường VF 5?" in payload) == knowledge
+        completed = next(r for r in recorder.updates if r["id"] == root["id"])
+        if knowledge:
+            assert completed["inputs"]["query"] == "Quãng đường VF 5?"
+            assert completed["outputs"]["answer"] == data["answer"]
+            assert any(r["name"] == "analyze_and_route" and r["outputs"].get("analysis") for r in recorder.updates)
+            assert '"readiness_loader":' not in payload and '"snapshot":' not in payload
         if blocked:
-            assert response.json()["session_id"] is None
+            assert data["session_id"] == (repository.advisor_session("observer") if knowledge else None)
             assert not any(r["name"] == "session.save" for r in recorder.creates)
         else:
-            assert repository.load(response.json()["session_id"], "observer")["history"]
+            kwargs = {"advisor": True} if knowledge else {}
+            assert repository.load(data["session_id"], "observer", **kwargs)["history"]
             assert any(r["name"] == "db.execute" for r in recorder.creates)
         assert all(r["trace_id"] == root["trace_id"] for r in recorder.creates)
     finally:

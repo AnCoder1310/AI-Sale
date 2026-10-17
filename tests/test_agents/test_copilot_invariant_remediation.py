@@ -318,7 +318,7 @@ async def test_check_grounding_rejects_unknown_id_r99():
 
 @pytest.mark.asyncio
 async def test_check_grounding_recovery_routing():
-    """Verify Đợt 3: R2=[] does not regenerate; with candidates and 70s it regenerates."""
+    """Search by default; an explicit checker request permits regeneration at 70s."""
     from unittest.mock import AsyncMock, patch
     from types import SimpleNamespace
     from src.agents.copilot.state import Requirement
@@ -369,7 +369,7 @@ async def test_check_grounding_recovery_routing():
         assert res1["route"] != "generate_answer"
         assert res1["route"] == "plan_queries"  # routes to corrective search, not regenerate
 
-    # Subtest 2: R2 has candidates in context and 70s remaining (> 60s gate) -> REGENERATES
+    # Subtest 2: explicit checker regeneration with 70s remaining (> 60s gate).
     state_with_r2_candidates: CopilotState = {
         "query": "Giá và quãng đường VF 5",
         "draft_answer": "VF 5 giá 468 triệu [C1]",
@@ -388,7 +388,7 @@ async def test_check_grounding_recovery_routing():
         ),
     }
     with patch("src.agents.copilot.nodes.verification._invoke_json", new_callable=AsyncMock) as mock_invoke:
-        mock_invoke.return_value = (verdict1, None)
+        mock_invoke.return_value = (verdict1.model_copy(update={"recovery": "regenerate"}), None)
         res2 = await verif_nodes.check_grounding(state_with_r2_candidates)
         assert res2["route"] == "generate_answer"
         assert "recovery_requirement_ids" in res2
