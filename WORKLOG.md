@@ -223,6 +223,7 @@
 | Thành viên | Công việc | Trạng thái | Kết quả | Thời gian |
 |---|---|---|---|---|
 | Phạm Đình Duy | Sửa eligibility ưu đãi và lỗi practice với mã ổn định/tiếng Việt; thêm notice hướng dẫn; điều chỉnh push-to-talk, auto-send và giới hạn ghi âm 90 giây; giữ draft khi gửi lỗi, xử lý lỗi playback | ✅ Done | Thay đổi đã ghi nhận trong lịch sử commit ngày 2026-10-17 | - |
+| Phạm Đình Duy | Chính sách kịch bản lấy từ corpus theo ngày phiên (topic + lookup, resolver, judge dùng `current_policy_evidence`); thêm script kiểm tra độ phủ tri thức; nhãn JC6_VF6_PLUS_UPSELL do AI chấm nháp và Tú (tư vấn viên bán hàng VinFast) duyệt ngày 2026-10-17, bộ calibration 30/30 nhãn đã duyệt (không phải held-out); tích hợp PR #33 | ✅ Done | Thay đổi đã ghi nhận trong lịch sử commit ngày 2026-10-17 | - |
 
 ---
 
