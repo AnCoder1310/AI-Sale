@@ -76,6 +76,12 @@ export function EvaluationScorecard({
           </div>
         </div>
 
+        {evalData.closing_outcome_label && (
+          <p style={{ fontSize: '0.9rem', color: '#FFFFFF' }}>
+            Kết quả chốt: {evalData.closing_outcome_label}
+          </p>
+        )}
+
         {/* Strengths & Weaknesses Quick Summary */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 12, paddingTop: 16, borderTop: '1px solid rgba(255, 255, 255, 0.12)' }}>
           <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', padding: '14px 16px', borderRadius: 10 }}>

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import re
+
 from .contracts import ScenarioContract
 from .state import AdvisorFactualClaim, ConversationStage, RoleplayMessage, RoleplayState, TerminationStatus
-from .turn_analyzer import TurnAnalysis
+from .turn_analyzer import TurnAnalysis, validated_benefit_links
 
 
 class StateTransitionError(ValueError):
@@ -70,9 +72,38 @@ def apply_turn_analysis(
     if analysis.factual_claims:
         next_stage = ConversationStage.PRESENTATION
 
+    updated.linked_benefits = validated_benefit_links(
+        [*state.linked_benefits, *analysis.linked_benefits], scenario, state
+    )
+    known_policies = {item.policy_id for item in scenario.policy_expectations}
+    _append_unique(updated.policy_mentions, [item for item in analysis.policy_mentions if item in known_policies])
+    for objection in scenario.objections:
+        if objection.objection_id in updated.unresolved_objections and any(
+            re.search(r"(?<!\w)" + re.escape(keyword) + r"(?!\w)", advisor_message, re.IGNORECASE)
+            for keyword in objection.trigger_keywords
+        ):
+            _append_unique(updated.active_objections, [objection.objection_id])
+
+    rule = scenario.upsell_rule
+    eligible_upsell = False
+    if rule:
+        linked_ids = {link.benefit_id for link in updated.linked_benefits}
+        safety_ids = {benefit.benefit_id for benefit in scenario.upsell_benefits if benefit.safety}
+        eligible_upsell = len(linked_ids) >= rule.min_linked and len(linked_ids & safety_ids) >= rule.min_safety
+
     newly_resolved: list[str] = []
     addressed_objections = set(analysis.addressed_objection_ids)
-    for objection_id in analysis.resolved_objection_ids:
+    resolution_ids = list(analysis.resolved_objection_ids)
+    if rule and eligible_upsell:
+        resolution_ids.append(rule.objection_id)
+        addressed_objections.add(rule.objection_id)
+    objections_by_id = {item.objection_id: item for item in scenario.objections}
+    for objection_id in dict.fromkeys(resolution_ids):
+        objection = objections_by_id.get(objection_id)
+        if objection is None or not set(objection.requires_revealed_facts).issubset(state.revealed_facts):
+            continue
+        if rule and objection_id == rule.objection_id and not eligible_upsell:
+            continue
         if objection_id not in addressed_objections:
             continue
         if objection_id not in updated.active_objections:
@@ -112,7 +143,11 @@ def apply_turn_analysis(
     updated.interest_level = _bounded_level(updated.interest_level + interest_delta)
 
     updated.conversation_stage = next_stage
-    if analysis.advisor_requested_finish:
+    if analysis.unsafe_or_abusive:
+        updated.termination_status = TerminationStatus.ADVISOR_MISCONDUCT
+        updated.misconduct_reason = "semantic_abuse"
+        updated.termination_reason = "Advisor misconduct: semantic_abuse."
+    elif analysis.advisor_requested_finish:
         updated.termination_status = TerminationStatus.ADVISOR_ENDED
         updated.termination_reason = "Advisor explicitly ended the practice session."
     elif updated.turn_count >= updated.max_turns:

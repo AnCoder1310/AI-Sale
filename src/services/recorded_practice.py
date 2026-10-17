@@ -142,10 +142,12 @@ class RecordedPracticeService:
         return await self._practice.retry_customer_reply(session_id)
 
     async def finish_session(self, session_id: str, advisor_id: str) -> PracticeResultView:
-        await self._records.owned_attempt(session_id, advisor_id)
+        attempt = await self._records.owned_attempt(session_id, advisor_id)
         try:
             evaluation = await self._practice.finish_session(
-                session_id, on_saved=lambda: self._records.mark_evaluation_pending(session_id)
+                session_id,
+                started_at=attempt.started_at,
+                on_saved=lambda: self._records.mark_evaluation_pending(session_id),
             )
         except PracticeEvaluationUnavailableError:
             await self._records.mark_evaluation_failed(session_id)

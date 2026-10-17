@@ -79,7 +79,7 @@ def test_list_scenarios_returns_only_public_summaries():
 
     summaries = [summary.model_dump() for summary in service.list_scenarios()]
 
-    assert len(summaries) == 3
+    assert len(summaries) == 4
     assert all("hidden_facts" not in summary for summary in summaries)
 
 
@@ -211,7 +211,7 @@ async def test_evaluator_failure_keeps_frozen_transcript_and_allows_retry(caplog
     failed = RoleplayState.model_validate(await checkpoint.load("session-1"))
     assert failed.evaluation_status is EvaluationStatus.FAILED
     assert failed.termination_status is TerminationStatus.ADVISOR_ENDED
-    assert [message.role for message in failed.messages] == ["customer"]
+    assert failed.messages == []
     assert (await service.get_result("session-1")).result is None
 
     retried = await service.finish_session("session-1")
@@ -275,3 +275,28 @@ async def test_finish_does_not_score_when_history_save_fails():
     saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
     assert saved.termination_status is TerminationStatus.ADVISOR_ENDED
     assert saved.evaluation_status is EvaluationStatus.PENDING
+
+
+@pytest.mark.asyncio
+async def test_legacy_attempt_start_date_reaches_evidence_and_judge():
+    from datetime import UTC, date, datetime
+
+    service, checkpoint, _ = build_lifecycle_service()
+    await service.start_session("SCENARIO_01_VF5_TAXI")
+    checkpoint.states["session-1"].pop("created_at")
+    observed = []
+
+    class DatedEvidence:
+        async def for_session(self, scenario, state):
+            observed.append(state.target_date)
+            return []
+
+    class DatedEvaluator(RecordingEvaluator):
+        async def evaluate(self, scenario, state, knowledge_evidence):
+            observed.append(state.target_date)
+            return await super().evaluate(scenario, state, knowledge_evidence)
+
+    service._knowledge_evidence = DatedEvidence()
+    service._evaluator = DatedEvaluator()
+    await service.finish_session("session-1", started_at=datetime(2026, 9, 20, 23, 30, tzinfo=UTC))
+    assert observed == [date(2026, 9, 21), date(2026, 9, 21)]

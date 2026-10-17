@@ -5,9 +5,13 @@ import { EvaluationScorecard } from './EvaluationScorecard';
 import { HistoryModal } from './HistoryModal';
 import { AdvisorAssignmentsView } from './AdvisorAssignmentsView';
 import { practiceApi } from '../../api/practiceApi';
+import { apiErrorNotice } from '../../utils/practiceNotices';
+import { NoticeDialog } from '../common/NoticeDialog';
+import { authApi } from '../../api/authApi';
 import { ErrorState } from '../common/ErrorState';
 
 export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
+  const [notice, setNotice] = useState(null);
   const [viewMode, setViewMode] = useState('catalog');
   const [activeScenario, setActiveScenario] = useState(null);
   const [activeSession, setActiveSession] = useState(null);
@@ -15,7 +19,6 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
   const [attemptDetail, setAttemptDetail] = useState(null);
   const [detailStatus, setDetailStatus] = useState('idle');
   const [retryingEvaluation, setRetryingEvaluation] = useState(false);
-  const [retryEvaluationError, setRetryEvaluationError] = useState('');
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyStatus, setHistoryStatus] = useState('loading');
@@ -33,7 +36,8 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
       setHistory(await practiceApi.getHistory());
       setHistoryStatus('ready');
     } catch (error) {
-      setHistoryError(error.message || 'Vui lòng thử lại.');
+      setHistoryError(apiErrorNotice(error)?.message || apiErrorNotice(error)?.title || 'Vui lòng thử lại.');
+      setNotice(apiErrorNotice(error));
       setHistoryStatus('error');
     }
   }, []);
@@ -47,7 +51,8 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
       }
     }).catch((error) => {
       if (mounted) {
-        setHistoryError(error.message || 'Vui lòng thử lại.');
+        setHistoryError(apiErrorNotice(error)?.message || apiErrorNotice(error)?.title || 'Vui lòng thử lại.');
+        setNotice(apiErrorNotice(error));
         setHistoryStatus('error');
       }
     });
@@ -74,7 +79,8 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
       setActiveSession(sessionView);
       setViewMode('room');
     } catch (error) {
-      setStartError(error.message || 'Không thể bắt đầu phiên. Vui lòng thử lại.');
+      setStartError(apiErrorNotice(error)?.message || apiErrorNotice(error)?.title || 'Vui lòng thử lại.');
+      setNotice(apiErrorNotice(error));
     } finally {
       setStarting(false);
     }
@@ -98,7 +104,6 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
   };
 
   const openAttempt = async (sessionId) => {
-    setRetryEvaluationError('');
     setHistoryScenarioId(null);
     setSelectedSessionId(sessionId);
     setDetailStatus('loading');
@@ -109,7 +114,8 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
       setActiveScenario(scenarios.find((s) => s.scenario_id === detail.attempt.scenario_id) || null);
       setDetailStatus('ready');
     } catch (error) {
-      setStartError(error.message || 'Không tải được phiên luyện tập.');
+      setStartError(apiErrorNotice(error)?.message || apiErrorNotice(error)?.title || 'Vui lòng thử lại.');
+      setNotice(apiErrorNotice(error));
       setDetailStatus('error');
     }
   };
@@ -117,13 +123,13 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
   const retryFailedEvaluation = async () => {
     if (!attemptDetail || retryingEvaluation) return;
     setRetryingEvaluation(true);
-    setRetryEvaluationError('');
     try {
       await practiceApi.finishSession(attemptDetail.attempt.session_id);
       setAttemptDetail(await practiceApi.getAttempt(attemptDetail.attempt.session_id));
       await loadHistory();
     } catch (error) {
-      setRetryEvaluationError(error.message || 'Chưa thể chấm điểm lại. Hãy thử lại sau.');
+      console.debug('Practice evaluation failed', { code: error.code, status: error.status });
+      setNotice(apiErrorNotice(error));
     } finally {
       setRetryingEvaluation(false);
     }
@@ -133,6 +139,11 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
 
   return (
     <div>
+      <NoticeDialog notice={notice} onClose={() => setNotice(null)} onAction={async (id) => {
+        setNotice(null);
+        if (id === 'retry_finish') await retryFailedEvaluation();
+        if (id === 'login') { try { await authApi.logout(); } finally { window.location.reload(); } }
+      }} />
       {scenarioStatus === 'loading' && <p>Đang tải tình huống từ backend...</p>}
       {scenarioStatus === 'error' && <ErrorState message="Không tải được tình huống từ backend." onRetry={onRetryScenarios} />}
       {viewMode === 'catalog' && startError && <ErrorState message={startError} onRetry={() => handleStartScenario(activeScenario?.scenario_id, lastMaxTurns)} />}
@@ -184,7 +195,6 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
                   <button className="btn-primary" onClick={retryFailedEvaluation} disabled={retryingEvaluation}>
                     {retryingEvaluation ? 'Đang chấm điểm lại...' : 'Thử chấm điểm lại'}
                   </button>
-                  {retryEvaluationError && <p role="alert">{retryEvaluationError}</p>}
                 </div>
               ) : (
                 <EvaluationScorecard
