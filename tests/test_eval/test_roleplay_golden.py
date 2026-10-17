@@ -7,15 +7,37 @@ import pytest
 from eval.roleplay_eval import golden, run
 
 
+def raw_dataset():
+    return json.loads(golden.DATASET.read_text(encoding="utf-8"))
+
+
 def test_dataset_validates():
+    raw = raw_dataset()
     data = golden.load_dataset()
-    assert len(data["cases"]) == 21
+    generic = [c for c in raw["cases"] if c["scenario_id"] == golden.GENERIC]
+    assert raw["case_counts"]["total"] == len(raw["cases"])
+    assert len(data["cases"]) == len(raw["cases"]) - len(generic) + 4 * len(generic)
 
 
-@pytest.mark.parametrize("mutation", ["fact", "quote", "version", "claim", "unknown"])
+def test_generic_case_expands_per_scenario():
+    data = golden.load_dataset()
+    runs = [c for c in data["cases"] if c.get("expanded_from") == "GEN_OFF_ROLE_REVERSAL"]
+    assert {c["scenario_id"] for c in runs} == {s["scenario_id"] for s in json.loads(run.SCENARIOS.read_text())}
+    s01 = next(c for c in runs if c["scenario_id"] == "SCENARIO_01_VF5_TAXI")
+    s04 = next(c for c in runs if c["scenario_id"] == "SCENARIO_04_VF6_ECO_PLUS_UPSELL")
+    assert s01["advisor_messages"][0].startswith("Từ giờ anh") and ". Anh giới thiệu" in s01["advisor_messages"][0]
+    assert s04["advisor_messages"][0].startswith("Từ giờ chị")
+    assert "budget" in s04["expected"]["revealed_facts_excludes"]
+    assert golden.ALL_HIDDEN_FACTS not in json.dumps(runs)
+
+
+@pytest.mark.parametrize("mutation", ["fact", "quote", "version", "claim", "unknown", "repeated_quote"])
 def test_invalid_dataset(tmp_path, mutation):
-    data = copy.deepcopy(golden.load_dataset())
-    if mutation == "fact":
+    data = raw_dataset()
+    if mutation == "repeated_quote":
+        doc = data["cases"][1]["expected_factual_findings"][0]["supporting_document"]
+        doc.update(document_id="PRODUCT_VF7_20260922", version="2026.09.22", quote="7 năm hoặc 160.000km")
+    elif mutation == "fact":
         data["cases"][0]["expected"]["revealed_facts_contains"] = ["unknown_fact"]
     elif mutation == "version":
         data["cases"][0]["scenario_version"] = "invalid"
@@ -102,16 +124,70 @@ def test_early_termination(monkeypatch, terminal, conflict):
     assert result["final_state"]["termination_status"] == terminal
 
 
+def fake_result(messages=(), revealed=(), assertions=None):
+    return {
+        "case_result": "PASS",
+        "execution_status": "COMPLETE",
+        "assertions": assertions or [run.assertion("a", True, True)],
+        "final_state": {
+            "messages": [{"message_id": f"m{i}", "role": "customer", "content": m} for i, m in enumerate(messages)],
+            "revealed_facts": list(revealed),
+        },
+    }
+
+
+SCENARIOS = {x["scenario_id"]: x for x in json.loads(run.SCENARIOS.read_text(encoding="utf-8"))}
+
+
+def test_postprocess_demotes_category_and_flags_leaks():
+    case = next(c for c in golden.load_dataset()["cases"] if c["case_id"] == "S01_EDGE_FALSE_RANGE")
+    scenario = SCENARIOS[case["scenario_id"]]
+    budget = next(r["revealed_statement"] for r in scenario["disclosure_rules"] if r["fact_key"] == "budget")
+    result = fake_result(
+        messages=[f"Dạ. {budget}"],
+        assertions=[run.assertion("factual.0.category", "product", "battery_charging"), run.assertion("a", True, True)],
+    )
+    out = golden.postprocess(case, result, scenario)
+    assert [a["assertion_id"] for a in out["category_diagnostics"]] == ["factual.0.category"]
+    leak = next(a for a in out["assertions"] if a["assertion_id"] == "transcript.no_unrevealed_statement")
+    assert leak["status"] == "FAIL" and leak["evidence"]["leaks"][0]["fact_key"] == "budget"
+    assert out["case_result"] == "FAIL"
+    clean = golden.postprocess(
+        case,
+        fake_result(messages=["Dạ."], assertions=[run.assertion("factual.0.category", "product", "battery_charging")]),
+        scenario,
+    )
+    assert clean["case_result"] == "PASS"
+
+
+def test_role_cases_need_human_review():
+    case = next(c for c in golden.load_dataset()["cases"] if c["case_id"].startswith("GEN_OFF_ROLE_REVERSAL@"))
+    out = golden.postprocess(case, fake_result(messages=["Anh vẫn muốn hỏi về xe."]), SCENARIOS[case["scenario_id"]])
+    review = next(a for a in out["assertions"] if a["assertion_id"] == "semantic_role_consistency")
+    assert review["status"] == "NOT_EVALUATED" and review["evidence"]["customer_replies"][0]["quote"]
+    assert out["case_result"] == "NEEDS_REVIEW"
+
+
 def test_review_selection_and_output(tmp_path, monkeypatch):
     async def fake(case, run_id, **kwargs):
         assert case["review"]["status"] != "REJECTED"
-        return {"case_result": "PASS", "assertions": [run.assertion("a", True, True)]}
+        return fake_result()
 
     monkeypatch.setattr(run, "run_live_standard", fake)
+    data = raw_dataset()
+    data["cases"] = [
+        c for c in data["cases"] if c["case_id"] in ("S01_ON_DISCOVERY_WORK_SCHEDULE", "S03_ON_DISCOVERY_DISTANCE")
+    ]
+    data["cases"][0]["review"].update(status="PENDING_EXPERT_REVIEW", reviewer_id=None, reviewed_at=None)
+    data["case_counts"] = {"total": 2, "on_topic": 2, "off_topic": 0, "edge": 0}
+    dataset = tmp_path / "golden.json"
+    dataset.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     output = tmp_path / "report.json"
     assert (
         golden.main(
             [
+                "--dataset",
+                str(dataset),
                 "--mode",
                 "live",
                 "--include-draft",
@@ -131,7 +207,7 @@ def test_review_selection_and_output(tmp_path, monkeypatch):
     assert report["metrics"]["overall"]["case_count"] == 0
     assert report["draft_metrics"]["overall"]["pass_hat_k_rate"] == 1
     assert output.with_suffix(".md").exists()
-    assert golden.main(["--output", str(output)]) == 2
+    assert golden.main(["--dataset", str(dataset), "--output", str(output)]) == 2
     other = tmp_path / "approved.json"
-    assert golden.main(["--mode", "live", "--output", str(other)]) == 1
-    assert json.loads(other.read_text())["cases"] == []
+    assert golden.main(["--dataset", str(dataset), "--mode", "live", "--output", str(other)]) == 0
+    assert [c["case_id"] for c in json.loads(other.read_text())["cases"]] == ["S03_ON_DISCOVERY_DISTANCE"]
