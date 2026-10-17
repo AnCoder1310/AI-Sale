@@ -80,6 +80,9 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("deepseek_api_key", "DEEPSEEK_API_KEY"),
     )
 
+    practice_judge_provider: Literal["openai", "openrouter", "gemini", "grok", "deepseek"] = "openrouter"
+    practice_judge_model: str = "google/gemini-3.8-flash"
+
     # Model Configuration
     model_name: str = Field(
         default="openai/gpt-6-luna",

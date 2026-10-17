@@ -13,7 +13,7 @@ export function HistoryModal({ isOpen, onClose, attempts, status, error, onRetry
       {status === 'loading' && <p>Đang tải lịch sử...</p>}
       {status === 'error' && (
         <div role="alert">
-          <p>Không tải được lịch sử: {error}</p>
+          <p>Không tải được lịch sử: {error || 'Vui lòng thử lại.'}</p>
           <button className="btn-ghost" onClick={onRetry}>Thử lại</button>
         </div>
       )}

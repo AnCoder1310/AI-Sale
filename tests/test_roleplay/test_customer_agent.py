@@ -20,6 +20,14 @@ class CapturingCustomerModel:
         return self.output
 
 
+def test_first_reply_prompt_introduces_buying_intent_without_requesting_usage():
+    first_reply_instructions = CUSTOMER_SYSTEM_PROMPT.split("# First customer reply")[1].split(
+        "# Outcome and disclosure"
+    )[0]
+    assert "usage needs from customer_goals" not in first_reply_instructions
+    assert "buying intent from customer_goals only" in first_reply_instructions
+
+
 @pytest.fixture
 def scenario():
     return ScenarioRepository(SCENARIOS).get("SCENARIO_01_VF5_TAXI")
@@ -35,13 +43,13 @@ async def test_customer_agent_uses_versioned_prompt_and_returns_customer_message
     model = CapturingCustomerModel({"reply": "Anh muốn biết chi phí sử dụng thực tế thế nào."})
     agent = CustomerAgent(model)
 
-    message = await agent.generate_reply(scenario, state, mode="opening")
+    message = await agent.generate_reply(scenario, state, mode="response")
 
     assert message.role == "customer"
     assert message.content == "Anh muốn biết chi phí sử dụng thực tế thế nào."
     assert model.calls[0]["system_prompt"] == CUSTOMER_SYSTEM_PROMPT
     assert model.calls[0]["context"]["prompt_version"] == CUSTOMER_PROMPT_VERSION
-    assert model.calls[0]["context"]["turn_mode"] == "opening"
+    assert model.calls[0]["context"]["turn_mode"] == "response"
 
 
 @pytest.mark.asyncio
@@ -134,7 +142,7 @@ async def test_customer_retries_a_mixed_language_reply_once(scenario, state):
             }
 
     model = MixedLanguageModel(None)
-    message = await CustomerAgent(model).generate_reply(scenario, state, mode="opening")
+    message = await CustomerAgent(model).generate_reply(scenario, state, mode="response")
 
     assert (
         message.content == "Mức góp đó là bình quân hay tháng nào cũng vậy? Em tách tiền góp và tiền sạc giúp anh nhé."
@@ -149,7 +157,7 @@ async def test_customer_does_not_publish_english_when_retry_still_fails(scenario
     model = CapturingCustomerModel({"reply": "Could you show the monthly installment separately?"})
 
     with pytest.raises(CustomerResponseError, match="English prose"):
-        await CustomerAgent(model).generate_reply(scenario, state, mode="opening")
+        await CustomerAgent(model).generate_reply(scenario, state, mode="response")
 
     assert len(model.calls) == 2
 
@@ -184,7 +192,7 @@ async def test_customer_never_publishes_repeated_private_persona_leak(scenario, 
     model = CapturingCustomerModel({"reply": canary})
 
     with pytest.raises(CustomerResponseError, match="private persona data"):
-        await CustomerAgent(model).generate_reply(scenario, state, mode="opening")
+        await CustomerAgent(model).generate_reply(scenario, state, mode="response")
 
     assert len(model.calls) == 2
     assert canary not in caplog.text
@@ -197,7 +205,7 @@ async def test_customer_never_publishes_nested_private_persona_leak(scenario, st
     model = CapturingCustomerModel({"reply": canary})
 
     with pytest.raises(CustomerResponseError, match="internal_notes"):
-        await CustomerAgent(model).generate_reply(scenario, state, mode="opening")
+        await CustomerAgent(model).generate_reply(scenario, state, mode="response")
 
 
 @pytest.mark.asyncio
@@ -206,7 +214,7 @@ async def test_customer_never_publishes_system_prompt_excerpt(scenario, state):
     model = CapturingCustomerModel({"reply": excerpt})
 
     with pytest.raises(CustomerResponseError, match="system prompt excerpt"):
-        await CustomerAgent(model).generate_reply(scenario, state, mode="opening")
+        await CustomerAgent(model).generate_reply(scenario, state, mode="response")
 
 
 @pytest.mark.asyncio
@@ -223,6 +231,6 @@ async def test_customer_rejects_foreign_language_roleplay_output(scenario, state
     model = CapturingCustomerModel({"reply": reply})
 
     with pytest.raises(CustomerResponseError, match="non-Vietnamese prose"):
-        await CustomerAgent(model).generate_reply(scenario, state, mode="opening")
+        await CustomerAgent(model).generate_reply(scenario, state, mode="response")
 
     assert len(model.calls) == 2

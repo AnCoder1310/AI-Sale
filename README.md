@@ -19,6 +19,8 @@ cp .env.example .env
 
 Điền `OPENROUTER_API_KEY` trong `.env`. Mặc định chat dùng `OPENROUTER_MODEL_NAME=openai/gpt-6-luna`, embedding dùng `EMBEDDING_MODEL_NAME=openai/text-embedding-3-small` qua OpenRouter; **hai tác vụ model khác nhau**, không dùng hash cho demo thật. Khi chạy Python trực tiếp, `DATABASE_URL=sqlite:///./data/app.db` lưu user, phiên, transcript và đánh giá; `CHROMA_PERSIST_DIR=./data/chroma` lưu vector index dẫn xuất từ `data/knowledge/corpus.json`. Docker Compose ghi đè hai mặc định này để dùng PostgreSQL + pgvector. Đổi embedding model thì tạo collection mới và ingest lại. Không commit `.env`, mật khẩu hoặc database local.
 
+Practice dùng judge riêng: `PRACTICE_JUDGE_PROVIDER=openrouter`, `PRACTICE_JUDGE_MODEL=google/gemini-3.8-flash` (temperature 0), độc lập với model Customer/analyzer.
+
 Trong `.env`, đặt `DEMO_ADVISOR_PASSWORD` và `DEMO_MANAGER_PASSWORD` riêng, rồi seed tài khoản local:
 
 ```bash
@@ -47,7 +49,7 @@ Mở <http://localhost:3000>. Vite proxy `/api` và `/health` sang cổng 8000; 
 Practice Room có micro để đọc tiếng Việt thành chữ rồi sửa trước khi gửi. Bật **Chế độ hội thoại** để giữ micro lớn và thả tay gửi tự động; phản hồi của AI Customer được đọc bằng giọng WaveNet phù hợp với tình huống. Hộp nhập chữ vẫn hiện trong cả hai chế độ. Xem [cấu hình Voice Mode](docs/voice-mode.md); chat chữ vẫn chạy khi chưa có key giọng nói.
 
 1. Đăng nhập Advisor. Hỏi Copilot: **“Giá niêm yết VF 8 Thế hệ mới theo bảng giá VinFast là bao nhiêu?”** Mở citation. Câu ngoài kho: **“Giá bảo hiểm chính xác của đại lý X ngày mai là bao nhiêu?”** phải không tự bịa.
-2. Vào Practice Room, chọn **VF 5 Plus — khách chạy dịch vụ**. Hỏi quãng đường/ngày, tiền xăng Vios thực tế và giờ nghỉ/sạc; xử lý lo ngại chi phí, tránh cam kết tiết kiệm khi chưa đủ dữ liệu. Kết thúc để xem điểm AI dự thảo, transcript evidence và lịch sử.
+2. Vào Practice Room, chọn **VF 5 Plus — khách chạy dịch vụ**. Tư vấn viên mở lời chào khách trước; khách phản hồi theo nhu cầu của kịch bản. Hỏi quãng đường/ngày, tiền xăng Vios thực tế và giờ nghỉ/sạc; xử lý lo ngại chi phí, tránh cam kết tiết kiệm khi chưa đủ dữ liệu. Kết thúc để xem điểm AI dự thảo, transcript evidence và lịch sử.
 3. Đăng xuất, đăng nhập Manager. Vào **Giao bài**, chọn Advisor và kịch bản rồi đặt hạn. Đăng nhập lại Advisor, bắt đầu bài trong Practice Room và hoàn thành phiên. Đăng nhập Manager để thấy trạng thái hoàn thành.
 4. Manager xem hàng đợi và transcript, nhập lý do khi duyệt; vào **Năng lực** để xem điểm kỹ năng từ các phiên đã duyệt. Advisor chưa có ít nhất 3 phiên được duyệt và có điểm sẽ chưa được xếp hạng.
 
