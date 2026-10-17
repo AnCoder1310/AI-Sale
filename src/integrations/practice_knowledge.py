@@ -17,7 +17,11 @@ from .practice_policy import valid_policy_chunk
 logger = logging.getLogger(__name__)
 
 # Charging tariffs and charging offers live in charging policies, not the car price list or sales promotions.
-_CHARGING_CLAIM = re.compile(r"kWh|(?:trạm|trụ|phiên|giá|phí|ưu đãi)\s+sạc", re.I)
+# A bare "kWh" is battery capacity ("pin 37,23 kWh"), a spec claim; only a per-kWh price is a tariff.
+_CHARGING_CLAIM = re.compile(
+    r"(?:VNĐ|đồng|đ)\s*(?:/|(?:cho\s+)?(?:mỗi|một|1)\s+)\s*kWh|(?:trạm|trụ|phiên|giá|phí|tiền|ưu đãi)\s+sạc|sạc\s+miễn\s+phí",
+    re.I,
+)
 
 
 class KnowledgeRetriever(Protocol):
@@ -95,7 +99,10 @@ class RetrievalKnowledgeEvidenceProvider:
                 top_k = 24  # The MSRP table is one small chunk in a long official PDF.
             elif product_model and (
                 claim.category == "product"
-                or (claim.category == "battery_charging" and re.search(r"\bkm\b|quãng đường|đi được", claim.text, re.I))
+                or (
+                    claim.category == "battery_charging"
+                    and re.search(r"(?<![^\W\d])km\b|kWh|quãng đường|đi được", claim.text, re.I)
+                )
             ):
                 document_type = DocumentType.PRODUCT_SPECS.value
 

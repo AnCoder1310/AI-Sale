@@ -109,16 +109,25 @@ async def test_provider_uses_model_and_msrp_table_for_price_claim():
 
 
 @pytest.mark.asyncio
-async def test_range_per_charge_claim_uses_product_specs_even_when_labeled_charging():
+@pytest.mark.parametrize(
+    "text,category",
+    [
+        ("đi được 1.000 km mỗi lần sạc", "battery_charging"),
+        ("VF 5 Plus chạy 326km mỗi lần sạc", "battery_charging"),
+        # Battery capacity in kWh is a spec, not a charging tariff.
+        ("VF 5 Plus có pin 37,23 kWh, đi được 326,4 km/lần sạc", "battery_charging"),
+        ("VF 5 Plus có pin 37,23 kWh", "product"),
+        ("VF 5 Plus có pin 37,23 kWh", "battery_charging"),
+    ],
+)
+async def test_range_and_battery_capacity_claims_use_product_specs(text, category):
     scenario, state = scenario_and_state()
-    state.factual_claims = [
-        AdvisorFactualClaim(message_id="m1", text="đi được 1.000 km mỗi lần sạc", category="battery_charging")
-    ]
+    state.factual_claims = [AdvisorFactualClaim(message_id="m1", text=text, category=category)]
     retriever = RecordingRetriever()
 
     await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
 
-    assert retriever.calls == [("đi được 1.000 km mỗi lần sạc", 3, "VF 5", "product_specs")]
+    assert retriever.calls == [(text, 3, "VF 5", "product_specs")]
 
 
 @pytest.mark.asyncio
@@ -275,6 +284,10 @@ def charging_chunk(chunk_id: str, document_id: str, content: str, document_type:
     "text,category",
     [
         ("Ở trạm sạc công cộng VinFast, đơn giá sạc là 3.858 VNĐ/kWh anh ạ.", "price"),
+        ("Tiền điện được tính theo kWh thực tế của phiên sạc.", "battery_charging"),
+        ("Sạc tại VinFast chỉ 3.858 đồng/kWh.", "price"),
+        ("VF 5 sạc hết 3.858 đồng cho mỗi kWh.", "price"),
+        ("VF 5 được miễn tiền sạc 1.000 kWh đầu tiên.", "promotion"),
         ("Theo chính sách ngày 19/09/2026, với xe biển vàng, ưu đãi sạc chỉ áp dụng khung 23:00–06:00.", "promotion"),
     ],
 )

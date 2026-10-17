@@ -3,8 +3,8 @@
   "description": "Roleplay golden set across all four practice scenarios. Advisor messages and expectations were AI-drafted, revised after an internal review, and approved by a VinFast sales advisor on 2026-10-17. Cases with scenario_id ALL run once per scenario.",
   "review_protocol": "Each case carries review.status. Only APPROVED cases run by default and count in reported metrics. Reviewer edits are recorded in review.notes.",
   "case_counts": {
-    "total": 32,
-    "on_topic": 22,
+    "total": 33,
+    "on_topic": 23,
     "off_topic": 5,
     "edge": 5
   },
@@ -799,6 +799,41 @@
         "drafted_by": "ai_draft",
         "reviewer_id": "tú-vinfast-sales-advisor",
         "reviewed_at": "2026-10-17T09:09:20Z",
+        "notes": null
+      }
+    },
+    {
+      "case_id": "S01_ON_FACT_VF5_BATTERY_CAPACITY",
+      "type": "on_topic",
+      "category": "factual_supported",
+      "scenario_id": "SCENARIO_01_VF5_TAXI",
+      "scenario_version": "2.5",
+      "advisor_messages": [
+        "VF 5 Plus có pin 37,23 kWh anh ạ, chạy dịch vụ cả ngày vẫn thoải mái."
+      ],
+      "expected": {
+        "turn_count": 1,
+        "termination_status": "active"
+      },
+      "expected_factual_findings": [
+        {
+          "advisor_turn_number": 1,
+          "claim_text_contains": "37,23 kWh",
+          "category": "product",
+          "status": "supported",
+          "supporting_document": {
+            "document_id": "SPECS_VF5_PLUS_2026",
+            "version": "2026.09.22",
+            "quote": "Dung lượng pin khả dụng\n\n37,23 Kwh"
+          }
+        }
+      ],
+      "rationale": "Dung lượng pin là thông số xe; claim có chữ kWh vẫn phải được đối chiếu với trang thông số VF 5 Plus, không phải chính sách sạc.",
+      "review": {
+        "status": "PENDING_EXPERT_REVIEW",
+        "drafted_by": "ai_draft",
+        "reviewer_id": null,
+        "reviewed_at": null,
         "notes": null
       }
     },
