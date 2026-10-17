@@ -275,3 +275,28 @@ async def test_finish_does_not_score_when_history_save_fails():
     saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
     assert saved.termination_status is TerminationStatus.ADVISOR_ENDED
     assert saved.evaluation_status is EvaluationStatus.PENDING
+
+
+@pytest.mark.asyncio
+async def test_legacy_attempt_start_date_reaches_evidence_and_judge():
+    from datetime import UTC, date, datetime
+
+    service, checkpoint, _ = build_lifecycle_service()
+    await service.start_session("SCENARIO_01_VF5_TAXI")
+    checkpoint.states["session-1"].pop("created_at")
+    observed = []
+
+    class DatedEvidence:
+        async def for_session(self, scenario, state):
+            observed.append(state.target_date)
+            return []
+
+    class DatedEvaluator(RecordingEvaluator):
+        async def evaluate(self, scenario, state, knowledge_evidence):
+            observed.append(state.target_date)
+            return await super().evaluate(scenario, state, knowledge_evidence)
+
+    service._knowledge_evidence = DatedEvidence()
+    service._evaluator = DatedEvaluator()
+    await service.finish_session("session-1", started_at=datetime(2026, 9, 20, 23, 30, tzinfo=UTC))
+    assert observed == [date(2026, 9, 21), date(2026, 9, 21)]

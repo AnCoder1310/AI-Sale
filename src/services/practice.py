@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 from typing import Protocol
 from uuid import uuid4
 
@@ -143,11 +144,17 @@ class PracticeService:
             return PracticeSessionView.model_validate(result)
 
     async def finish_session(
-        self, session_id: str, *, on_saved: Callable[[], Awaitable[None]] | None = None
+        self,
+        session_id: str,
+        *,
+        started_at: datetime | None = None,
+        on_saved: Callable[[], Awaitable[None]] | None = None,
     ) -> PracticeResultView:
         async with self._lock_for(session_id):
             # finish_session commits the frozen transcript before evaluation starts.
             state = await self._graph.finish_session(session_id)
+            if state.created_at is None and started_at is not None:
+                state = state.model_copy(update={"created_at": started_at})
             if on_saved is not None:
                 await on_saved()
             if state.evaluation_result is not None:

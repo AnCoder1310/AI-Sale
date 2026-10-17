@@ -79,3 +79,10 @@ all 25 positive and 25 negative cases from the supplied abuse-pattern catalog.
   status is not verified, including the coordinator's known observability failure.
 - No live provider evaluation, deployment, GitHub CI, or mergeability checks ran.
   No commit or push was made; generated tracked build output was restored.
+
+
+Policy validity uses the session creation date in Vietnam time. Split retrieval
+chunks inherit programme windows from the full corpus document by source offset
+or section path. Legacy checkpoints use the recorded attempt's `started_at` during
+evaluation; sessions with neither timestamp use today's Vietnam date and log a
+warning containing the session ID.

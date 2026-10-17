@@ -1,5 +1,6 @@
 """Business state only. Runtime graph, persistence, and LLM behavior begin in D2."""
 
+import logging
 from datetime import UTC, date, datetime, timedelta, timezone
 from enum import StrEnum
 from typing import Any, Literal
@@ -7,6 +8,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field, model_validator
 
+from src.knowledge.validity import today_in_vietnam
 from src.models.evaluation import SessionEvaluationResult
 
 from .contracts import ClaimCategory, ScenarioContract
@@ -58,7 +60,7 @@ class LinkedBenefit(BaseModel):
 
 class RoleplayState(BaseModel):
     session_id: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime | None = None
     scenario_id: str
     difficulty: str
     sales_channel: str | None = None
@@ -97,6 +99,11 @@ class RoleplayState(BaseModel):
     @property
     def target_date(self) -> date:
         created = self.created_at
+        if created is None:
+            logging.getLogger(__name__).warning(
+                "Legacy session has no creation timestamp; using today's VN date: session_id=%s", self.session_id
+            )
+            return today_in_vietnam()
         if created.tzinfo is None:
             created = created.replace(tzinfo=UTC)
         return created.astimezone(timezone(timedelta(hours=7))).date()
@@ -144,6 +151,7 @@ class RoleplayState(BaseModel):
         objection_ids = [item.objection_id for item in scenario.objections]
         return cls(
             session_id=session_id,
+            created_at=datetime.now(UTC),
             scenario_id=scenario.scenario_id,
             difficulty=scenario.difficulty,
             sales_channel=scenario.sales_channel,
