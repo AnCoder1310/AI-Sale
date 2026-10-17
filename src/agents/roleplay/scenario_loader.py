@@ -34,6 +34,7 @@ class ScenarioSummary(BaseModel):
     visible_context: str
     max_turns: int = Field(gt=0)
     voice_gender: Literal["male", "female"] | None = None
+    outcome_labels: list[str] = Field(default_factory=list)
 
     @classmethod
     def from_scenario(cls, scenario: ScenarioContract) -> ScenarioSummary:
@@ -48,6 +49,7 @@ class ScenarioSummary(BaseModel):
             visible_context=scenario.visible_context,
             max_turns=scenario.termination_conditions.max_turns,
             voice_gender=_voice_gender_from_name(scenario.persona.get("name", "")),
+            outcome_labels=[outcome.label for outcome in scenario.acceptable_outcomes],
         )
 
 

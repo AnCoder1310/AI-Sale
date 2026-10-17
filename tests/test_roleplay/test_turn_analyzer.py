@@ -2,11 +2,20 @@ from pathlib import Path
 
 import pytest
 
+from src.agents.roleplay.prompts.analyzer import TURN_ANALYZER_SYSTEM_PROMPT
 from src.agents.roleplay.scenario_loader import ScenarioRepository
 from src.agents.roleplay.state import RoleplayState
 from src.agents.roleplay.turn_analyzer import TurnAnalysisError, TurnAnalyzer
 
 SCENARIOS = Path("data/scenarios/scenarios.json")
+
+
+def test_prompt_resolves_confirmation_only_objections_in_customer_question_context():
+    assert "customer's last question" in TURN_ANALYZER_SYSTEM_PROMPT
+    assert "resolve_condition only requires confirmation" in TURN_ANALYZER_SYSTEM_PROMPT
+    assert 'Short affirmative answers ("được", "dạ có", "đúng rồi ạ")' in TURN_ANALYZER_SYSTEM_PROMPT
+    assert "both addressed and resolved" in TURN_ANALYZER_SYSTEM_PROMPT
+    assert "Keep all configured upsell requirements" in TURN_ANALYZER_SYSTEM_PROMPT
 
 
 class StaticAnalysisModel:

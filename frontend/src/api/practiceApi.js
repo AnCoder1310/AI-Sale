@@ -10,7 +10,7 @@ async function voiceRequest(path, options = {}, responseType = 'json') {
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
     const detail = typeof payload.detail === 'string' ? payload.detail : 'Dịch vụ giọng nói chưa sẵn sàng. Vui lòng thử lại.';
-    throw new ApiError(detail, response.status);
+    throw new ApiError(detail, response.status, detail, payload.code || null);
   }
   return responseType === 'blob' ? response.blob() : response.json();
 }

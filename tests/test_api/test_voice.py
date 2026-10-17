@@ -5,6 +5,7 @@ import pytest
 from fastapi import FastAPI, Header, HTTPException
 
 from src.agents.roleplay.state import RoleplayMessage
+from src.api.practice_errors import PracticeAPIError, practice_exception_handler
 from src.api.recorded_practice import create_recorded_practice_routers
 from src.config import Settings
 from src.integrations.practice_records import SQLPracticeRecordsRepository
@@ -92,6 +93,7 @@ async def make_client(tmp_path, transcriber=None):
     )
     router, manager_router = create_recorded_practice_routers(service, fake_identity, voice)
     app = FastAPI()
+    app.add_exception_handler(PracticeAPIError, practice_exception_handler)
     app.include_router(router, prefix="/api/v1")
     app.include_router(manager_router, prefix="/api/v1")
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as bootstrap:
@@ -193,3 +195,51 @@ async def test_voice_failure_is_retryable_and_only_billable_calls_are_counted(
         assert len(practice.session.messages) == 1
         usage = (await client.get(MANAGER_VOICE_USAGE_PATH, headers={"X-Test-Identity": "manager-a:manager"})).json()
         assert usage["stt_requests"] == expected_usage
+
+
+@pytest.mark.asyncio
+async def test_voice_accepts_recordings_up_to_ninety_seconds(tmp_path):
+    client, _ = await make_client(tmp_path)
+    async with client:
+        base = "/api/v1/practice/voice-session/voice/transcribe?duration_seconds="
+        headers = {"Content-Type": "audio/webm"}
+        assert (await client.post(base + "90", headers=headers, content=b"recorded-audio")).status_code == 200
+        assert (await client.post(base + "91", headers=headers, content=b"recorded-audio")).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_voice_errors_have_stable_localized_codes(tmp_path):
+    client, _ = await make_client(tmp_path, TranscriberStub(error=VoiceProviderUnavailableError("secret config")))
+    async with client:
+        path = "/api/v1/practice/voice-session/voice/transcribe?duration_seconds="
+        headers = {"Content-Type": "audio/webm"}
+        too_long = await client.post(path + "91", headers=headers, content=b"recorded-audio")
+        assert too_long.status_code == 422
+        assert too_long.json() == {
+            "code": "voice_too_long",
+            "detail": "Bản ghi dài hơn 90 giây. Vui lòng ghi ngắn hơn.",
+        }
+        unavailable = await client.post(path + "2", headers=headers, content=b"recorded-audio")
+        assert unavailable.status_code == 503
+        assert unavailable.json() == {
+            "code": "voice_not_configured",
+            "detail": "Tính năng giọng nói chưa được cấu hình. Vui lòng nhập bằng bàn phím.",
+        }
+        assert "secret" not in unavailable.text
+
+
+@pytest.mark.asyncio
+async def test_voice_finished_session_uses_session_finished_code(tmp_path):
+    client, practice = await make_client(tmp_path)
+    practice.session.termination_status = "completed"
+    async with client:
+        response = await client.post(
+            "/api/v1/practice/voice-session/voice/transcribe?duration_seconds=2",
+            headers={"Content-Type": "audio/webm"},
+            content=b"recorded-audio",
+        )
+        assert response.status_code == 409
+        assert response.json() == {
+            "code": "session_finished",
+            "detail": "Phiên luyện tập đã kết thúc và không nhận thêm tin nhắn.",
+        }
