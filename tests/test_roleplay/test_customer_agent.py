@@ -5,7 +5,7 @@ import pytest
 from src.agents.roleplay.customer_agent import CustomerAgent, CustomerResponseError
 from src.agents.roleplay.prompts import CUSTOMER_PROMPT_VERSION, CUSTOMER_SYSTEM_PROMPT
 from src.agents.roleplay.scenario_loader import ScenarioRepository
-from src.agents.roleplay.state import RoleplayState
+from src.agents.roleplay.state import RoleplayMessage, RoleplayState
 
 SCENARIOS = Path("data/scenarios/scenarios.json")
 
@@ -79,6 +79,34 @@ async def test_customer_context_only_contains_revealed_facts_and_active_objectio
     assert scenario.hidden_facts["budget"] not in str(context)
     assert scenario.success_conditions not in str(context)
     assert scenario.expected_discovery not in str(context)
+
+
+@pytest.mark.asyncio
+async def test_customer_may_repeat_own_figures_with_cay_so_as_km(scenario, state):
+    # Live T3 regression: "5.000 cây" said earlier was repeated as "5.000 km" and rejected twice.
+    state.messages = [
+        RoleplayMessage(role="advisor", content="Mỗi ngày anh đi khoảng bao nhiêu km ạ?"),
+        RoleplayMessage(role="customer", content="Anh chạy tầm 180 đến 200 cây số, tháng cũng ngót nghét 5.000 cây."),
+        RoleplayMessage(role="advisor", content="Tiền xăng mỗi tháng của anh khoảng bao nhiêu ạ?"),
+        RoleplayMessage(role="customer", content="Trung bình tiền xăng Vios khoảng 8,5 triệu một tháng."),
+    ]
+    reply = "Với mức chạy gần 5.000 km và tiền xăng 8,5 triệu, em ước tính giúp anh tiền sạc nhé?"
+    agent = CustomerAgent(CapturingCustomerModel({"reply": reply}))
+
+    message = await agent.generate_reply(scenario, state, mode="response")
+
+    assert message.content == reply
+
+
+@pytest.mark.asyncio
+async def test_customer_still_cannot_invent_figures(scenario, state):
+    state.messages = [
+        RoleplayMessage(role="customer", content="Tháng anh chạy ngót nghét 5.000 cây."),
+    ]
+    agent = CustomerAgent(CapturingCustomerModel({"reply": "Nghe nói VF 5 chạy được 600 km một lần sạc?"}))
+
+    with pytest.raises(CustomerResponseError, match="unsupported price or specification"):
+        await agent.generate_reply(scenario, state, mode="response")
 
 
 @pytest.mark.asyncio
