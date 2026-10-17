@@ -259,3 +259,59 @@ async def test_claim_evidence_uses_session_date_and_drops_expired_windows():
 
     assert await RetrievalKnowledgeEvidenceProvider(Retriever()).for_session(scenario, state) == []
     assert all(call["target_date"] == date(2026, 12, 20) for call in calls)
+
+
+def charging_chunk(chunk_id: str, document_id: str, content: str, document_type: str, policy_type: str | None):
+    chunk = knowledge_chunk(chunk_id, content)
+    chunk.document_id = document_id
+    chunk.metadata.document_id = document_id
+    chunk.metadata.document_type = document_type
+    chunk.metadata.policy_type = policy_type
+    return chunk
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text,category",
+    [
+        ("Ở trạm sạc công cộng VinFast, đơn giá sạc là 3.858 VNĐ/kWh anh ạ.", "price"),
+        ("Theo chính sách ngày 19/09/2026, với xe biển vàng, ưu đãi sạc chỉ áp dụng khung 23:00–06:00.", "promotion"),
+    ],
+)
+async def test_charging_tariff_and_policy_claims_use_charging_policy_sources(text, category):
+    scenario, state = scenario_and_state()
+    state.factual_claims = [AdvisorFactualClaim(message_id="m1", text=text, category=category)]
+
+    class Retriever(RecordingRetriever):
+        def retrieve(self, query, *, top_k=4, product_model=None, document_type=None, target_date=None):
+            self.calls.append((query, top_k, product_model, document_type))
+            chunks = [
+                charging_chunk("deposit", "POLICY_DEPOSIT_test", "Điều khoản đặt cọc", "policy", "general"),
+                charging_chunk("tariff", "CHARGING_TARIFF_test", "đơn giá 3.858 VNĐ/kWh", "policy", "charging"),
+                charging_chunk("yellow", "POLICY_CHARGING_test", "xe biển vàng 23:00–06:00", "policy", "charging"),
+            ]
+            return [chunk for chunk in chunks if document_type in (None, chunk.metadata.document_type)]
+
+    retriever = Retriever()
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+
+    assert retriever.calls == [(text, 24, "VF 5", "policy")]
+    assert [item.source_id for item in evidence] == ["tariff", "yellow"]
+
+
+@pytest.mark.asyncio
+async def test_charging_claim_without_charging_sources_falls_back_to_general():
+    scenario, state = scenario_and_state()
+    text = "Đơn giá sạc là 3.858 VNĐ/kWh"
+    state.factual_claims = [AdvisorFactualClaim(message_id="m1", text=text, category="battery_charging")]
+
+    class Retriever(RecordingRetriever):
+        def retrieve(self, query, *, top_k=4, product_model=None, document_type=None, target_date=None):
+            self.calls.append((query, top_k, product_model, document_type))
+            return [charging_chunk("faq", "FAQ_VF5_test", text, "product_specs", None)]
+
+    retriever = Retriever()
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+
+    assert [call[3] for call in retriever.calls] == ["policy", None]
+    assert [item.source_id for item in evidence] == ["faq"]
