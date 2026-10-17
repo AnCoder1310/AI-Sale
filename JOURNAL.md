@@ -146,8 +146,10 @@
 ### Bài học
 - Cần bảo toàn attempt/draft khi thao tác thất bại và kiểm tra guardrail với hội thoại bán hàng thông thường (commit 13, 16–17/10).
 
-### Kế hoạch đến hạn nộp
+### Kế hoạch tuần sau
 - Không có tuần sau: hạn nộp dự án là 18/10/2026.
-- TODO (team): Liệt kê các việc hoàn tất trước hạn nộp (ví dụ ảnh chụp màn hình README, câu trách nhiệm, video demo, slide) và người phụ trách.
+- TODO (team): Liệt kê các việc hoàn tất trước hạn nộp (ví dụ ảnh chụp màn hình README, video demo, slide) và người phụ trách.
 
 ---
+
+<!-- Tiếp tục copy block trên cho Week 3, 4, 5, 6 -->
