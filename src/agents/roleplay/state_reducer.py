@@ -8,6 +8,9 @@ from .contracts import ScenarioContract
 from .state import AdvisorFactualClaim, ConversationStage, RoleplayMessage, RoleplayState, TerminationStatus
 from .turn_analyzer import TurnAnalysis, validated_benefit_links
 
+OFF_TOPIC_LIMIT = 2
+OFF_TOPIC_REASON = "Customer left after repeated off-topic advisor messages."
+
 
 class StateTransitionError(ValueError):
     """Raised when an advisor turn cannot be applied to the supplied state."""
@@ -51,6 +54,7 @@ def apply_turn_analysis(
         for claim in analysis.factual_claims
     )
     updated.turn_count += 1
+    updated.consecutive_off_topic_turns = state.consecutive_off_topic_turns + 1 if analysis.off_topic else 0
 
     permitted_fact_ids = {
         rule.fact_key for rule in scenario.disclosure_rules if rule.trigger_intent in analysis.detected_intents
@@ -150,6 +154,9 @@ def apply_turn_analysis(
     elif analysis.advisor_requested_finish:
         updated.termination_status = TerminationStatus.ADVISOR_ENDED
         updated.termination_reason = "Advisor explicitly ended the practice session."
+    elif updated.consecutive_off_topic_turns >= OFF_TOPIC_LIMIT:
+        updated.termination_status = TerminationStatus.DROPPED_OUT
+        updated.termination_reason = OFF_TOPIC_REASON
     elif updated.turn_count >= updated.max_turns:
         updated.termination_status = TerminationStatus.MAX_TURNS
         updated.termination_reason = "Scenario turn limit reached."

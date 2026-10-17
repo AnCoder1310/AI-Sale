@@ -217,6 +217,7 @@ async def test_selected_turn_limit_is_persisted_and_enforced():
         final = await graph.continue_session("session-1", f"Tin nhắn {turn}")
     assert final["turn_count"] == 11
     assert final["termination_status"] == TerminationStatus.MAX_TURNS.value
+    assert final["messages"][-1]["role"] == "advisor"
     assert RoleplayState.model_validate(await checkpoint.load("session-1")).max_turns == 11
 
 
@@ -259,6 +260,7 @@ async def test_explicit_finish_skips_another_customer_generation():
     saved = RoleplayState.model_validate(await checkpoint.load("session-1"))
     assert result["termination_status"] == TerminationStatus.ADVISOR_ENDED.value
     assert saved.termination_status is TerminationStatus.ADVISOR_ENDED
+    assert [message.role for message in saved.messages] == ["advisor"]
     assert len(customer_model.calls) == 0
 
 
@@ -392,3 +394,70 @@ async def test_first_customer_reply_introduces_eco_goal_and_preserves_disclosure
         rule = next(rule for rule in scenario.disclosure_rules if rule.fact_key == "current_vehicle")
         assert rule.revealed_statement in saved.messages[-1].content
         assert saved.spoken_fact_message_ids["current_vehicle"] == saved.messages[-1].message_id
+
+
+@pytest.mark.asyncio
+async def test_guardrail_insult_uses_report_exit_without_model_calls():
+    graph, _, customer, analyzer = build_graph([], [])
+    await graph.start("session-1", "SCENARIO_01_VF5_TAXI")
+
+    result = await graph.continue_session("session-1", "ngu ngu ngu")
+
+    assert result["termination_status"] == TerminationStatus.ADVISOR_MISCONDUCT.value
+    assert result["messages"][-1]["role"] == "customer"
+    assert result["messages"][-1]["content"] == (
+        "Anh sẽ báo cáo em lên quản lý. Anh không có nhu cầu mua xe ở đây nữa."
+    )
+    assert customer.calls == []
+    assert analyzer.calls == []
+
+
+@pytest.mark.asyncio
+async def test_one_off_topic_turn_reaches_customer_context_and_normal_turn_resets_it():
+    graph, _, customer, _ = build_graph(
+        [{"reply": "Anh chưa hiểu, anh đang tìm hiểu xe."}, {"reply": "Anh muốn xem VF 5."}],
+        [{"off_topic": True}, {}],
+    )
+    await graph.start("session-1", "SCENARIO_01_VF5_TAXI")
+
+    first = await graph.continue_session("session-1", "xyz xyz xyz")
+    state = await graph.get_session_state("session-1")
+    assert first["termination_status"] == TerminationStatus.ACTIVE.value
+    assert state.consecutive_off_topic_turns == 1
+    assert state.customer_prompt_context()["advisor_off_topic"] is True
+    assert customer.calls[-1]["context"]["advisor_off_topic"] is True
+
+    second = await graph.continue_session("session-1", "Anh muốn tìm hiểu mẫu xe nào ạ?")
+    state = await graph.get_session_state("session-1")
+    assert second["termination_status"] == TerminationStatus.ACTIVE.value
+    assert state.consecutive_off_topic_turns == 0
+    assert customer.calls[-1]["context"]["advisor_off_topic"] is False
+
+
+@pytest.mark.parametrize(
+    "scenario_id,address",
+    [("SCENARIO_01_VF5_TAXI", "Anh"), ("SCENARIO_04_VF6_ECO_PLUS_UPSELL", "Chị")],
+)
+@pytest.mark.asyncio
+async def test_repeated_off_topic_ends_with_scripted_reply_without_customer_call(scenario_id, address):
+    graph, _, customer, _ = build_graph(
+        [{"reply": f"{address} chưa hiểu, mình quay lại chuyện mua xe nhé."}],
+        [{"off_topic": True}, {"off_topic": True}],
+    )
+    await graph.start("session-1", scenario_id)
+    await graph.continue_session("session-1", "xyz xyz xyz")
+
+    result = await graph.continue_session("session-1", "qwerty qwerty")
+
+    assert result["termination_status"] == TerminationStatus.DROPPED_OUT.value
+    assert result["termination_reason"] == "Customer left after repeated off-topic advisor messages."
+    assert result["conversation_stage"] == "finished"
+    assert result["pending_customer_reply"] is False
+    assert result["messages"][-1]["role"] == "customer"
+    assert result["messages"][-1]["content"] == (
+        f"{address} thấy em không tập trung tư vấn nên {address.lower()} xin phép dừng ở đây. Chào em."
+    )
+    assert (await graph.get_session_state("session-1")).consecutive_off_topic_turns == 2
+    assert len(customer.calls) == 1
+    with pytest.raises(RoleplaySessionConflictError, match="finished"):
+        await graph.continue_session("session-1", "Em xin tư vấn tiếp.")
