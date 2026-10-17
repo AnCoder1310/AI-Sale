@@ -1,5 +1,6 @@
 """Business state only. Runtime graph, persistence, and LLM behavior begin in D2."""
 
+from datetime import UTC, date, datetime, timedelta, timezone
 from enum import StrEnum
 from typing import Any, Literal
 from uuid import uuid4
@@ -57,6 +58,7 @@ class LinkedBenefit(BaseModel):
 
 class RoleplayState(BaseModel):
     session_id: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     scenario_id: str
     difficulty: str
     sales_channel: str | None = None
@@ -91,6 +93,13 @@ class RoleplayState(BaseModel):
     evaluation_result: SessionEvaluationResult | None = None
     messages: list[RoleplayMessage] = Field(default_factory=list)
     factual_claims: list[AdvisorFactualClaim] = Field(default_factory=list)
+
+    @property
+    def target_date(self) -> date:
+        created = self.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=UTC)
+        return created.astimezone(timezone(timedelta(hours=7))).date()
 
     @property
     def pending_customer_reply(self) -> bool:

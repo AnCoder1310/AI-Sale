@@ -319,3 +319,11 @@ class RoleplayGraphContract(Protocol):
     async def save_evaluation_result(self, session_id: str, result: SessionEvaluationResult) -> "RoleplayState": ...
 
     async def mark_evaluation_failed(self, session_id: str) -> None: ...
+
+
+def policy_prompt_context(scenario: ScenarioContract) -> list[dict[str, Any]]:
+    """Expose figure-free policy topics without retrieval configuration."""
+    return [
+        item.model_dump(mode="json", include={"policy_id", "level", "topic", "requires_eligibility_check"})
+        for item in scenario.policy_expectations
+    ]
