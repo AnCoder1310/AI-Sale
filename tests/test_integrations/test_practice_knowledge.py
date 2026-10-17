@@ -49,6 +49,9 @@ class RecordingRetriever:
         ]
 
 
+# Routing tests disable the general supplement to observe the routed call alone.
+
+
 def scenario_and_state():
     scenario = ScenarioRepository(SCENARIOS).get("SCENARIO_01_VF5_TAXI")
     state = RoleplayState.from_scenario("session-1", scenario)
@@ -64,7 +67,7 @@ def scenario_and_state():
 async def test_provider_retrieves_each_unique_claim_and_deduplicates_chunks():
     scenario, state = scenario_and_state()
     retriever = RecordingRetriever()
-    provider = RetrievalKnowledgeEvidenceProvider(retriever, top_k_per_claim=2)
+    provider = RetrievalKnowledgeEvidenceProvider(retriever, top_k_per_claim=2, general_top_k=0)
 
     evidence = await provider.for_session(scenario, state)
 
@@ -82,7 +85,7 @@ async def test_provider_returns_no_evidence_when_advisor_made_no_factual_claims(
     state.factual_claims = []
     retriever = RecordingRetriever()
 
-    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever, general_top_k=0).for_session(scenario, state)
 
     assert evidence == []
     assert retriever.calls == []
@@ -102,7 +105,7 @@ async def test_provider_uses_model_and_msrp_table_for_price_claim():
             ]
 
     retriever = PriceRetriever()
-    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever, general_top_k=0).for_session(scenario, state)
 
     assert retriever.calls == [("VF 5 Plus giá 100 triệu", 24, "VF 5", "price_list")]
     assert [item.source_id for item in evidence] == ["msrp"]
@@ -125,7 +128,7 @@ async def test_range_and_battery_capacity_claims_use_product_specs(text, categor
     state.factual_claims = [AdvisorFactualClaim(message_id="m1", text=text, category=category)]
     retriever = RecordingRetriever()
 
-    await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+    await RetrievalKnowledgeEvidenceProvider(retriever, general_top_k=0).for_session(scenario, state)
 
     assert retriever.calls == [(text, 3, "VF 5", "product_specs")]
 
@@ -136,7 +139,9 @@ async def test_provider_rejects_mismatched_scenario():
     other_scenario = ScenarioRepository(SCENARIOS).get("SCENARIO_02_VF7_VS_CX5")
 
     with pytest.raises(ValueError, match="identifiers do not match"):
-        await RetrievalKnowledgeEvidenceProvider(RecordingRetriever()).for_session(other_scenario, state)
+        await RetrievalKnowledgeEvidenceProvider(RecordingRetriever(), general_top_k=0).for_session(
+            other_scenario, state
+        )
 
 
 @pytest.mark.asyncio
@@ -168,7 +173,9 @@ async def test_authoritative_routing_and_trim(text, category, expected):
                     result.append(chunk)
             return result
 
-    evidence = await RetrievalKnowledgeEvidenceProvider(Retriever(), top_k_per_claim=1).for_session(scenario, state)
+    evidence = await RetrievalKnowledgeEvidenceProvider(Retriever(), top_k_per_claim=1, general_top_k=0).for_session(
+        scenario, state
+    )
     assert evidence[0].source_id == expected
 
 
@@ -179,7 +186,7 @@ async def test_claim_cap_warns(caplog):
         AdvisorFactualClaim(message_id=f"m{i}", text=f"claim {i}", category="other") for i in range(19)
     ]
     retriever = RecordingRetriever()
-    await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+    await RetrievalKnowledgeEvidenceProvider(retriever, general_top_k=0).for_session(scenario, state)
     assert len(retriever.calls) == 16
     assert "dropped 3 claims" in caplog.text
 
@@ -204,7 +211,7 @@ async def test_discounted_price_keeps_both_promotion_and_price_sources():
                 result.append(chunk)
             return result
 
-    evidence = await RetrievalKnowledgeEvidenceProvider(Retriever()).for_session(scenario, state)
+    evidence = await RetrievalKnowledgeEvidenceProvider(Retriever(), general_top_k=0).for_session(scenario, state)
     assert "msrp" in {item.source_id for item in evidence}
     assert "promotion-0" in {item.source_id for item in evidence}
 
@@ -226,7 +233,7 @@ async def test_spec_claims_do_not_route_to_promotion(text, category):
             return [chunk]
 
     retriever = SpecRetriever()
-    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever, general_top_k=0).for_session(scenario, state)
     assert all(call[3] != "promotion" for call in retriever.calls)
     assert [item.content for item in evidence] == [text]
 
@@ -245,7 +252,7 @@ async def test_preferred_policy_source_miss_falls_back_to_general(text, category
             return [chunk]
 
     retriever = Retriever()
-    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever, general_top_k=0).for_session(scenario, state)
     assert [item.source_id for item in evidence] == ["spec"]
     assert len(retriever.calls) == 2
     assert retriever.calls[-1][3] is None
@@ -266,6 +273,7 @@ async def test_claim_evidence_uses_session_date_and_drops_expired_windows():
             source = knowledge_chunk("expired", "Thời gian áp dụng: Từ ngày 19/09/2026 đến hết ngày 19/12/2026")
             return [source]
 
+    # The general supplement is filtered by the same session-date validity window.
     assert await RetrievalKnowledgeEvidenceProvider(Retriever()).for_session(scenario, state) == []
     assert all(call["target_date"] == date(2026, 12, 20) for call in calls)
 
@@ -306,7 +314,7 @@ async def test_charging_tariff_and_policy_claims_use_charging_policy_sources(tex
             return [chunk for chunk in chunks if document_type in (None, chunk.metadata.document_type)]
 
     retriever = Retriever()
-    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever, general_top_k=0).for_session(scenario, state)
 
     assert retriever.calls == [(text, 24, "VF 5", "policy")]
     assert [item.source_id for item in evidence] == ["tariff", "yellow"]
@@ -324,7 +332,7 @@ async def test_charging_claim_without_charging_sources_falls_back_to_general():
             return [charging_chunk("faq", "FAQ_VF5_test", text, "product_specs", None)]
 
     retriever = Retriever()
-    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever, general_top_k=0).for_session(scenario, state)
 
     assert [call[3] for call in retriever.calls] == ["policy", None]
     assert [item.source_id for item in evidence] == ["faq"]
@@ -352,7 +360,42 @@ async def test_promotion_claim_prefers_section_naming_the_same_program():
                 result.append(chunk)
             return result
 
-    evidence = await RetrievalKnowledgeEvidenceProvider(Retriever()).for_session(scenario, state)
+    evidence = await RetrievalKnowledgeEvidenceProvider(Retriever(), general_top_k=0).for_session(scenario, state)
 
     assert evidence[0].source_id == "vtlx2"
     assert len(evidence) == 3
+
+
+@pytest.mark.asyncio
+async def test_misrouted_claim_still_gets_general_matches():
+    scenario, state = scenario_and_state()
+    text = "Phí chiếm trụ từ phút 11 tính 1.000 VNĐ/phút"
+    state.factual_claims = [AdvisorFactualClaim(message_id="m1", text=text, category="price")]
+
+    class Retriever(RecordingRetriever):
+        def retrieve(self, query, *, top_k=4, product_model=None, document_type=None, target_date=None):
+            self.calls.append((query, top_k, product_model, document_type))
+            if document_type == "price_list":
+                return [charging_chunk("msrp", "PRICE_LIST_test", "Giá bán bán lẻ đề xuất VF 5", "price_list", None)]
+            return [
+                charging_chunk("msrp", "PRICE_LIST_test", "Giá bán bán lẻ đề xuất VF 5", "price_list", None),
+                charging_chunk("idle", "CHARGING_TARIFF_test", "phút 11–60 là 1.000 VNĐ/phút", "policy", "charging"),
+            ]
+
+    retriever = Retriever()
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+
+    assert retriever.calls == [(text, 24, "VF 5", "price_list"), (text, 3, "VF 5", None)]
+    # Routed evidence stays first and a chunk found by both searches appears once.
+    assert [item.source_id for item in evidence] == ["msrp", "idle"]
+
+
+@pytest.mark.asyncio
+async def test_unrouted_claim_does_not_repeat_general_retrieval():
+    scenario, state = scenario_and_state()
+    state.factual_claims = [AdvisorFactualClaim(message_id="m1", text="VF 5 chở được 5 người", category="other")]
+    retriever = RecordingRetriever()
+
+    await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+
+    assert retriever.calls == [("VF 5 chở được 5 người", 3, "VF 5", None)]

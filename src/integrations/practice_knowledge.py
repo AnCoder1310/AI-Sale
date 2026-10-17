@@ -44,14 +44,18 @@ class RetrievalKnowledgeEvidenceProvider:
         retrieval_service: KnowledgeRetriever,
         *,
         top_k_per_claim: int = 3,
+        general_top_k: int = 3,
         max_claims: int = 16,
     ) -> None:
         if top_k_per_claim < 1:
             raise ValueError("top_k_per_claim must be positive")
+        if general_top_k < 0:
+            raise ValueError("general_top_k must not be negative")
         if max_claims < 1:
             raise ValueError("max_claims must be positive")
         self._retrieval_service = retrieval_service
         self._top_k_per_claim = top_k_per_claim
+        self._general_top_k = general_top_k
         self._max_claims = max_claims
 
     async def for_session(
@@ -147,7 +151,8 @@ class RetrievalKnowledgeEvidenceProvider:
             # Preferred-source misses must not erase otherwise useful evidence.
             # FAQ IDs are not a document_type, so warranty preference is applied
             # to the model-scoped candidates above; fallback retains all sources.
-            if (warranty or charging or promotion) and not candidates:
+            fell_back = (warranty or charging or promotion) and not candidates
+            if fell_back:
                 candidates = self._retrieval_service.retrieve(
                     claim.text,
                     top_k=self._top_k_per_claim,
@@ -167,6 +172,19 @@ class RetrievalKnowledgeEvidenceProvider:
             chunks = candidates[: self._top_k_per_claim]
             # Keep MSRP evidence independently of the promotion candidate budget.
             chunks.extend(price_evidence[: self._top_k_per_claim])
+            # The routed source is a preference, not a filter: a claim routed to the
+            # wrong source still reaches the judge with its best unrouted matches.
+            # A preferred-source miss has already fallen back to the same general search.
+            routed = document_type is not None or warranty or charging or promotion
+            if self._general_top_k and routed and not fell_back:
+                general = self._retrieval_service.retrieve(
+                    claim.text,
+                    top_k=self._general_top_k,
+                    product_model=product_model,
+                    document_type=None,
+                    target_date=state.target_date,
+                )
+                chunks.extend(chunk for chunk in general if valid_policy_chunk(chunk, state.target_date))
             for chunk in chunks:
                 chunks_by_id.setdefault(chunk.chunk_id, chunk)
 
