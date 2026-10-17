@@ -135,6 +135,7 @@
 - 2026-10-15 — Phạm Đình Duy: Khôi phục ngân sách demo VF5 và đồng bộ preset ngân sách frontend.
 - 2026-10-16 — Phạm Đình Duy: Tích hợp PR #32 và các phần scenario 04; mở rộng contract outcome/upsell/policy, thêm VF 6 Eco/Plus, judge riêng, seed transcript/smoke; guardrail abuse, misconduct termination và UI outcome; sửa false positive, retrieval/routing, retry policy, persona và discovery.
 - 2026-10-17 — Phạm Đình Duy: Sửa eligibility ưu đãi và lỗi practice với mã ổn định/tiếng Việt; thêm notice hướng dẫn; điều chỉnh push-to-talk, auto-send và giới hạn ghi âm 90 giây; giữ draft khi gửi lỗi, xử lý lỗi playback.
+- 2026-10-17 — Phạm Đình Duy: Chính sách kịch bản lấy từ corpus theo ngày phiên (topic + lookup, judge dùng `current_policy_evidence`), script kiểm tra độ phủ tri thức; nhãn JC6 do AI chấm nháp và Tú (tư vấn viên bán hàng VinFast) duyệt; tích hợp PR #33.
 
 ### Khó khăn & Giải pháp
 | Khó khăn | Giải pháp | Kết quả |
@@ -145,9 +146,8 @@
 ### Bài học
 - Cần bảo toàn attempt/draft khi thao tác thất bại và kiểm tra guardrail với hội thoại bán hàng thông thường (commit 13, 16–17/10).
 
-### Kế hoạch tuần sau
-- TODO (team): Xác nhận kế hoạch tuần sau; không suy diễn kế hoạch từ commit đã xảy ra.
+### Kế hoạch đến hạn nộp
+- Không có tuần sau: hạn nộp dự án là 18/10/2026.
+- TODO (team): Liệt kê các việc hoàn tất trước hạn nộp (ví dụ ảnh chụp màn hình README, câu trách nhiệm, video demo, slide) và người phụ trách.
 
 ---
-
-<!-- Tiếp tục copy block trên cho Week 3, 4, 5, 6 -->
