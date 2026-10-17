@@ -198,7 +198,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
         <PracticeRoom scenario={activeScenario} session={activeSession} onFinish={handleFinishSession} onSavedAttempt={openAttempt} onExit={handleBackToCatalog} />
       )}
       {viewMode === 'evaluation' && (
-        <EvaluationScorecard result={evaluationResult} scenario={activeScenario} onRetry={() => handleStartScenario(activeScenario?.scenario_id)} onBackToCatalog={handleBackToCatalog} />
+        <EvaluationScorecard result={evaluationResult} scenario={activeScenario} onRetry={() => handleStartScenario(activeScenario?.scenario_id)} onBackToCatalog={handleBackToCatalog} onOpenAttempt={openAttempt} />
       )}
       {viewMode === 'attempt' && (
         <div className="ap-page">
@@ -234,6 +234,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
                   generalComment={attemptDetail.manager_review?.general_comment || null}
                   onRetry={() => handleStartScenario(attemptDetail.attempt.scenario_id)}
                   onBackToCatalog={handleBackToCatalog}
+                  showTranscriptLinks
                 />
               )}
             </>
