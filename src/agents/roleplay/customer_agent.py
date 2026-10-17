@@ -290,10 +290,13 @@ class CustomerAgent:
             for objection in scenario.objections
             if objection.objection_id in state.active_objections
         )
-        allowed.extend(message.content for message in state.messages if message.role == "advisor")
+        # Figures already said in the conversation, by either side, may be repeated.
+        allowed.extend(message.content for message in state.messages)
         allowed.extend(
             rule.revealed_statement for rule in scenario.disclosure_rules if rule.fact_key in state.revealed_facts
         )
+        # Vietnamese "cây (số)" is colloquial for km, so "5.000 cây" supports "5.000 km".
+        allowed = [re.sub(r"(?<=\d)\s*cây(?:\s+số)?(?!\w)", " km", text, flags=re.IGNORECASE) for text in allowed]
         normalized = [" ".join(text.casefold().split()) for text in allowed]
         for figure in figures:
             exact = " ".join(figure.casefold().split())
