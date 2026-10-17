@@ -8,7 +8,7 @@ must reference a fact key already revealed before that advisor turn. A feature
 list alone is not a linked benefit: the analyzer must identify an explicit link
 in the advisor's message to the customer's need.
 
-SCENARIO_04 version 1.3 keeps daily family usage, weekend trips and buying
+SCENARIO_04 version 1.4 keeps daily family usage, weekend trips and buying
 priorities private until the advisor asks a relevant discovery question. The
 first customer reply introduces interest in VF 6 Eco and may ask about the
 promotion; it does not volunteer usage needs. Its Plus benefits all require

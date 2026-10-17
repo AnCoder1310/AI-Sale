@@ -250,7 +250,7 @@ def test_scenario04_docs_and_smoke_ids_match_contract():
     from pathlib import Path
 
     scenario = ScenarioRepository().get(SCENARIO)
-    assert scenario.scenario_version == "1.3"
+    assert scenario.scenario_version == "1.4"
     assert f"SCENARIO_04 version {scenario.scenario_version}" in Path("docs/roleplay-runtime.md").read_text()
     assert "only buying intent from `customer_goals`" in Path("docs/gate1/ROLEPLAY_CONTRACT.md").read_text()
     smoke = Path("eval/results/roleplay_realism_smoke_s04_2026-10-16.json").read_text()
