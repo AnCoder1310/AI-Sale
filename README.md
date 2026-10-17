@@ -1,12 +1,14 @@
 # P-043 — AI Sales Coach cho tư vấn viên VinFast
 
+> Tóm tắt 1 câu: tư vấn viên mới tốn thời gian kèm cặp và dễ tư vấn sai → AI khách hàng để luyện tập, AI chấm điểm có dẫn chứng được quản lý duyệt, Copilot tra cứu có nguồn → cho tư vấn viên bán hàng VinFast và quản lý của họ.
+
 **Live URL:** https://aisale.itup.io.vn/ (URL do nhóm cung cấp; cấu hình triển khai xem [hướng dẫn triển khai](docs/deployment.md)).
 
 TODO (team): ảnh chụp màn hình Practice Room / Copilot / Manager.
 
 Ảnh trong [báo cáo UI evidence](report/roleplay-supervisor-showcase-with-ui-evidence.html) được ghi rõ là prototype/UI concept; cần bổ sung ảnh ứng dụng hiện tại để đáp ứng mục screenshot.
 
-## Vấn đề
+## Vấn đề (Problem)
 
 Đào tạo tư vấn viên bán hàng mới hiện gặp hai painpoint chính:
 
@@ -15,7 +17,7 @@ TODO (team): ảnh chụp màn hình Practice Room / Copilot / Manager.
 
 Bên cạnh đó, thông số xe, chính sách pin/sạc, giá và biểu phí thay đổi liên tục, nên tư vấn viên khó tra cứu nhanh và có nguồn khi đang tư vấn.
 
-## Giải pháp
+## Giải pháp (Solution)
 
 Ứng dụng cung cấp một môi trường luyện tập riêng, nơi tư vấn viên luyện đi luyện lại các tình huống với khách hàng AI để nâng cao năng lực trước khi gặp khách thật, giảm rủi ro tư vấn sai (painpoint 2). Đồng thời, để giảm thời gian kèm cặp (painpoint 1), quản lý xem được lịch sử luyện tập role-play của từng tư vấn viên — transcript và bản đánh giá của mỗi buổi — vào bất cứ lúc nào thuận tiện, rồi đưa ra nhận xét có trọng tâm trong thời gian ngắn hơn nhiều.
 
@@ -25,7 +27,20 @@ MVP gồm **Copilot** tra cứu kiến thức xe/chính sách có trích nguồn
 - **Practice Room:** tư vấn viên mở lời trước, AI Customer phản hồi nhiều lượt (chat chữ hoặc giọng nói), AI judge riêng chấm theo rubric kèm evidence.
 - **Manager console:** giao bài, duyệt/sửa đánh giá, xem năng lực đội.
 
+## Target User
+
+- Primary: **Tư vấn viên bán hàng VinFast (Advisor)**, nhất là người mới: luyện tình huống với khách hàng AI, tra cứu thông số/chính sách có nguồn khi tư vấn.
+- Secondary: **Quản lý bán hàng (Manager)**: giao bài luyện tập, xem transcript và duyệt/sửa đánh giá thay vì kèm cặp trực tiếp từng buổi, theo dõi năng lực đội.
+
 ## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| AI Agent | LangGraph + OpenRouter (chat, embedding, judge riêng) |
+| Backend | FastAPI + Python 3.11 |
+| Frontend | React 19 + Vite 8 |
+| Database | PostgreSQL + pgvector / SQLite + Chroma |
+| DevOps | Docker Compose + GitHub Actions; Render, Vercel, Neon |
 
 - **Frontend:** React 19, Vite 8 (Caddy khi chạy Docker, Vercel khi hosted).
 - **Backend:** Python 3.11, FastAPI, LangGraph/LangChain, SQLAlchemy.
@@ -52,7 +67,7 @@ flowchart LR
   API -->|STT / TTS| V[Groq Whisper / Google WaveNet]
 ```
 
-## Setup
+## Quick Start (Setup)
 
 ### Chạy local
 
@@ -166,7 +181,7 @@ Kiểm thử phần mềm khác đánh giá AI. [Báo cáo Gate 2](eval/results/
 
 Feature branch → PR `develop` → kiểm tra/review → PR `develop` → `main` khi đủ điều kiện. Không push trực tiếp vào `main`. [Kịch bản video Gate 2](presentation/GATE2_DEMO.md) mô tả 3 phút cần quay. AI usage log, Git worklog và eval evidence là các bằng chứng riêng; không trộn với file chứa key.
 
-## Cấu trúc thư mục
+## Project Structure (Cấu trúc thư mục)
 
 ```text
 .
@@ -184,6 +199,47 @@ Feature branch → PR `develop` → kiểm tra/review → PR `develop` → `main
 ├── docker-compose.yml
 └── ARCHITECTURE.md
 ```
+
+## API Endpoints
+
+Base path `/api/v1` (trừ `/health`, `/ready`). Đăng nhập tạo cookie phiên; các endpoint Practice/Manager yêu cầu đăng nhập, endpoint Manager yêu cầu vai trò `manager`. Tài liệu đầy đủ (request/response schema) ở Swagger `/docs` khi chạy backend. Lỗi Practice trả `{detail, code}` tiếng Việt.
+
+| Method | Path | Description | Request chính |
+| --- | --- | --- | --- |
+| GET | `/health`, `/ready` | Kiểm tra sống / sẵn sàng | — |
+| POST | `/auth/login` | Đăng nhập | `{username, password}` |
+| GET | `/auth/me` | Người dùng hiện tại | — |
+| POST | `/auth/logout`, `/auth/change-password` | Đăng xuất, đổi mật khẩu | — / mật khẩu cũ và mới |
+| POST | `/auth/advisors` | Manager tạo tài khoản Advisor | thông tin tài khoản |
+| POST | `/copilot/query`, `/copilot/query/stream` | Hỏi Copilot (trả lời có trích nguồn; bản stream) | `{query, target_date?, session_id?, customer_context?, domain?}` |
+| GET / DELETE | `/copilot/sessions`, `/copilot/sessions/{session_id}` | Lịch sử hội thoại Copilot | — |
+| GET | `/copilot/sources/{document_id}` | Xem tài liệu nguồn được trích | — |
+| GET | `/practice/scenarios` | Danh sách kịch bản | — |
+| POST | `/practice/sessions` | Bắt đầu phiên luyện tập | `{scenario_id, max_turns?, assignment_id?}` |
+| POST | `/practice/{session_id}/message` | Gửi lượt của Advisor, nhận phản hồi khách AI | `{message}` |
+| POST | `/practice/{session_id}/retry-reply` | Thử lại phản hồi khách khi provider lỗi | — |
+| POST | `/practice/{session_id}/voice/transcribe`, `/practice/{session_id}/voice/speech` | Chuyển giọng nói thành chữ / đọc phản hồi khách | file ghi âm / văn bản |
+| POST | `/practice/{session_id}/finish` | Kết thúc phiên và chấm điểm | — |
+| GET | `/practice/{session_id}`, `/practice/{session_id}/result`, `/practice/{session_id}/attempt` | Trạng thái phiên, kết quả, chi tiết attempt | — |
+| GET | `/practice/assignments`, `/practice/history` | Bài được giao, lịch sử luyện tập của Advisor | `?scenario_id=` (history) |
+| GET | `/manager/reviews`, `/manager/reviews/{session_id}` | Hàng đợi duyệt, chi tiết phiên | — |
+| PATCH | `/manager/reviews/{session_id}` | Duyệt / sửa đánh giá (HITL) | `{score_overrides?, recommended_next_practice?, change_reason}` |
+| GET | `/manager/reviews/{session_id}/voice/usage` | Thống kê dùng giọng nói của phiên | — |
+| GET | `/manager/attempts`, `/manager/overview`, `/manager/advisors` | Danh sách phiên, tổng quan đội, năng lực Advisor | — |
+| GET / POST | `/manager/assignments` | Xem / giao bài luyện tập | `{advisor_id, scenario_id, title, due_date?}` |
+
+## Deliverables Checklist
+
+- [x] Source Code (GitHub)
+- [x] README.md
+- [x] Architecture Diagram ([docs/architecture_diagram.md](docs/architecture_diagram.md), [ARCHITECTURE.md](ARCHITECTURE.md))
+- [x] AI Logs (tự động thu thập qua hook, `.ai-log/`)
+- [x] Live URL / Deploy: https://aisale.itup.io.vn/
+- [ ] Video Demo — TODO (team)
+- [ ] Pitch Deck (`presentation/`) — TODO (team)
+- [x] Weekly Journal ([JOURNAL.md](JOURNAL.md))
+- [x] Worklog ([WORKLOG.md](WORKLOG.md))
+- [x] Evaluation Evidence ([eval/results/](eval/results/)) — TODO (team): bổ sung phản hồi người dùng thật và cập nhật báo cáo
 
 ## Team
 
