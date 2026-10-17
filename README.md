@@ -245,12 +245,12 @@ Base path `/api/v1` (trừ `/health`, `/ready`). Đăng nhập tạo cookie phi�
 
 MSSV theo [WORKLOG.md](WORKLOG.md); phạm vi công việc theo [phân công nhóm](docs/project-management/Task_division.md).
 
-| Thành viên | MSSV | Phạm vi phụ trách được ghi trong repo |
-| --- | --- | --- |
-| Phạm Đình Duy | 2A202602913 | AI Customer, scenario runtime, Practice backend, coaching/evaluator |
-| Phạm Quốc Đạt | 2A202602384 | Data, evaluation, benchmark, calibration |
-| Võ Trường An | 2A202602656 | Frontend, UX, tích hợp API phía client |
-| Nguyễn Hữu Chương | 2A202602601 | Copilot, shared backend, RAG, persistence/runtime |
+| Thành viên        | MSSV        | Phạm vi phụ trách được ghi trong repo                                       |
+| ----------------- | ----------- | --------------------------------------------------------------------------- |
+| Phạm Đình Duy     | 2A202602913 | Leader; AI Customer, scenario runtime, Practice backend, coaching/evaluator |
+| Phạm Quốc Đạt     | 2A202602384 | Data, evaluation, benchmark, calibration                                    |
+| Võ Trường An      | 2A202602656 | Frontend, UX, tích hợp API phía client, hosting.                            |
+| Nguyễn Hữu Chương | 2A202602601 | Copilot, shared backend, RAG, persistence/runtime                           |
 
 ### Trách nhiệm khi AI sai
 
