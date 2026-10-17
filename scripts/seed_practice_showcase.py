@@ -40,7 +40,6 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-load_dotenv()
 
 from src.agents.roleplay.state import (  # noqa: E402
     AdvisorFactualClaim,
@@ -894,6 +893,7 @@ def main() -> None:
         help="refresh seed-prefixed rows only; preserves users and non-seed rows; requires --apply to write",
     )
     args = parser.parse_args()
+    load_dotenv()
     result = asyncio.run(seed(get_settings().database_url, apply=args.apply, reset=args.reset))
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if not args.apply:
