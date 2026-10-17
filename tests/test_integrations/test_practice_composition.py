@@ -44,6 +44,7 @@ class RecordingRetriever:
         top_k: int = 4,
         product_model: str | None = None,
         document_type: str | None = None,
+        target_date: date | None = None,
     ):
         self.queries.append(query)
         return [
@@ -141,6 +142,7 @@ async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path:
         retrieval_service=retriever,
     )
 
+    assert retriever.queries == []  # Startup coverage is offline.
     started = await service.start_session("SCENARIO_01_VF5_TAXI")
     continued = await service.send_message(started.session_id, "VF 5 có chính sách bảo hành đúng không anh?")
     result = await service.finish_session(started.session_id)
@@ -149,7 +151,8 @@ async def test_composed_service_runs_practice_through_draft_evaluation(tmp_path:
     assert continued.turn_count == 1
     assert continued.messages[0].role == "advisor"
     assert result.result.evaluations[3].evidence[0].quote == "VF 5 có chính sách bảo hành"
-    assert retriever.queries == ["VF 5 có chính sách bảo hành"]
+    assert "VF 5 có chính sách bảo hành" in retriever.queries
+    assert len(retriever.queries) > 1
     assert result.evaluation_status == "complete"
     assert result.result is not None
     assert result.result.review_status == "ai_draft"
@@ -203,3 +206,26 @@ def test_practice_judge_environment_settings(monkeypatch):
     settings = Settings(_env_file=None)
     assert settings.practice_judge_provider == "gemini"
     assert settings.practice_judge_model == "configured-judge"
+
+
+def test_startup_warns_for_each_unresolved_policy_without_network(monkeypatch, tmp_path, caplog):
+    from src.agents.roleplay.scenario_loader import ScenarioRepository
+    from src.integrations import practice_runtime
+    from src.integrations.practice_policy import OfflinePolicyRetriever
+
+    class EmptyCorpus(OfflinePolicyRetriever):
+        def __init__(self, paths):
+            self.chunks = []
+
+    monkeypatch.setattr(practice_runtime, "OfflinePolicyRetriever", EmptyCorpus)
+    retriever = RecordingRetriever()
+    build_practice_service(
+        settings=Settings(database_url=f"sqlite:///{tmp_path / 'offline.db'}"),
+        model_factory=SchemaQueueModel,
+        judge_model_factory=SchemaQueueModel,
+        retrieval_service=retriever,
+    )
+    scenarios = ScenarioRepository()
+    expected_count = sum(len(scenarios.get(item.scenario_id).policy_expectations) for item in scenarios.list_public())
+    assert caplog.text.count("Unresolved scenario policy") == expected_count
+    assert retriever.queries == []

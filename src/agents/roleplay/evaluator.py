@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -20,11 +20,14 @@ from src.models.evaluation import (
     TranscriptEvidence,
 )
 
-from .contracts import ScenarioContract
+from .contracts import ScenarioContract, policy_prompt_context
 from .prompts import EVALUATOR_PROMPT_VERSION, EVALUATOR_SYSTEM_PROMPT
 from .prompts.evaluator import FACTUAL_FINDINGS_SYSTEM_PROMPT
 from .scenario_loader import ScenarioRepository
 from .state import RoleplayMessage, RoleplayState, TerminationStatus
+
+if TYPE_CHECKING:
+    from src.integrations.practice_policy import ScenarioPolicyResolver
 
 logger = logging.getLogger(__name__)
 
@@ -81,8 +84,14 @@ class EvaluationError(ValueError):
 
 class RoleplayEvaluator:
     def __init__(
-        self, model: EvaluationModel, *, judge_model: str | None = None, scenario_ids: set[str] | None = None
+        self,
+        model: EvaluationModel,
+        *,
+        judge_model: str | None = None,
+        scenario_ids: set[str] | None = None,
+        policy_resolver: ScenarioPolicyResolver | None = None,
     ) -> None:
+        self._policy_resolver = policy_resolver
         self._model = model
         self._judge_model = judge_model
         self._scenario_ids = (
@@ -102,6 +111,7 @@ class RoleplayEvaluator:
         if state.termination_status is TerminationStatus.ACTIVE:
             raise EvaluationError("active role-play sessions cannot be evaluated")
 
+        policies = self._policy_resolver.resolve(scenario, state.target_date) if self._policy_resolver else []
         context = {
             "prompt_version": EVALUATOR_PROMPT_VERSION,
             "scenario": scenario.model_dump(mode="json", exclude={"hidden_facts", "disclosure_rules"}),
@@ -111,6 +121,8 @@ class RoleplayEvaluator:
             "transcript": [message.model_dump(mode="json") for message in state.messages],
             "knowledge_evidence": [item.model_dump(mode="json") for item in knowledge_evidence],
         }
+        context["scenario"]["policy_expectations"] = policy_prompt_context(scenario)
+        context["current_policy_evidence"] = [item.model_dump(mode="json") for item in policies]
         for objection in context["scenario"]["objections"]:
             objection.pop("ideal_sales_response", None)
         closing_outcome = getattr(state, "closing_outcome", None)

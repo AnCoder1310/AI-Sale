@@ -50,12 +50,16 @@ improvement_suggestion. Examples are behavioral anchors, not wording templates.
   assess score 1 with an exact closing/advisor turn showing the omission in
   context. No policy discussion alone is not proof of a fair opportunity.
   Every assessed score, including misconduct/omission, still needs exact evidence.
-  3 requires proactively raising EVERY expected policy without being asked,
-  stating it correctly using knowledge evidence, and checking eligibility BEFORE
+  3 requires proactively raising EVERY applicable expected policy without being asked,
+  stating it consistently with current_policy_evidence, and checking eligibility BEFORE
   quoting a discounted price when requires_eligibility_check is true. Bonus
   policies strengthen evidence for 3. 2 means correct but incomplete or only
   when asked. 1 means any contradicted policy/price claim, discounted price
   without eligibility checking, or invented benefit such as free maintenance.
+- Expectations marked not_applicable in current_policy_evidence are not required.
+  Use current_policy_evidence as policy truth; scenario topics contain no policy figures.
+  Derived prices (MSRP × (1 − promotion percentage)) are supported when both
+  the price list and promotion sources are cited.
 - product_knowledge: 3 requires specific correct source-backed facts (for example
   7 versus 4 airbags, 150 versus 130 kW, 485 versus 460 km range), adapted to
   customer needs. Generic benefits score at most 2. A contradicted specification

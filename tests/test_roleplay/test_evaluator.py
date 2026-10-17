@@ -491,3 +491,61 @@ async def test_no_policy_discussion_allows_unassessed_or_evidenced_missed_opport
     )
     result = await RoleplayEvaluator(model).evaluate(scenario, completed_state, [])
     assert next(item for item in result.evaluations if item.criterion is CriterionType.POLICY_ACCURACY).score == 1
+
+
+@pytest.mark.asyncio
+async def test_current_policy_context_uses_resolver_and_session_date(scenario, completed_state):
+    from datetime import UTC, date, datetime
+
+    from src.agents.roleplay.contracts import PolicyExpectation
+    from src.integrations.practice_policy import ResolvedPolicy, ResolvedPolicySource
+
+    expectation = PolicyExpectation(
+        policy_id="current",
+        level="expected",
+        topic="Chính sách hiện hành",
+        lookup={"query": "Chính sách", "document_type": "policy", "product_model": "ALL"},
+    )
+    scenario = scenario.model_copy(update={"policy_expectations": [expectation]})
+    completed_state.created_at = datetime(2026, 10, 1, 18, tzinfo=UTC)
+
+    class Resolver:
+        def resolve(self, supplied_scenario, target_date):
+            assert supplied_scenario is scenario
+            assert target_date == date(2026, 10, 2)
+            return [
+                ResolvedPolicy(
+                    policy_id="current",
+                    level="expected",
+                    topic=expectation.topic,
+                    status="found",
+                    sources=[
+                        ResolvedPolicySource(
+                            document_id="policy-a", version="2026.1", quote=approved_evidence()[0].content
+                        )
+                    ],
+                )
+            ]
+
+    output = evaluation_output()
+    policy_score = next(item for item in output["evaluations"] if item["criterion"] == "policy_accuracy")
+    policy_score.update(
+        status="assessed", score=2, evidence=[{"message_id": "advisor-2", "quote": "Chính sách A đang áp dụng"}]
+    )
+    model = CapturingEvaluationModel(output)
+    result = await RoleplayEvaluator(model, policy_resolver=Resolver()).evaluate(
+        scenario,
+        completed_state,
+        approved_evidence(),
+    )
+    context = model.calls[0]["context"]
+    assert context["current_policy_evidence"][0]["sources"][0]["document_id"] == "policy-a"
+    assert context["scenario"]["policy_expectations"] == [
+        {
+            "policy_id": "current",
+            "level": "expected",
+            "topic": "Chính sách hiện hành",
+            "requires_eligibility_check": False,
+        }
+    ]
+    assert result.factual_findings[0].status == "supported"

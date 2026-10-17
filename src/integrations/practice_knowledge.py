@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import date
 from typing import Protocol
 
 from src.agents.roleplay.contracts import ScenarioContract
 from src.agents.roleplay.evaluator import KnowledgeEvidence
 from src.agents.roleplay.state import RoleplayState
 from src.knowledge.schemas import DocumentType, KnowledgeChunk
+
+from .practice_policy import valid_policy_chunk
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +25,7 @@ class KnowledgeRetriever(Protocol):
         top_k: int = 4,
         product_model: str | None = None,
         document_type: str | None = None,
+        target_date: date | None = None,
     ) -> list[KnowledgeChunk]: ...
 
 
@@ -96,6 +100,7 @@ class RetrievalKnowledgeEvidenceProvider:
                 top_k=top_k,
                 product_model=product_model,
                 document_type=document_type,
+                target_date=state.target_date,
             )
             if document_type == DocumentType.PRICE_LIST.value:
                 candidates = [
@@ -112,7 +117,11 @@ class RetrievalKnowledgeEvidenceProvider:
                 # Discount calculations need both the promotion and the MSRP table.
                 if product_model and (claim.category == "price" or re.search(r"triệu|giá|đồng", claim.text, re.I)):
                     prices = self._retrieval_service.retrieve(
-                        claim.text, top_k=24, product_model=product_model, document_type=DocumentType.PRICE_LIST.value
+                        claim.text,
+                        top_k=24,
+                        product_model=product_model,
+                        document_type=DocumentType.PRICE_LIST.value,
+                        target_date=state.target_date,
                     )
                     price_evidence = list(
                         chunk
@@ -128,7 +137,10 @@ class RetrievalKnowledgeEvidenceProvider:
                     top_k=self._top_k_per_claim,
                     product_model=product_model,
                     document_type=None,
+                    target_date=state.target_date,
                 )
+            candidates = [chunk for chunk in candidates if valid_policy_chunk(chunk, state.target_date)]
+            price_evidence = [chunk for chunk in price_evidence if valid_policy_chunk(chunk, state.target_date)]
             candidates.sort(
                 key=lambda chunk: (
                     chunk.document_id.startswith("PRODUCT_"),
