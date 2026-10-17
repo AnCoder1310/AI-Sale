@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BookIcon, CheckIcon, ChevronLeft, ClockIcon, LightbulbIcon, RefreshIcon, TargetIcon } from '../common/Icons';
 import './roleplayScorecard.css';
+import './advisorProgress.css';
 
 const labels = {
   need_discovery: 'Need Discovery (Khai thác Nhu cầu)',
@@ -12,7 +13,7 @@ const labels = {
 
 function downloadReport(result, scenario, evaluation) {
   const lines = [
-    'KẾT QUẢ ĐÁNH GIÁ THỰC CHIẾN',
+    'KẾT QUẢ ĐÁNH GIÁ LUYỆN TẬP',
     scenario?.title || 'Đánh giá phiên tư vấn khách hàng',
     `Phiên ID: ${result.session_id}`,
     `Rubric: ${evaluation.rubric_version || 'không rõ'}`,
@@ -40,7 +41,7 @@ function downloadReport(result, scenario, evaluation) {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-export function EvaluationScorecard({ result, scenario, onRetry, onBackToCatalog, onOpenAttempt, showTranscriptLinks = false }) {
+export function EvaluationScorecard({ result, scenario, onRetry, onBackToCatalog, onOpenAttempt, showTranscriptLinks = false, generalComment = null }) {
   const [collapsed, setCollapsed] = useState({});
   if (!result?.result) {
     return (
@@ -70,7 +71,7 @@ export function EvaluationScorecard({ result, scenario, onRetry, onBackToCatalog
             Tải báo cáo
           </button>
         </div>
-        <span className="evaluation-eyebrow">KẾT QUẢ ĐÁNH GIÁ THỰC CHIẾN • RUBRIC {evaluation.rubric_version || 'chưa rõ'}</span>
+        <span className="evaluation-eyebrow">KẾT QUẢ ĐÁNH GIÁ LUYỆN TẬP • RUBRIC {evaluation.rubric_version || 'chưa rõ'}</span>
         <h1>{scenario?.title || 'Đánh giá phiên tư vấn khách hàng'}</h1>
         <p>Phiên ID: {result.session_id} <span aria-hidden="true">•</span> Trạng thái: <strong>{approved ? 'Quản lý đã duyệt' : 'Bản nháp AI (Chờ Quản lý duyệt)'}</strong> <span aria-hidden="true">•</span> Đã chấm {evaluation.assessed_criteria_count}/5 kỹ năng</p>
       </header>
@@ -128,6 +129,7 @@ export function EvaluationScorecard({ result, scenario, onRetry, onBackToCatalog
                         : <span>"{item.quote}"</span>}
                   </div>)}
                 </div>}
+                {criterion.manager_reason && <p className="ap-manager-reason"><strong>Lý do quản lý sửa điểm:</strong> {criterion.manager_reason}</p>}
                 {criterion.improvement_suggestion && <div className="evaluation-improvement"><LightbulbIcon aria-hidden="true" /><div><h3>Gợi ý cải thiện</h3><p>{criterion.improvement_suggestion}</p></div></div>}
               </div>}
             </section>
@@ -140,6 +142,7 @@ export function EvaluationScorecard({ result, scenario, onRetry, onBackToCatalog
         {evaluation.factual_findings.map((finding, index) => <div className="evaluation-finding" key={index}><div><strong>"{finding.claim}"</strong><p>{finding.reason}</p></div><span>{finding.status === 'supported' ? 'Chính xác' : finding.status}</span></div>)}
       </section>}
       {evaluation.recommended_next_practice && <section className="evaluation-extra"><h2>Gợi ý luyện tập tiếp</h2><p>{evaluation.recommended_next_practice.reason}</p></section>}
+      {generalComment && <div className="ap-manager-note"><h3>Nhận xét chung của quản lý</h3><p>{generalComment}</p></div>}
       <div className="evaluation-actions">
         <button type="button" onClick={onBackToCatalog}>Về danh sách kịch bản</button>
         <button type="button" onClick={onRetry}><RefreshIcon aria-hidden="true" /> Luyện tập lại kịch bản này</button>

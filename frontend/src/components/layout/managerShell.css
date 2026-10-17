@@ -1,0 +1,135 @@
+/* Manager shell (top nav + page frame) in the Midnight Showroom Light tokens. Overrides the legacy dark rules in index.css. */
+.manager-app-layout {
+  background: var(--app-bg);
+  color: var(--app-ink);
+  font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+}
+
+.manager-app-layout .manager-topnav {
+  background: #fff;
+  border-bottom: 1px solid var(--app-border);
+  box-shadow: none;
+}
+
+.manager-app-layout .manager-topnav-inner {
+  max-width: 1360px;
+  min-height: 64px;
+  height: auto;
+  justify-content: flex-start;
+  gap: 12px 32px;
+}
+
+.manager-app-layout .manager-topnav-brand { gap: 10px; border-radius: 10px; }
+.manager-app-layout .manager-topnav-brand:focus-visible,
+.manager-app-layout .manager-nav-pill-item:focus-visible,
+.manager-app-layout .manager-mobile-pill:focus-visible,
+.manager-app-layout .manager-logout-btn:focus-visible {
+  outline: 2px solid var(--app-blue);
+  outline-offset: 2px;
+}
+
+.manager-app-layout .manager-brand-logo-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--app-ink);
+  border: 0;
+  box-shadow: none;
+  color: #fff;
+}
+.manager-app-layout .manager-brand-logo-badge svg { width: 18px !important; height: 18px !important; }
+.manager-app-layout .manager-brand-title { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; color: var(--app-ink); }
+.manager-app-layout .manager-brand-subtitle {
+  align-self: flex-start;
+  font-size: 12px;
+  color: var(--app-muted);
+  padding: 0 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+}
+.manager-app-layout .manager-brand-info { flex-direction: row; align-items: center; gap: 10px; }
+
+.manager-app-layout .manager-nav-pills {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  gap: 4px;
+  border-radius: 0;
+}
+.manager-app-layout .manager-nav-pill-item {
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--app-muted);
+}
+.manager-app-layout .manager-nav-pill-item:hover { color: var(--app-ink); background: var(--app-bg); }
+.manager-app-layout .manager-nav-pill-item.active {
+  background: var(--app-blue-soft);
+  color: var(--app-blue-deep);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.manager-app-layout .pill-badge { background: var(--app-line); color: var(--app-ink); font-size: 0.7rem; }
+.manager-app-layout .manager-nav-pill-item:not(.active) .pill-badge { background: var(--app-line); color: var(--app-muted); }
+.manager-app-layout .manager-nav-pill-item.active .pill-badge { background: #fff; color: var(--app-blue-deep); }
+.manager-app-layout .pill-badge.highlight { background: var(--app-blue) !important; color: #fff !important; }
+
+.manager-app-layout .manager-topnav-actions { margin-left: auto; gap: 10px; }
+.manager-app-layout .manager-user-badge { background: transparent; border: 0; padding: 0; gap: 10px; }
+.manager-app-layout .manager-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--app-blue-soft);
+  color: var(--app-blue-deep);
+  font-size: 13px;
+  font-weight: 700;
+}
+.manager-app-layout .manager-user-name { font-size: 13px; font-weight: 500; color: var(--app-ink); }
+.manager-app-layout .manager-user-role { font-size: 12px; color: var(--app-muted); }
+.manager-app-layout .manager-logout-btn { min-height: 40px; color: var(--app-muted); }
+.manager-app-layout .manager-logout-btn:hover { background: var(--app-bg); color: var(--app-ink); }
+
+.manager-app-layout .manager-mobile-subnav {
+  background: #fff;
+  border-top: 1px solid var(--app-line);
+  padding: 6px 16px;
+}
+.manager-app-layout .manager-mobile-pill {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--app-muted);
+}
+.manager-app-layout .manager-mobile-pill.active {
+  background: var(--app-blue-soft);
+  color: var(--app-blue-deep);
+  font-weight: 600;
+}
+
+.manager-app-layout .manager-app-content {
+  max-width: 1360px;
+  padding: 28px 24px 56px;
+}
+
+/* Existing manager tabs (assignments, accounts) pick up the light surface */
+.manager-app-layout .card-white,
+.manager-app-layout .manager-queue-card {
+  border-color: var(--app-border);
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+@media (max-width: 1024px) {
+  .manager-app-layout .manager-topnav-inner { gap: 12px; }
+}
+
+@media (max-width: 768px) {
+  .manager-app-layout .manager-app-content { padding: 20px 16px 40px; }
+  .manager-app-layout .manager-brand-subtitle { display: none; }
+  .manager-app-layout .manager-user-details { display: none; }
+}

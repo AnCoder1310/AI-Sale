@@ -40,7 +40,7 @@ export function FinishConfirmDialog({ isOpen, onClose, onConfirm, finishing }) {
             </svg>
           </div>
           <div>
-            <h2 id="practice-finish-title">Xác nhận hoàn tất phiên thực chiến</h2>
+            <h2 id="practice-finish-title">Xác nhận hoàn tất phiên luyện tập</h2>
             <p id="practice-finish-description">Bạn có chắc chắn muốn kết thúc phiên và gửi tới Hệ thống Chấm điểm AI không?</p>
           </div>
         </div>

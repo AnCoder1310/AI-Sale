@@ -108,6 +108,19 @@ python -m scripts.seed_demo_users
 
 Đăng nhập bằng `advisor.demo` và `manager.demo`. Seed script cập nhật hai tài khoản demo cố định khi chạy lại; không dùng với tài khoản thật. Trong mã hiện tại, manager có thể tạo tài khoản Advisor trong tab **Tài khoản**; môi trường production dùng bootstrap manager và bắt buộc đổi mật khẩu khởi tạo.
 
+### Tài khoản demo và dữ liệu mẫu
+
+Để dashboard quản lý và Phòng luyện tập có dữ liệu khi demo, seed dữ liệu mẫu (sau khi đã chạy `seed_demo_users` ở trên):
+
+```bash
+python scripts/seed_practice_showcase.py          # xem trước, không ghi
+python scripts/seed_practice_showcase.py --apply  # ghi vào database của DATABASE_URL
+```
+
+Script tạo khoảng 80 lượt luyện tập hoàn thành trong 6 tuần cho 4 tình huống thật trong `data/scenarios/scenarios.json`, kèm hội thoại chữ tiếng Việt, bản chấm AI nháp, các lượt duyệt của `manager.demo` (một số có điều chỉnh điểm kèm lý do và nhận xét chung), khoảng 10 bài được giao (2 bài quá hạn) và 4 việc cần làm. `advisor.demo` đổi tên hiển thị thành "Trần Minh Khoa" nếu vẫn đang dùng tên mặc định, và có thêm 7 tư vấn viên giả (id bắt đầu bằng `showcase1_`) chỉ là dữ liệu, không có mật khẩu đăng nhập được in ra. Id cố định nên chạy lại `--apply` không tạo thêm dòng; thời gian được tính theo giờ Asia/Ho_Chi_Minh tại lần chèn đầu tiên.
+
+Toàn bộ dữ liệu này là **hư cấu**, không chứa thông tin cá nhân, và **không bao giờ** được dùng làm bằng chứng đánh giá (evaluation) hay chất lượng mô hình. Script không chặn production, nên hãy kiểm tra `DATABASE_URL` trước khi `--apply`.
+
 Chạy hai terminal từ thư mục gốc repo:
 
 ```bash
