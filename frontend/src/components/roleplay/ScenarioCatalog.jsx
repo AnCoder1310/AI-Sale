@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { ArrowRight, ClockIcon, InfoIcon, TargetIcon, UsersIcon } from '../common/Icons';
+import { ArrowRight, ClockIcon, TargetIcon, UsersIcon } from '../common/Icons';
 import { SKILL_LABELS } from '../../data/scenarioData';
 import { getVehicleImage } from '../../data/vehicleData';
 
 export function ScenarioCatalog({ scenarios, onStartScenario, onOpenHistory, latestByScenario = {}, starting = false }) {
   const [filterModel, setFilterModel] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
-  const [maxTurns, setMaxTurns] = useState(10);
   const models = [...new Set(scenarios.map((scenario) => scenario.model).filter(Boolean))];
   const difficulties = ['Cơ bản', 'Tiêu chuẩn', 'Nâng cao'];
   const filtered = scenarios.filter((scenario) =>
@@ -15,12 +14,6 @@ export function ScenarioCatalog({ scenarios, onStartScenario, onOpenHistory, lat
 
   return (
     <section className="practice-catalog" aria-label="Chọn tình huống luyện tập">
-      <label className="practice-turn-control">
-        <span>Số lượt tư vấn tối đa: <strong>{maxTurns}</strong> <InfoIcon aria-hidden="true" /></span>
-        <input type="range" min="8" max="15" step="1" value={maxTurns}
-          onChange={(event) => setMaxTurns(Number(event.target.value))} aria-label="Số lượt tư vấn tối đa" />
-        <small>8 – 15 lượt</small>
-      </label>
       <div className="practice-filters">
         <div className="practice-filter-group">
           <strong>Dòng xe:</strong>
@@ -44,7 +37,6 @@ export function ScenarioCatalog({ scenarios, onStartScenario, onOpenHistory, lat
                   <div className="practice-scenario-badges">
                     <span className="practice-model-badge">{scenario.model}</span>
                     <span className="practice-difficulty-badge">Độ khó: {scenario.difficulty}</span>
-                    <small>Tối đa {maxTurns} lượt</small>
                   </div>
                   {image && <img className="practice-vehicle-image" src={image} alt={scenario.model} />}
                 </div>
@@ -61,7 +53,7 @@ export function ScenarioCatalog({ scenarios, onStartScenario, onOpenHistory, lat
                   <span>Khai thác nhu cầu trong hội thoại</span>
                   <div className="practice-scenario-actions">
                     <button type="button" className="practice-history-button" onClick={() => onOpenHistory(scenario.scenario_id)}><ClockIcon aria-hidden="true" /> Lịch sử</button>
-                    <button type="button" className="practice-start-button" onClick={() => onStartScenario(scenario.scenario_id, maxTurns)} disabled={starting}>Vào phòng luyện tập <ArrowRight aria-hidden="true" /></button>
+                    <button type="button" className="practice-start-button" onClick={() => onStartScenario(scenario.scenario_id)} disabled={starting}>Vào phòng luyện tập <ArrowRight aria-hidden="true" /></button>
                   </div>
                 </div>
               </article>

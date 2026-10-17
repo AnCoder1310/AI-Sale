@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.agents.copilot.runtime import CopilotAdmission, bounded_io
 from src.api.auth import CurrentUserDependency, build_auth_service, create_auth_router
 from src.api.copilot import router as copilot_router
+from src.api.practice_errors import PracticeAPIError, practice_exception_handler
 from src.api.recorded_practice import create_recorded_practice_routers
 from src.api.routes import router
 from src.api.sales_copilot import router as sales_copilot_router
@@ -77,6 +78,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+app.add_exception_handler(PracticeAPIError, practice_exception_handler)
 
 settings = get_settings()
 app.state.copilot_telemetry = TelemetryService(settings)

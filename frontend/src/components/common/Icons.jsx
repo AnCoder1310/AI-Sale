@@ -240,6 +240,24 @@ export function MicIcon({ className = 'w-4 h-4', ...props }) {
   );
 }
 
+export function VoiceModeIcon({ className = 'w-4 h-4', ...props }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" className={className} {...props}>
+      <path d="M3 13v8M9 10v14M15 7v20M21 12v10M27 5v22" />
+      <path d="M25 8c1.5 0 2.5-1 3-3 .5 2 1.5 3 3 3-1.5 0-2.5 1-3 3-.5-2-1.5-3-3-3Z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function SpeakerIcon({ className = 'w-4 h-4', ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+      <path d="M15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12" />
+    </svg>
+  );
+}
+
 export function SendIcon({ className = 'w-4 h-4', ...props }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
@@ -647,6 +665,14 @@ export function LocationIcon({ className = 'w-4 h-4', ...props }) {
       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
       <circle cx="12" cy="10" r="3" />
 
+    </svg>
+  );
+}
+
+export function PhoneIcon({ className = 'w-4 h-4', ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} {...props}>
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.2 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.7 2.79a2 2 0 0 1-.45 2.11L8.09 9.89a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.89.34 1.83.58 2.79.7A2 2 0 0 1 22 16.92z" />
     </svg>
   );
 }
