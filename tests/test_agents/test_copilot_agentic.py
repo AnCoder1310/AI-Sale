@@ -14,6 +14,7 @@ from src.agents.copilot.nodes.guard import atomic_requirements, resolve_date
 from src.agents.copilot.runtime import CopilotDependencyError, RuntimeBudget
 from src.agents.copilot.state import GeneratedAnswer, GroundingVerdict, Requirement, SelfCheckVerdict
 from src.agents.copilot.tools import build_evidence_context
+from src.config import get_settings
 
 
 def hit(index=1, model="VF 5", content="VF 5 có quãng đường 326 km NEDC."):
@@ -218,12 +219,13 @@ async def test_intake_rejects_filter_outside_catalog_without_retrieval(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_unsupported_claim_with_no_recovery_still_regenerates(monkeypatch):
+async def test_missing_fact_with_no_recovery_requests_search(monkeypatch):
     state = draft_state()
     state["draft_answer"] = "VF 5 có thể bay [C1]"
     scripted(monkeypatch, [checked("unsupported")])
     result = await nodes.check_grounding(state)
-    assert result["route"] == "generate_answer"
+    assert result["route"] == "plan_queries"
+    assert result["recovery_requirement_ids"] == ["R1"]
 
 
 @pytest.mark.asyncio
@@ -330,7 +332,11 @@ async def test_mandatory_context_bundle_is_not_truncated(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_comparison_selects_both_factual_rows_before_brochure_introductions(monkeypatch):
+@pytest.mark.parametrize("strategy, expected", [
+    ("legacy", {"c-2", "c-4"}), ("rrf_context", {"c-1", "c-3"}),
+])
+async def test_comparison_selection_respects_configured_strategy(monkeypatch, strategy, expected):
+    monkeypatch.setattr(get_settings(), "copilot_evidence_selection_strategy", strategy)
     monkeypatch.setattr(
         evidence,
         "_profile",
@@ -354,7 +360,7 @@ async def test_comparison_selects_both_factual_rows_before_brochure_introduction
         ],
     }
     result = await nodes.select_evidence(state)
-    assert {h["chunk_id"] for h in result["selected_evidence"]} == {"c-2", "c-4"}
+    assert {h["chunk_id"] for h in result["selected_evidence"]} == expected
 
 
 @pytest.mark.asyncio

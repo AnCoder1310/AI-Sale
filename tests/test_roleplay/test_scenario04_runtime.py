@@ -357,7 +357,7 @@ async def test_blocks_profanity_and_ends_session():
     view = await graph.continue_session("session", "Đm đồ ngu")
     assert view["termination_status"] == "advisor_misconduct"
     assert view["conversation_stage"] == "finished"
-    assert view["messages"][-1]["content"] == "Chị nghĩ mình nên dừng cuộc trao đổi ở đây. Chào em."
+    assert view["messages"][-1]["content"] == "Chị sẽ báo cáo em lên quản lý. Chị không có nhu cầu mua xe ở đây nữa."
     assert analyzer.calls == 0
     assert customer.calls == 0
     assert "ngu" not in view["termination_reason"]
@@ -377,6 +377,7 @@ async def test_analyzer_flag_ends_session():
     assert analyzer.calls == 1
     assert customer.calls == 0
     assert (await graph.get_session_state("session")).misconduct_reason == "semantic_abuse"
+    assert view["messages"][-1]["content"] == "Chị nghĩ mình nên dừng cuộc trao đổi ở đây. Chào em."
 
 
 @pytest.mark.asyncio
@@ -663,7 +664,9 @@ async def test_misconduct_reply_matches_persona(scenario_id, address):
     graph, _, _, _ = runtime()
     await graph.start("session", scenario_id)
     view = await graph.continue_session("session", "Đm đồ ngu")
-    assert view["messages"][-1]["content"] == f"{address} nghĩ mình nên dừng cuộc trao đổi ở đây. Chào em."
+    assert view["messages"][-1]["content"] == (
+        f"{address} sẽ báo cáo em lên quản lý. {address} không có nhu cầu mua xe ở đây nữa."
+    )
 
 
 def test_model_disclosure_contract_has_no_unreachable_fields(scenario, state):

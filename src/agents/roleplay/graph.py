@@ -15,7 +15,7 @@ from .customer_agent import CustomerAgent
 from .guardrails import check_advisor_message
 from .scenario_loader import ScenarioNotFoundError, ScenarioRepository
 from .state import ConversationStage, EvaluationStatus, RoleplayMessage, RoleplayState, TerminationStatus
-from .state_reducer import apply_turn_analysis
+from .state_reducer import OFF_TOPIC_REASON, apply_turn_analysis
 from .turn_analyzer import TurnAnalysis, TurnAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -99,7 +99,19 @@ def build_roleplay_turn_graph(
             updated.misconduct_reason = category
             updated.termination_reason = f"Advisor misconduct: {category}."
             address = customer_agent.persona_address(state["scenario"])
-            reply = f"{address} nghĩ mình nên dừng cuộc trao đổi ở đây. Chào em."
+            reply = (
+                f"{address} sẽ báo cáo em lên quản lý. {address} không có nhu cầu mua xe ở đây nữa."
+                if category != "semantic_abuse"
+                else f"{address} nghĩ mình nên dừng cuộc trao đổi ở đây. Chào em."
+            )
+            updated.messages.append(RoleplayMessage(role="customer", content=reply))
+            return {"roleplay_state": updated, "customer_reply": reply}
+        if (
+            updated.termination_status is TerminationStatus.DROPPED_OUT
+            and updated.termination_reason == OFF_TOPIC_REASON
+        ):
+            address = customer_agent.persona_address(state["scenario"])
+            reply = f"{address} thấy em không tập trung tư vấn nên {address.lower()} xin phép dừng ở đây. Chào em."
             updated.messages.append(RoleplayMessage(role="customer", content=reply))
             return {"roleplay_state": updated, "customer_reply": reply}
         return {"roleplay_state": updated}

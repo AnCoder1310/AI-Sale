@@ -11,15 +11,20 @@ from src.api.copilot import router as copilot_router
 from src.api.practice_errors import PracticeAPIError, practice_exception_handler
 from src.api.recorded_practice import create_recorded_practice_routers
 from src.api.routes import router
+from src.api.sales_copilot import router as sales_copilot_router
 from src.config import get_settings
 from src.integrations.copilot_sessions import SQLCopilotSessionsRepository
 from src.integrations.practice_records import SQLPracticeRecordsRepository
 from src.integrations.practice_runtime import build_practice_service
+from src.integrations.sales_copilot_repository import SQLSalesCopilotRepository
 from src.integrations.voice_usage import SQLVoiceUsageRepository
 from src.knowledge.index_readiness import check_copilot_index
 from src.knowledge.retrieval_service import get_retrieval_service
 from src.observability import CopilotTelemetryMiddleware, TelemetryService, configure_logging
 from src.services.recorded_practice import RecordedPracticeService
+from src.services.sales_conversation_service import SalesConversationService
+from src.services.sales_copilot_analyzer import SalesCopilotAnalyzer
+from src.services.sales_copilot_assistant import SalesCopilotAssistant
 from src.services.voice import VoiceService
 
 logger = logging.getLogger(__name__)
@@ -107,8 +112,18 @@ recorded_practice = RecordedPracticeService(
 )
 voice_service = VoiceService(recorded_practice, SQLVoiceUsageRepository(settings.database_url), settings)
 practice_router, manager_router = create_recorded_practice_routers(recorded_practice, current_user, voice_service)
+
+# Sales Copilot Initialization
+sales_copilot_repo = SQLSalesCopilotRepository(settings.database_url)
+sales_copilot_repo.ensure_schema()
+app.state.sales_copilot_repository = sales_copilot_repo
+app.state.sales_conversation_service = SalesConversationService(sales_copilot_repo)
+app.state.sales_copilot_analyzer = SalesCopilotAnalyzer(sales_copilot_repo)
+app.state.sales_copilot_assistant = SalesCopilotAssistant(sales_copilot_repo)
+
 app.include_router(create_auth_router(auth_service, settings), prefix="/api/v1")
 app.include_router(copilot_router, prefix="/api/v1")
+app.include_router(sales_copilot_router, prefix="/api/v1")
 app.include_router(practice_router, prefix="/api/v1")
 app.include_router(manager_router, prefix="/api/v1")
 

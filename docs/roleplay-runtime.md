@@ -50,10 +50,19 @@ registry uses word boundaries, Unicode normalization and conservative accent
 folding to preserve normal sales phrases. Mild slang returns a warning verdict;
 explicit abuse ends the session. The analyzer's semantic `unsafe_or_abusive`
 signal independently ends the session. Both paths persist `advisor_misconduct`,
-a category-only reason, the finished stage, and one fixed polite customer reply
-without customer generation. New messages receive HTTP 409. Finish and evaluation
-use the normal terminated-session lifecycle. The frontend keeps the score button
+a category-only reason, the finished stage, and one scripted customer reply
+without customer generation. Local guardrail abuse uses a report-to-manager exit;
+analyzer-only abuse keeps the neutral goodbye. New messages receive HTTP 409.
+Finish and evaluation use the normal terminated-session lifecycle. The frontend keeps the score button
 and displays the misconduct banner.
+
+The analyzer's `off_topic` signal increments `consecutive_off_topic_turns`; a
+relevant turn resets it. After one off-topic turn, the customer context sets
+`advisor_off_topic` so the customer can ask for clarification and return to the
+buying need. Two consecutive off-topic turns end the session as `dropped_out`
+with a scripted goodbye and no customer model call. Termination precedence is
+misconduct, explicit advisor finish, repeated off-topic messages, then the turn
+limit. The customer prompt never permits the model to announce ending a session.
 
 The public session view includes `closing_outcome` and `termination_reason`,
 without private customer state. The scorecard renders `closing_outcome_label`
