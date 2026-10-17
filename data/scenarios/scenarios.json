@@ -125,7 +125,7 @@
     "expected_discovery": "Ưu tiên hỏi quãng đường, tiền xăng Vios thực tế, địa phương/biển số và lịch chạy để so chi phí năng lượng và điều kiện sạc; chỉ hỏi số tiền trả trước khi khách muốn tính phương án vay.",
     "success_conditions": "Tư vấn viên trả lời giá niêm yết nhưng không gọi đó là giá lăn bánh, khai thác quãng đường và tiền xăng thực tế, phân biệt mua xe kèm pin với thuê pin cũ, giải thích đơn giá và điều kiện ưu đãi sạc từ nguồn, không hứa tiết kiệm hoặc tiền trả góp khi thiếu giả định, xử lý lo ngại mất cuốc và thống nhất bước kiểm chứng phù hợp.",
     "termination_conditions": {
-      "max_turns": 10,
+      "max_turns": 15,
       "drop_out_trigger": "Nếu báo giá thiếu căn cứ hoặc sau hai lần khách hỏi cùng một băn khoăn mà tư vấn viên vẫn không giải quyết được, khách tạm hoãn quyết định thay vì hỏi đi hỏi lại."
     }
   },
@@ -234,7 +234,7 @@
     "expected_discovery": "Nhân viên phải khai thác được thành phần gia đình sử dụng xe và ai là người có tiếng nói quyết định cuối cùng trong gia đình.",
     "success_conditions": "Tư vấn viên khám phá nhu cầu sử dụng và người cùng ra quyết định, so sánh trung lập bằng bằng chứng, không cam kết khấu hao và đề xuất một bước tiếp theo phù hợp cho cả hai vợ chồng.",
     "termination_conditions": {
-      "max_turns": 10,
+      "max_turns": 12,
       "drop_out_trigger": "Nếu tư vấn viên chê bai dìm hàng CX-5 thô thiển hoặc không chứng minh được giá trị xe."
     }
   },
@@ -336,7 +336,7 @@
     "expected_discovery": "Nhân viên phải hỏi về khoảng cách đi lại trung bình và vị trí sinh sống để chỉ ra điểm sạc công cộng tiện lợi gần nhà.",
     "success_conditions": "Tư vấn viên khai thác quãng đường và khu vực, giải thích phương án sạc bằng dữ liệu có nguồn, không hứa thời gian hay tần suất cố định và giúp khách xác minh điểm sạc phù hợp.",
     "termination_conditions": {
-      "max_turns": 6,
+      "max_turns": 8,
       "drop_out_trigger": "Nếu tư vấn viên bỏ qua câu hỏi sạc mà chuyển sang ép chốt cọc."
     }
   },
@@ -630,7 +630,7 @@
     "expected_discovery": "Tư vấn viên phải hỏi để khám phá từng dữ kiện: xe hiện tại (current_vehicle) để xác nhận điều kiện ưu đãi, nhu cầu đi làm và đưa đón con (family_usage), chuyến đi xa cuối tuần (weekend_trips), ưu tiên khi mua xe (priorities), kinh nghiệm lái (driving_experience), chỗ đỗ/ngõ (parking), ngân sách (budget) và sạc tại nhà (charging_access). Chỉ gắn lợi ích Plus với nhu cầu chị đã chia sẻ khi được hỏi; không coi nhu cầu sử dụng là thông tin đã biết từ mục tiêu khách hàng.",
     "success_conditions": "Chốt VF 6 Eco hoặc upsell VF 6 Plus đều thành công nếu tư vấn viên khám phá nhu cầu, xác nhận điều kiện và báo đúng giá/ưu đãi, thống nhất bước tiếp theo phù hợp mà không gây sức ép. Upsell Plus chỉ đạt khi giải quyết phản đối về giá trị bằng ít nhất hai lợi ích gắn với nhu cầu đã chia sẻ, có ít nhất một lợi ích an toàn và báo đúng chênh lệch sau ưu đãi; không ép khách nâng bản hoặc hứa miễn phí bảo dưỡng.",
     "termination_conditions": {
-      "max_turns": 12,
+      "max_turns": 15,
       "drop_out_trigger": "Khách bị ép mua Plus khi chưa thấy lợi ích phù hợp nhu cầu hoặc tư vấn viên nói sai giá/ưu đãi."
     }
   }

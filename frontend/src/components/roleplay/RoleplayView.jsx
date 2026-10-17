@@ -26,7 +26,6 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
   const [historyScenarioId, setHistoryScenarioId] = useState(null);
   const [startError, setStartError] = useState('');
   const [starting, setStarting] = useState(false);
-  const [lastMaxTurns, setLastMaxTurns] = useState(10);
   const [assignmentReloadToken, setAssignmentReloadToken] = useState(0);
 
   const loadHistory = useCallback(async () => {
@@ -67,15 +66,14 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
     return latest;
   }, [history]);
 
-  const handleStartScenario = async (scenarioId, maxTurns = 10, assignmentId = null) => {
+  const handleStartScenario = async (scenarioId, assignmentId = null) => {
     const scen = scenarios.find((s) => s.scenario_id === scenarioId);
     if (!scen || starting) return;
     setActiveScenario(scen);
     setStartError('');
     setStarting(true);
-    setLastMaxTurns(maxTurns);
     try {
-      const sessionView = await practiceApi.startSession(scen.scenario_id, maxTurns, assignmentId);
+      const sessionView = await practiceApi.startSession(scen.scenario_id, assignmentId);
       setActiveSession(sessionView);
       setViewMode('room');
     } catch (error) {
@@ -146,13 +144,13 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
       }} />
       {scenarioStatus === 'loading' && <p>Đang tải tình huống từ backend...</p>}
       {scenarioStatus === 'error' && <ErrorState message="Không tải được tình huống từ backend." onRetry={onRetryScenarios} />}
-      {viewMode === 'catalog' && startError && <ErrorState message={startError} onRetry={() => handleStartScenario(activeScenario?.scenario_id, lastMaxTurns)} />}
+      {viewMode === 'catalog' && startError && <ErrorState message={startError} onRetry={() => handleStartScenario(activeScenario?.scenario_id)} />}
       {viewMode === 'catalog' && (
         <>
           <AdvisorAssignmentsView
             scenarios={scenarios}
             reloadToken={assignmentReloadToken}
-            onStart={(assignment) => handleStartScenario(assignment.scenario_id, 10, assignment.assignment_id)}
+            onStart={(assignment) => handleStartScenario(assignment.scenario_id, assignment.assignment_id)}
             onOpenAttempt={openAttempt}
           />
           {historyStatus === 'loading' && <p>Đang tải kết quả gần nhất...</p>}
@@ -170,7 +168,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
         <PracticeRoom scenario={activeScenario} session={activeSession} onFinish={handleFinishSession} onSavedAttempt={openAttempt} onExit={handleBackToCatalog} />
       )}
       {viewMode === 'evaluation' && (
-        <EvaluationScorecard result={evaluationResult} scenario={activeScenario} onRetry={() => handleStartScenario(activeScenario?.scenario_id, lastMaxTurns)} onBackToCatalog={handleBackToCatalog} />
+        <EvaluationScorecard result={evaluationResult} scenario={activeScenario} onRetry={() => handleStartScenario(activeScenario?.scenario_id)} onBackToCatalog={handleBackToCatalog} />
       )}
       {viewMode === 'attempt' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -200,7 +198,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
                 <EvaluationScorecard
                   result={{ ...attemptDetail.ai_evaluation, result: attemptDetail.manager_review?.approved_result || attemptDetail.ai_evaluation.result }}
                   scenario={activeScenario}
-                  onRetry={() => handleStartScenario(attemptDetail.attempt.scenario_id, lastMaxTurns)}
+                  onRetry={() => handleStartScenario(attemptDetail.attempt.scenario_id)}
                   onBackToCatalog={handleBackToCatalog}
                 />
               )}

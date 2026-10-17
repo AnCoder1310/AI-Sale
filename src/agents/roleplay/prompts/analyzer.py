@@ -1,6 +1,6 @@
 """Advisor-turn analysis prompt kept as version-controlled product code."""
 
-TURN_ANALYZER_PROMPT_VERSION = "turn-analyzer-v3"
+TURN_ANALYZER_PROMPT_VERSION = "turn-analyzer-v4"
 
 TURN_ANALYZER_SYSTEM_PROMPT = """# Role
 You analyze one Vietnamese automotive sales-advisor turn for a role-play state
@@ -39,6 +39,10 @@ state transitions.
 - Set unsafe_or_abusive for insults, profanity, sexual harassment, threats or
   discriminatory language. Normal sales talk and polite disagreement are safe.
 - Do not invent identifiers or facts that are absent from CONTEXT.
+- Set off_topic only when the advisor message is unrelated to the car consultation
+  or carries no meaning (gibberish, random characters, the same meaningless word
+  repeated). Greetings, rapport small talk, clarifying questions, short
+  acknowledgements, and imperfect but relevant answers are not off-topic.
 
 # Output
 Return one JSON object matching the requested structured schema. Do not return

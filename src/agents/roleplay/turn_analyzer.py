@@ -29,6 +29,7 @@ class TurnAnalysis(BaseModel):
     resolved_objection_ids: list[str] = Field(default_factory=list)
     next_step_attempted: bool = False
     premature_closing: bool = False
+    off_topic: bool = False
     unsafe_or_abusive: bool = False
     advisor_requested_finish: bool = False
     current_topic: str | None = None
