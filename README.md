@@ -196,4 +196,21 @@ MSSV theo [WORKLOG.md](WORKLOG.md); phạm vi công việc theo [phân công nh�
 | Võ Trường An | 2A202602656 | Frontend, UX, tích hợp API phía client |
 | Nguyễn Hữu Chương | 2A202602601 | Copilot, shared backend, RAG, persistence/runtime |
 
-**Trách nhiệm:** TODO (team): Khi kết quả chấm sai…, người chịu trách nhiệm là…
+### Trách nhiệm khi AI sai
+
+**Khi điểm AI chấm sai, người chịu trách nhiệm cho điểm cuối cùng là manager đã duyệt phiên đó, vì điểm AI chỉ là bản nháp và chỉ điểm đã được manager duyệt mới được dùng để đánh giá năng lực; Phạm Đình Duy chịu trách nhiệm sửa evaluator khi lỗi lặp lại.**
+
+| Loại lỗi | Chịu trách nhiệm | Phát hiện | Truy vết | Xử lý |
+| --- | --- | --- | --- | --- |
+| Điểm/nhận xét AI chấm sai (bản nháp) | Phạm Đình Duy (evaluator); Phạm Quốc Đạt (calibration) | Manager review từng phiên; code kiểm tra message ID và trích dẫn nguyên văn; bộ calibration JC1–JC6 | `ai_draft_json`, `judge_model`, transcript theo `session_id` | Manager sửa điểm kèm lý do; Duy chỉnh prompt/rubric; Đạt chạy lại calibration |
+| Điểm đã duyệt dùng cho năng lực/xếp hạng | Manager duyệt phiên (HITL) | Advisor xem kết quả đã duyệt; lịch sử review của manager | `practice_manager_reviews`: `manager_id`, `reviewed_at`, `change_reason`, `approved_result_json` | Manager duyệt lại; nhóm sửa luồng review nếu lỗi do hệ thống |
+| Giá/khuyến mãi/chính sách sai hoặc hết hạn trong chấm điểm | Phạm Quốc Đạt (dữ liệu corpus); Phạm Đình Duy (resolver kịch bản) | `scripts/check_scenario_knowledge.py` và test độ phủ theo ngày hiện tại | `current_policy_evidence`: document ID, version, trích dẫn | Đạt cập nhật corpus; Duy cập nhật lookup kịch bản |
+| Copilot trả lời sai hoặc trích nguồn sai | Nguyễn Hữu Chương (Copilot, RAG); Phạm Quốc Đạt (benchmark) | Kiểm tra citation trong Copilot; benchmark Copilot | `X-Request-ID`, LangSmith trace khi bật | Chương sửa retrieval/prompt; Đạt cập nhật bộ câu hỏi đánh giá |
+| AI Customer lộ thông tin ẩn hoặc nói sai vai; Advisor có hành vi sai phạm | Phạm Đình Duy (AI Customer, guardrail) | Guardrail hai lớp, chặn lộ giá phía khách | Transcript và checkpoint theo `session_id` | Phiên kết thúc với `advisor_misconduct`; Duy sửa persona/guardrail |
+| Giao diện hiển thị sai điểm hoặc trạng thái | Võ Trường An (frontend) | Manager/Advisor báo lỗi; test frontend | `session_id` và phản hồi API của phiên | An sửa giao diện |
+
+Người phụ trách từng dòng đã được nhóm xác nhận; cả nhóm được thông báo khi có sự cố. TODO (team): ghi kênh báo sự cố.
+
+## License
+
+[MIT](LICENSE) — dùng tự do cho mục đích giáo dục.
