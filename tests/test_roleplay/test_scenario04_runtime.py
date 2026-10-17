@@ -605,13 +605,16 @@ def test_guardrail_keeps_unambiguous_abuse(message):
 
 
 @pytest.mark.asyncio
-async def test_customer_can_quote_active_objection_figures(scenario, state):
+async def test_active_figure_free_objection_does_not_authorize_invented_price(scenario, state):
     state.active_objections = [UPSELL]
     state.messages = [RoleplayMessage(role="advisor", content="Chào chị, chị lấy Plus luôn nhé?")]
-    model = CustomerModel({"reply": "Plus đắt hơn gần 50 triệu", "raised_objection_id": UPSELL})
+    model = CustomerModel(
+        {"reply": "Plus đắt hơn gần 50 triệu", "raised_objection_id": UPSELL},
+        {"reply": "Plus đắt hơn khá nhiều, chị cần cân nhắc.", "raised_objection_id": UPSELL},
+    )
     turn = await CustomerAgent(model).generate_turn(scenario, state, mode="response")
-    assert "50 triệu" in turn.message.content
-    assert model.calls == 1
+    assert "50 triệu" not in turn.message.content
+    assert model.calls == 2
 
 
 def test_benefit_links_require_the_configured_need(scenario, state):

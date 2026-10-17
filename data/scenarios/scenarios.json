@@ -5,42 +5,54 @@
     "difficulty": "Medium",
     "sales_channel": "Fanpage",
     "training_objective": "Khai thác nhu cầu chạy dịch vụ, trao đổi chi phí sử dụng một cách trung thực và chốt bước kiểm chứng phù hợp.",
-    "scenario_version": "2.4",
+    "scenario_version": "2.5",
     "policy_expectations": [
       {
         "policy_id": "vtlx2",
         "level": "expected",
-        "description": "Vì Tương Lai Xanh 2 giảm 9% giá niêm yết sau khi xác nhận khách sở hữu xe đủ điều kiện (ô tô xăng, xe máy xăng, xe máy điện hoặc ô tô điện VinFast); áp dụng 19/09–19/12/2026, không cộng gộp VinClub/Tri ân.",
-        "source_ids": [
-          "PROMOTION_SALES_VINFAST_20260921"
-        ],
+        "topic": "Ưu đãi Vì Tương Lai Xanh 2 và điều kiện chuyển đổi sang xe điện cho VF 5",
+        "lookup": {
+          "query": "Vì Tương Lai Xanh 2",
+          "document_type": "promotion",
+          "policy_type": "general",
+          "product_model": "VF 5"
+        },
         "requires_eligibility_check": true
       },
       {
         "policy_id": "charging",
         "level": "expected",
-        "description": "Miễn phí 10 lượt sạc đầu tiên/xe/tháng tại V-GREEN đến 10/02/2029 theo điều kiện chính sách hiện hành. Xe biển vàng kinh doanh cần kiểm tra khung giờ ưu đãi: Thứ 6, Thứ 7 và Chủ Nhật chỉ áp dụng 23:00–06:00 và 14:00–16:00; các ngày còn lại được áp dụng cả các khung giờ khác.",
-        "source_ids": [
-          "POLICY_CHARGING_VINFAST_20260919"
-        ],
+        "topic": "Chính sách ưu đãi sạc pin và điều kiện sử dụng",
+        "lookup": {
+          "query": "Chính sách ưu đãi sạc pin",
+          "document_type": "policy",
+          "policy_type": "charging",
+          "product_model": "ALL"
+        },
         "requires_eligibility_check": false
       },
       {
         "policy_id": "warranty",
         "level": "bonus",
-        "description": "Bảo hành xe 7 năm/160.000 km, pin 8 năm/160.000 km, tùy điều kiện nào đến trước.",
-        "source_ids": [
-          "FAQ_VF5_20260922"
-        ],
+        "topic": "Chính sách bảo hành xe và pin VF 5",
+        "lookup": {
+          "query": "VF 5 bảo hành",
+          "document_type": "faq",
+          "policy_type": null,
+          "product_model": "VF 5"
+        },
         "requires_eligibility_check": false
       },
       {
         "policy_id": "zero_down",
         "level": "bonus",
-        "description": "Mua xe 0 Đồng: vay đến 100% giá trị xe, áp dụng 04/01–31/12/2026, cần ngân hàng xét duyệt.",
-        "source_ids": [
-          "PROMOTION_SALES_VINFAST_20260921"
-        ],
+        "topic": "Chương trình mua xe không cần vốn đối ứng và điều kiện vay",
+        "lookup": {
+          "query": "Mua xe 0 Đồng",
+          "document_type": "promotion",
+          "policy_type": "general",
+          "product_model": "VF 5"
+        },
         "requires_eligibility_check": false
       }
     ],
@@ -123,42 +135,54 @@
     "difficulty": "Hard",
     "sales_channel": "Tin nhắn tư vấn",
     "training_objective": "Khám phá nhu cầu gia đình và người cùng ra quyết định, sau đó so sánh giá trị mà không hạ thấp đối thủ hoặc đưa ra cam kết khấu hao thiếu căn cứ.",
-    "scenario_version": "2.1",
+    "scenario_version": "2.2",
     "policy_expectations": [
       {
         "policy_id": "vtlx2",
         "level": "expected",
-        "description": "Vì Tương Lai Xanh 2 giảm 5% giá niêm yết sau khi xác nhận khách sở hữu xe đủ điều kiện (ô tô xăng, xe máy xăng, xe máy điện hoặc ô tô điện VinFast); áp dụng 19/09–19/12/2026, không cộng gộp VinClub/Tri ân. VF 7 được giảm 7% cho lực lượng vũ trang/VNPost đủ điều kiện.",
-        "source_ids": [
-          "PROMOTION_SALES_VINFAST_20260921"
-        ],
+        "topic": "Ưu đãi Vì Tương Lai Xanh 2 và điều kiện chuyển đổi sang xe điện cho VF 7",
+        "lookup": {
+          "query": "Vì Tương Lai Xanh 2",
+          "document_type": "promotion",
+          "policy_type": "general",
+          "product_model": "VF 7"
+        },
         "requires_eligibility_check": true
       },
       {
         "policy_id": "warranty",
         "level": "expected",
-        "description": "Bảo hành xe và pin 10 năm/200.000 km theo điều kiện tiêu chuẩn, tùy điều kiện nào đến trước.",
-        "source_ids": [
-          "FAQ_VF7_20260922"
-        ],
+        "topic": "Chính sách bảo hành xe và pin VF 7",
+        "lookup": {
+          "query": "VF 7 bảo hành",
+          "document_type": "faq",
+          "policy_type": null,
+          "product_model": "VF 7"
+        },
         "requires_eligibility_check": false
       },
       {
         "policy_id": "charging",
         "level": "bonus",
-        "description": "Miễn phí 10 lượt sạc đầu tiên/xe/tháng tại V-GREEN đến 10/02/2029 theo điều kiện chính sách hiện hành. Khách phải cam kết không dùng VF 7 kinh doanh dịch vụ.",
-        "source_ids": [
-          "POLICY_CHARGING_VINFAST_20260919"
-        ],
+        "topic": "Chính sách ưu đãi sạc pin và điều kiện sử dụng",
+        "lookup": {
+          "query": "Chính sách ưu đãi sạc pin",
+          "document_type": "policy",
+          "policy_type": "charging",
+          "product_model": "ALL"
+        },
         "requires_eligibility_check": false
       },
       {
         "policy_id": "zero_down",
         "level": "bonus",
-        "description": "Mua xe 0 Đồng: vay đến 100% giá trị xe, áp dụng 04/01–31/12/2026, cần ngân hàng xét duyệt.",
-        "source_ids": [
-          "PROMOTION_SALES_VINFAST_20260921"
-        ],
+        "topic": "Chương trình mua xe không cần vốn đối ứng và điều kiện vay",
+        "lookup": {
+          "query": "Mua xe 0 Đồng",
+          "document_type": "promotion",
+          "policy_type": "general",
+          "product_model": "VF 7"
+        },
         "requires_eligibility_check": false
       }
     ],
@@ -170,8 +194,8 @@
       "communication_style": "Hiện đại, kỹ tính, thích xe đẹp nhưng phân vân chênh lệch giá"
     },
     "buyer_intent": "Mua xe cho gia đình đi làm và cuối tuần về quê, thích công nghệ nhưng ngại xe điện mới ra",
-    "customer_goals": "Muốn biết lý do tại sao phải bỏ thêm 50 triệu mua VF 7 thay vì chọn CX-5 đã quen thuộc",
-    "visible_context": "Khách nhắn tin: 'Chị thấy VF 7 với CX-5 cũng như nhau, CX-5 nhìn quen mắt hơn mà sao VF 7 đắt hơn 50 triệu vậy em?'",
+    "customer_goals": "Muốn biết lý do tại sao phải bỏ thêm tiền mua VF 7 thay vì chọn CX-5 đã quen thuộc",
+    "visible_context": "Khách nhắn tin: 'Chị thấy VF 7 với CX-5 cũng như nhau, CX-5 nhìn quen mắt hơn mà sao VF 7 đắt hơn khá nhiều vậy em?'",
     "hidden_facts": {
       "family_status": "2 vợ chồng và 2 con nhỏ, cuối tuần về quê 120 km",
       "decision_maker": "Chị Thanh thích công nghệ nhưng chồng chị đang nghiêng về CX-5 vì sợ xe điện mất giá sau 3 năm",
@@ -220,42 +244,54 @@
     "difficulty": "Easy",
     "sales_channel": "Chat trực tuyến",
     "training_objective": "Khai thác quãng đường và khả năng tiếp cận điểm sạc để xử lý lo ngại sạc tại chung cư bằng phương án có thể kiểm chứng.",
-    "scenario_version": "2.1",
+    "scenario_version": "2.2",
     "policy_expectations": [
       {
         "policy_id": "vtlx2",
         "level": "expected",
-        "description": "Vì Tương Lai Xanh 2 giảm 9% giá niêm yết sau khi xác nhận khách sở hữu xe đủ điều kiện (ô tô xăng, xe máy xăng, xe máy điện hoặc ô tô điện VinFast); áp dụng 19/09–19/12/2026, không cộng gộp VinClub/Tri ân.",
-        "source_ids": [
-          "PROMOTION_SALES_VINFAST_20260921"
-        ],
+        "topic": "Ưu đãi Vì Tương Lai Xanh 2 và điều kiện chuyển đổi sang xe điện cho VF 6",
+        "lookup": {
+          "query": "Vì Tương Lai Xanh 2",
+          "document_type": "promotion",
+          "policy_type": "general",
+          "product_model": "VF 6"
+        },
         "requires_eligibility_check": true
       },
       {
         "policy_id": "charging",
         "level": "expected",
-        "description": "Miễn phí 10 lượt sạc đầu tiên/xe/tháng tại V-GREEN đến 10/02/2029 theo điều kiện chính sách hiện hành.",
-        "source_ids": [
-          "POLICY_CHARGING_VINFAST_20260919"
-        ],
+        "topic": "Chính sách ưu đãi sạc pin và điều kiện sử dụng",
+        "lookup": {
+          "query": "Chính sách ưu đãi sạc pin",
+          "document_type": "policy",
+          "policy_type": "charging",
+          "product_model": "ALL"
+        },
         "requires_eligibility_check": false
       },
       {
         "policy_id": "warranty",
         "level": "bonus",
-        "description": "Bảo hành xe 7 năm/160.000 km, pin 8 năm/160.000 km, tùy điều kiện nào đến trước.",
-        "source_ids": [
-          "FAQ_VF6_20260922"
-        ],
+        "topic": "Chính sách bảo hành xe và pin VF 6",
+        "lookup": {
+          "query": "VF 6 bảo hành",
+          "document_type": "faq",
+          "policy_type": null,
+          "product_model": "VF 6"
+        },
         "requires_eligibility_check": false
       },
       {
         "policy_id": "home_charger",
         "level": "bonus",
-        "description": "Bộ sạc AC 7,4 kW giá 11.000.000đ.",
-        "source_ids": [
-          "PRICE_LIST_VINFAST_20260921"
-        ],
+        "topic": "Giá bộ sạc tại nhà theo bảng giá hiện hành",
+        "lookup": {
+          "query": "Giá bộ sạc tại nhà",
+          "document_type": "price_list",
+          "policy_type": null,
+          "product_model": "ALL"
+        },
         "requires_eligibility_check": false
       }
     ],
@@ -309,7 +345,7 @@
     "title": "Chị Hà — VF 6 Eco hay nâng lên Plus?",
     "difficulty": "Medium",
     "sales_channel": "Showroom",
-    "scenario_version": "1.3",
+    "scenario_version": "1.4",
     "target_skills": [
       "need_discovery",
       "product_knowledge",
@@ -348,7 +384,7 @@
           "chuyển đổi",
           "Vì Tương Lai Xanh",
           "xe xăng",
-          "ưu đãi 9%"
+          "ưu đãi chuyển đổi"
         ],
         "revealed_statement": "Chị đang đi xe máy xăng, xe đứng tên chị em nhé."
       },
@@ -443,9 +479,9 @@
         "objection_id": "OBJ_VF6_PROMO_ELIGIBILITY",
         "requires_revealed_facts": ["current_vehicle"],
         "trigger_stage": "presentation",
-        "objection_text": "Giá vẫn hơi cao so với dự tính của chị. Ưu đãi 9% đó chị có được áp dụng không em?",
+        "objection_text": "Giá vẫn hơi cao so với dự tính của chị. Ưu đãi đó chị có được áp dụng không em?",
         "resolve_condition": "Sale xác nhận rõ ràng chị đủ điều kiện nhận ưu đãi (kể cả câu trả lời ngắn như “Dạ được ạ” hay “Chị đủ điều kiện” khi đang trả lời đúng câu hỏi về xe máy xăng đứng tên chị). Giá sau ưu đãi và các chính sách khác là điểm cộng cho policy_accuracy, KHÔNG bắt buộc để giải tỏa băn khoăn này.",
-        "ideal_sales_response": "Dạ được ạ, chị đang có xe máy xăng đứng tên chị nên đủ điều kiện Vì Tương Lai Xanh 2; VF 6 Eco còn 587,86 triệu."
+        "ideal_sales_response": "Dạ, em sẽ đối chiếu xe máy xăng đứng tên chị với điều kiện Vì Tương Lai Xanh 2 và báo giá theo bảng giá, chính sách khuyến mãi hiện hành."
       },
       {
         "objection_id": "OBJ_VF6_PLUS_WORTH",
@@ -454,9 +490,9 @@
           "bản cao hơn",
           "nâng cấp lên"
         ],
-        "objection_text": "Chị thấy bên em có bản Plus đắt hơn gần 50 triệu. Nhưng chị nghĩ cùng là VF 6, cùng pin, cùng kích thước thì bản Eco đã đủ dùng rồi. Em thử giải thích giúp chị xem tại sao chị nên bỏ thêm số tiền đó để mua bản Plus nhé.",
-        "resolve_condition": "Tư vấn viên gắn ít nhất 2 lợi ích Plus, trong đó ít nhất 1 về an toàn, gắn với nhu cầu chị đã chia sẻ khi được hỏi; báo đúng chênh lệch sau ưu đãi khoảng 49,14 triệu đồng (Plus Tiêu chuẩn 1: 637 triệu, Eco: 587,86 triệu).",
-        "ideal_sales_response": "Nếu chị thấy phù hợp, 7 túi khí hỗ trợ bảo vệ gia đình và camera 360° giúp quan sát khi đỗ hầm chật; Plus chênh 49,14 triệu sau ưu đãi. Mình có thể trải nghiệm trước, còn Eco vẫn là lựa chọn hợp lý nếu đáp ứng đủ nhu cầu chị."
+        "objection_text": "Chị thấy bản Plus đắt hơn khá nhiều. Cùng là VF 6, cùng pin, cùng kích thước thì chị nghĩ bản Eco đã đủ dùng rồi. Em thử giải thích giúp chị xem tại sao chị nên bỏ thêm tiền để mua bản Plus nhé.",
+        "resolve_condition": "Tư vấn viên gắn ít nhất hai lợi ích Plus, trong đó ít nhất một về an toàn, với nhu cầu chị đã chia sẻ khi được hỏi; nêu đúng giá và chênh lệch sau ưu đãi theo bảng giá và chính sách khuyến mãi hiện hành.",
+        "ideal_sales_response": "Túi khí hỗ trợ bảo vệ gia đình và camera quan sát toàn cảnh giúp quan sát khi đỗ hầm chật; em sẽ đối chiếu giá và chênh lệch theo bảng giá, chính sách khuyến mãi hiện hành. Mình có thể trải nghiệm trước, còn Eco vẫn là lựa chọn hợp lý nếu đáp ứng đủ nhu cầu chị."
       }
     ],
     "upsell_benefits": [
@@ -504,13 +540,13 @@
       {
         "outcome_id": "close_eco",
         "label": "Chốt VF 6 Eco",
-        "product": "VF 6 Eco Tiêu chuẩn 1 – 646.000.000đ",
+        "product": "VF 6 Eco Tiêu chuẩn 1",
         "requires_resolved_objections": []
       },
       {
         "outcome_id": "upsell_plus",
         "label": "Upsell VF 6 Plus",
-        "product": "VF 6 Plus Tiêu chuẩn 1 – 700.000.000đ",
+        "product": "VF 6 Plus Tiêu chuẩn 1",
         "requires_resolved_objections": [
           "OBJ_VF6_PLUS_WORTH"
         ],
@@ -521,48 +557,73 @@
       {
         "policy_id": "vtlx2",
         "level": "expected",
-        "description": "Vì Tương Lai Xanh 2 giảm 9% giá niêm yết sau khi xác nhận khách sở hữu xe đủ điều kiện (ô tô xăng, xe máy xăng, xe máy điện hoặc ô tô điện VinFast); áp dụng 19/09–19/12/2026, không cộng gộp VinClub/Tri ân. Sau ưu đãi: Eco Tiêu chuẩn 1 còn 587,86 triệu đồng, Plus Tiêu chuẩn 1 còn 637 triệu đồng; chênh 49,14 triệu đồng. Không có chính sách miễn phí bảo dưỡng; Eco có tầm hoạt động NEDC cao hơn Plus (485 km so với 460 km), phạm vi thực tế phụ thuộc điều kiện sử dụng.",
-        "source_ids": [
-          "PROMOTION_SALES_VINFAST_20260921",
-          "FAQ_VF6_20260922",
-          "PRICE_LIST_VINFAST_20260921"
-        ],
+        "topic": "Ưu đãi Vì Tương Lai Xanh 2 và điều kiện chuyển đổi sang xe điện cho VF 6",
+        "lookup": {
+          "query": "Vì Tương Lai Xanh 2",
+          "document_type": "promotion",
+          "policy_type": "general",
+          "product_model": "VF 6"
+        },
         "requires_eligibility_check": true
+      },
+      {
+        "policy_id": "vf6_price",
+        "level": "expected",
+        "topic": "Giá niêm yết VF 6 Eco và Plus theo bảng giá hiện hành",
+        "lookup": {
+          "query": "VF 6",
+          "document_type": "price_list",
+          "policy_type": null,
+          "product_model": "VF 6"
+        },
+        "requires_eligibility_check": false
       },
       {
         "policy_id": "charging",
         "level": "bonus",
-        "description": "Miễn phí 10 lượt sạc đầu tiên/xe/tháng tại V-GREEN đến 10/02/2029 theo điều kiện chính sách hiện hành.",
-        "source_ids": [
-          "POLICY_CHARGING_VINFAST_20260919"
-        ],
+        "topic": "Chính sách ưu đãi sạc pin và điều kiện sử dụng",
+        "lookup": {
+          "query": "Chính sách ưu đãi sạc pin",
+          "document_type": "policy",
+          "policy_type": "charging",
+          "product_model": "ALL"
+        },
         "requires_eligibility_check": false
       },
       {
         "policy_id": "warranty",
         "level": "bonus",
-        "description": "Bảo hành xe 7 năm/160.000 km, pin 8 năm/160.000 km, tùy điều kiện nào đến trước.",
-        "source_ids": [
-          "FAQ_VF6_20260922"
-        ],
+        "topic": "Chính sách bảo hành xe và pin VF 6",
+        "lookup": {
+          "query": "VF 6 bảo hành",
+          "document_type": "faq",
+          "policy_type": null,
+          "product_model": "VF 6"
+        },
         "requires_eligibility_check": false
       },
       {
         "policy_id": "zero_down",
         "level": "bonus",
-        "description": "Mua xe 0 Đồng: vay đến 100% giá trị xe, áp dụng 04/01–31/12/2026, cần ngân hàng xét duyệt.",
-        "source_ids": [
-          "PROMOTION_SALES_VINFAST_20260921"
-        ],
+        "topic": "Chương trình mua xe không cần vốn đối ứng và điều kiện vay",
+        "lookup": {
+          "query": "Mua xe 0 Đồng",
+          "document_type": "promotion",
+          "policy_type": "general",
+          "product_model": "VF 6"
+        },
         "requires_eligibility_check": false
       },
       {
         "policy_id": "deposit",
         "level": "bonus",
-        "description": "Đặt cọc theo điều khoản hiện hành (tiền cọc không hoàn lại); ký hợp đồng mua bán trong 7 ngày làm việc kể từ khi hoàn tất đặt cọc.",
-        "source_ids": [
-          "POLICY_DEPOSIT_TERMS_20260922"
-        ],
+        "topic": "Điều khoản đặt cọc mua xe và ký hợp đồng",
+        "lookup": {
+          "query": "Điều khoản đặt cọc mua xe VinFast",
+          "document_type": "policy",
+          "policy_type": "general",
+          "product_model": "ALL"
+        },
         "requires_eligibility_check": false
       }
     ],

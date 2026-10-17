@@ -1,8 +1,9 @@
 """Shared product contracts for role-play, knowledge, and evaluation work."""
 
+import re
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from src.models.evaluation import SessionEvaluationResult
 
@@ -51,6 +52,44 @@ ObjectionStage = Literal[
 ]
 
 
+# Customer budgets and usage are persona facts, not current corpus policies.
+# Percentages, dates and warranty pairs are prohibited in both kinds of text.
+_CORPUS_ONLY_PATTERN = (
+    r"\d{1,2}/\d{1,2}(?:/\d{4})?(?:\s*[–—-]\s*\d{1,2}/\d{1,2}(?:/\d{4})?)?"
+    r"|\d+(?:[.,]\d+)*\s*%"
+    r"|\d+\s*năm\s*/\s*\d+(?:[.,]\d+)*\s*km(?!\w)"
+)
+_CORPUS_ONLY_FIGURE = re.compile(r"(?<![\w/])(?:" + _CORPUS_ONLY_PATTERN + r")", re.IGNORECASE)
+_CORPUS_FIGURE = re.compile(
+    r"(?<![\w/])(?:" + _CORPUS_ONLY_PATTERN + r"|\d+(?:[.,]\d+)*\s*(?:triệu(?:\s+đồng)?|tr|VNĐ|VND|đồng|đ)(?!\w)"
+    r"|\d+(?:[.,]\d+)*\s*km(?![\w/])"
+    r"|\d{1,3}(?:\.\d{3}){2,}(?![\w.])"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def find_corpus_figures(text: str) -> list[str]:
+    """Return corpus-style money, percentages, dates and warranty figures in order."""
+    return [match.group() for match in _CORPUS_FIGURE.finditer(text)]
+
+
+def _validate_figure_free(value: Any, field: str, *, customer_owned: bool = False) -> Any:
+    """Name the offending field while allowing customer-owned money and usage."""
+    if isinstance(value, str):
+        pattern = _CORPUS_ONLY_FIGURE if customer_owned else _CORPUS_FIGURE
+        figures = [match.group() for match in pattern.finditer(value)]
+        if figures:
+            raise ValueError(f"{field} must be figure-free; offending figure: {figures[0]!r}.")
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            _validate_figure_free(item, f"{field}.{key}", customer_owned=customer_owned)
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            _validate_figure_free(item, f"{field}[{index}]", customer_owned=customer_owned)
+    return value
+
+
 class ScenarioModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -68,6 +107,11 @@ class DisclosureRule(ScenarioModel):
     )
     revealed_statement: str = Field(min_length=1)
 
+    @field_validator("trigger_keywords", "revealed_statement")
+    @classmethod
+    def validate_customer_text(cls, value: Any, info: ValidationInfo) -> Any:
+        return _validate_figure_free(value, info.field_name, customer_owned=True)
+
 
 class ObjectionContract(ScenarioModel):
     objection_id: str = Field(min_length=1)
@@ -77,6 +121,11 @@ class ObjectionContract(ScenarioModel):
     resolve_condition: str = Field(min_length=1)
     ideal_sales_response: str | None = None
     requires_revealed_facts: list[str] = Field(default_factory=list)
+
+    @field_validator("trigger_keywords", "objection_text", "resolve_condition", "ideal_sales_response")
+    @classmethod
+    def validate_objection_text(cls, value: Any, info: ValidationInfo) -> Any:
+        return _validate_figure_free(value, info.field_name)
 
     @model_validator(mode="after")
     def validate_trigger(self) -> "ObjectionContract":
@@ -93,6 +142,11 @@ class AcceptableOutcome(ScenarioModel):
     product: str
     requires_resolved_objections: list[str] = Field(default_factory=list)
     preferred: bool = False
+
+    @field_validator("label", "product")
+    @classmethod
+    def validate_outcome_text(cls, value: str, info: ValidationInfo) -> str:
+        return _validate_figure_free(value, info.field_name)
 
 
 def default_acceptable_outcomes() -> list[AcceptableOutcome]:
@@ -113,17 +167,34 @@ class UpsellRule(ScenarioModel):
     min_safety: int = Field(ge=0)
 
 
+class PolicyLookup(ScenarioModel):
+    query: str = Field(min_length=1)
+    document_type: Literal["policy", "price_list", "product_specs", "promotion", "faq"]
+    policy_type: str | None = None
+    product_model: str
+
+
 class PolicyExpectation(ScenarioModel):
     policy_id: str = Field(min_length=1)
     level: Literal["expected", "bonus"]
-    description: str = Field(min_length=1)
-    source_ids: list[str]
     requires_eligibility_check: bool = False
+    topic: str = Field(min_length=1)
+    lookup: PolicyLookup
+
+    @field_validator("topic")
+    @classmethod
+    def validate_topic(cls, value: str) -> str:
+        return _validate_figure_free(value, "topic")
 
 
 class TerminationConditions(ScenarioModel):
     max_turns: int = Field(ge=1, le=15)
     drop_out_trigger: str = Field(min_length=1)
+
+    @field_validator("drop_out_trigger")
+    @classmethod
+    def validate_drop_out_trigger(cls, value: str) -> str:
+        return _validate_figure_free(value, "drop_out_trigger")
 
 
 class ScenarioContract(ScenarioModel):
@@ -148,6 +219,25 @@ class ScenarioContract(ScenarioModel):
     upsell_benefits: list[UpsellBenefit] = Field(default_factory=list)
     upsell_rule: UpsellRule | None = None
     policy_expectations: list[PolicyExpectation] = Field(default_factory=list)
+
+    @field_validator(
+        "title",
+        "sales_channel",
+        "training_objective",
+        "persona",
+        "visible_context",
+        "hidden_facts",
+        "buyer_intent",
+        "customer_goals",
+    )
+    @classmethod
+    def validate_scenario_text(cls, value: Any, info: ValidationInfo) -> Any:
+        return _validate_figure_free(value, info.field_name, customer_owned=True)
+
+    @field_validator("expected_discovery", "success_conditions")
+    @classmethod
+    def validate_success_text(cls, value: str, info: ValidationInfo) -> str:
+        return _validate_figure_free(value, info.field_name)
 
     @model_validator(mode="after")
     def validate_scenario_references(self) -> "ScenarioContract":

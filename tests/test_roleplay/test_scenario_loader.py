@@ -87,14 +87,32 @@ def test_non_array_dataset_is_rejected(tmp_path):
 def test_new_scenario_exposes_internal_contracts_only_on_private_lookup():
     repository = ScenarioRepository(SCENARIOS)
     scenario = repository.get("SCENARIO_04_VF6_ECO_PLUS_UPSELL")
-    assert scenario.scenario_version == "1.3"
+    assert scenario.scenario_version == "1.4"
+    assert [policy.policy_id for policy in scenario.policy_expectations] == [
+        "vtlx2",
+        "vf6_price",
+        "charging",
+        "warranty",
+        "zero_down",
+        "deposit",
+    ]
+    price = scenario.policy_expectations[1]
+    assert price.level == "expected"
+    assert price.topic == "Giá niêm yết VF 6 Eco và Plus theo bảng giá hiện hành"
+    assert price.lookup.model_dump() == {
+        "query": "VF 6",
+        "document_type": "price_list",
+        "policy_type": None,
+        "product_model": "VF 6",
+    }
+    assert price.requires_eligibility_check is False
     assert [objection.objection_id for objection in scenario.objections] == [
         "OBJ_VF6_PROMO_ELIGIBILITY",
         "OBJ_VF6_PLUS_WORTH",
     ]
     eligibility = scenario.objections[0]
     assert eligibility.objection_text == (
-        "Giá vẫn hơi cao so với dự tính của chị. Ưu đãi 9% đó chị có được áp dụng không em?"
+        "Giá vẫn hơi cao so với dự tính của chị. Ưu đãi đó chị có được áp dụng không em?"
     )
     assert "Dạ được ạ" in eligibility.resolve_condition
     assert "KHÔNG bắt buộc" in eligibility.resolve_condition
