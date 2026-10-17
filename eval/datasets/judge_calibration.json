@@ -671,7 +671,7 @@
       "case_id": "JC6_VF6_PLUS_UPSELL_PENDING",
       "purpose": "strong",
       "scenario_id": "SCENARIO_04_VF6_ECO_PLUS_UPSELL",
-      "scenario_version": "1.3",
+      "scenario_version": "1.4",
       "rubric_version": "sales-rubric-v3",
       "completion_context": "curated_conversation_ended_no_runtime_state",
       "messages": [
