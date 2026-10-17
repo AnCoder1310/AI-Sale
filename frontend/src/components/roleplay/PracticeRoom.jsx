@@ -354,7 +354,7 @@ export function PracticeRoom({
             <div className="practice-room-meta">
               <Badge variant="highlight">{scenario?.model_badge || scenario?.model}</Badge>
               <span>{stageLabels[stage] || stage}</span>
-              <span>Lượt trao đổi: {turnCount}/{session?.max_turns || scenario?.max_turns}</span>
+              <span>Lượt trao đổi: {turnCount}</span>
             </div>
           </div>
         </div>
