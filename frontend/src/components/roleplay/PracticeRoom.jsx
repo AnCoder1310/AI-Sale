@@ -533,7 +533,7 @@ export function PracticeRoom({
       <Modal
         isOpen={showFinishConfirm}
         onClose={() => setShowFinishConfirm(false)}
-        title="Xác nhận hoàn tất phiên thực chiến"
+        title="Xác nhận hoàn tất phiên luyện tập"
         maxWidth={500}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

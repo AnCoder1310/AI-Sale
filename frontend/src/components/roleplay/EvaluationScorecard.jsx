@@ -6,12 +6,14 @@ import {
 } from '../common/Icons';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
+import './advisorProgress.css';
 
 export function EvaluationScorecard({
   result,
   scenario,
   onRetry,
   onBackToCatalog,
+  generalComment = null,
 }) {
   if (!result || !result.result) {
     return (
@@ -52,7 +54,7 @@ export function EvaluationScorecard({
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255, 255, 255, 0.1)', padding: '4px 10px', borderRadius: 9999, marginBottom: 10 }}>
               <span style={{ fontSize: '0.72rem', color: '#E0E0E0', fontWeight: 600 }}>
-                KẾT QUẢ ĐÁNH GIÁ THỰC CHIẾN • RUBRIC {evalData.rubric_version || '2.0'}
+                KẾT QUẢ ĐÁNH GIÁ LUYỆN TẬP • RUBRIC {evalData.rubric_version || '2.0'}
               </span>
             </div>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.2 }}>
@@ -181,6 +183,12 @@ export function EvaluationScorecard({
                   </div>
                 )}
 
+                {crit.manager_reason && (
+                  <p className="ap-manager-reason">
+                    <strong>Lý do quản lý sửa điểm:</strong> {crit.manager_reason}
+                  </p>
+                )}
+
                 {crit.improvement_suggestion && (
                   <div style={{ fontSize: '0.82rem', color: '#111111', fontWeight: 500 }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><LightbulbIcon style={{ width: 13, height: 13 }} /> <strong>Gợi ý cải thiện:</strong></span> {crit.improvement_suggestion}
@@ -238,6 +246,13 @@ export function EvaluationScorecard({
         <div className="card-white">
           <h3>Gợi ý luyện tập tiếp</h3>
           <p>{evalData.recommended_next_practice.reason}</p>
+        </div>
+      )}
+
+      {generalComment && (
+        <div className="ap-manager-note">
+          <h3>Nhận xét chung của quản lý</h3>
+          <p>{generalComment}</p>
         </div>
       )}
 

@@ -125,7 +125,7 @@
 .copilot-main-content:has(.copilot-shell) { max-width: none; min-height: 0; padding: 10px 16px 16px; }
 .copilot-shell button, .copilot-shell input, .copilot-shell textarea, .copilot-shell select { font-family: inherit; }
 .copilot-shell button:disabled { opacity: .55; cursor: not-allowed; }
-.copilot-shell :focus-visible { outline: 2px solid #377bd3; outline-offset: 3px; }
+.copilot-shell :focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(47, 107, 255, .14); }
 .sw-context-drawer-host.is-overlay { position: absolute; inset: 0; grid-area: 1 / 1 / -1 / -1; z-index: 30; justify-content: flex-end; background: #172e4d45; border: 0; }
 .sw-context-drawer-host.is-overlay .sw-context-drawer { width: 410px; max-width: 100%; box-shadow: -8px 0 30px #172e4d20; }
 @media (max-width: 767px) { .copilot-main-content:has(.copilot-shell) { padding: 6px; } .sw-context-drawer-host.is-overlay .sw-context-drawer { width: 100%; } }
