@@ -809,7 +809,7 @@
       "scenario_id": "SCENARIO_01_VF5_TAXI",
       "scenario_version": "2.5",
       "advisor_messages": [
-        "VF 5 Plus có pin 37,23 kWh anh ạ, chạy dịch vụ cả ngày vẫn thoải mái."
+        "VF 5 Plus có pin 37,23 kWh anh ạ."
       ],
       "expected": {
         "turn_count": 1,
