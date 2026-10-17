@@ -90,10 +90,15 @@ def test_pre_push_reports_failures_without_blocking(tmp_path):
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows Codex command")
-def test_configured_windows_hook_preserves_utf8(tmp_path):
+@pytest.mark.parametrize("through_powershell", [False, True])
+def test_configured_windows_hook_preserves_utf8(tmp_path, through_powershell):
     root = Path(__file__).resolve().parents[2]
     config = json.loads((root / ".codex/hooks.json").read_text(encoding="utf-8"))
     command = config["hooks"]["UserPromptSubmit"][0]["hooks"][0]["commandWindows"]
+    if through_powershell:
+        # Codex executes the handler through a shell. Direct CreateProcess alone
+        # misses nested PowerShell quoting errors that prevent the hook running.
+        command = ["powershell", "-NoProfile", "-Command", command]
     payload = {"hook_event_name": "UserPromptSubmit", "prompt": "Ghi thử tiếng Việt", "session_id": "synthetic"}
     result = subprocess.run(
         command, input=json.dumps(payload, ensure_ascii=False).encode("utf-8"),

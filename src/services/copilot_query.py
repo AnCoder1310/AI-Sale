@@ -252,15 +252,40 @@ async def query_owned_session(
     if result is None:
         formatted_summary = format_summary_for_context(stored_mem_summary) if stored_mem_summary else None
         annotate(query_characters=len(payload.query), history_count=len(history))
-        result = await query_copilot(
-            payload.model_copy(update={"customer_context": context}),
-            history=history,
-            memory_summary=formatted_summary,
-            runtime=runtime,
-            readiness_loader=request.app.state.copilot_readiness,
-            request_id=getattr(request.state, "request_id", None),
-            progress_queue=progress_queue,
-        )
+        async def invoke(private_payload, private_history, private_summary):
+            return await query_copilot(
+                private_payload, history=private_history, memory_summary=private_summary,
+                runtime=runtime, readiness_loader=request.app.state.copilot_readiness,
+                request_id=getattr(request.state, "request_id", None), progress_queue=progress_queue)
+        if customer_conversation_id:
+            from src.integrations.customer_intelligence_store import IntelligenceStore
+            from src.observability import private_customer_context
+            from src.services.customer_pii import CustomerPII
+            sales_repo = request.app.state.sales_copilot_repository
+            customer_id = sales_repo.owned_conversation(customer_conversation_id, user.user_id)["customer_id"]
+            store = IntelligenceStore(sales_repo)
+            head = store.head(customer_id)
+            try:
+                pii = CustomerPII(head["pii_mapping"], customer_id=customer_id)
+                context = pii.mask(context)
+                private_history = [{**m, "content": pii.mask(m["content"])} for m in history]
+                with private_customer_context():
+                    result = await invoke(payload.model_copy(update={"query": pii.mask(payload.query), "customer_context": context}),
+                                          private_history, pii.mask(formatted_summary) if formatted_summary else None)
+                try:
+                    store.save_mapping(customer_id, pii, head)
+                except (SQLAlchemyError, ValueError):
+                    raise HTTPException(409, "Dữ liệu riêng tư đã thay đổi. Vui lòng gửi lại câu hỏi.") from None
+                # Persist masked knowledge dialogue; later turns must not reintroduce
+                # restored identifiers into model context without their original label.
+                history = private_history
+                payload = payload.model_copy(update={"query": pii.mask(payload.query)})
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(503, "Tra cứu riêng tư tạm thời không khả dụng.") from None
+        else:
+            result = await invoke(payload.model_copy(update={"customer_context": context}), history, formatted_summary)
 
     if result.reason_code == "input_blocked":
         return result.model_copy(update={"session_id": payload.session_id}), from_cache
@@ -312,7 +337,7 @@ async def query_owned_session(
             logger.debug("Failed to put in exact cache: %s", cache_err)
 
     # Check background summarization
-    if background_tasks:
+    if background_tasks and not customer_conversation_id:
         try:
 
             def schedule_summary():

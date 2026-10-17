@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     app_port: int = Field(default=8000, ge=1, le=65535)
     app_host: str = "0.0.0.0"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    sales_pii_key: SecretStr = SecretStr("")
+    sales_intelligence_v2_enabled: bool = False
     cors_origins: str = "http://localhost:3000"
 
     # Copilot telemetry: Settings reads .env; the SDK is configured explicitly.

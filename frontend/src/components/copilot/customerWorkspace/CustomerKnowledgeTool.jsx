@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BookOpen, ChevronRight, RefreshCw, Search } from 'lucide-react';
+import { BookOpen, ChevronRight, RefreshCw, Send } from 'lucide-react';
 import { renderMarkdownWithCitations } from '../markdownRenderer';
 import { groupCitations } from '../citationGroups';
 import { copilotReason } from '../../../lib/copilotStatus';
@@ -21,7 +21,7 @@ export function CustomerKnowledgeTool({ lookup, onSearch, onLoadHistory, onQuery
     if (nearBottom.current && log.current) log.current.scrollTop = log.current.scrollHeight;
   }, [messages.length, lookup.pendingQuery, lookup.progress]);
   function submit(event) {
-    event.preventDefault();
+    event?.preventDefault();
     if (query.trim().length >= 2 && !busy) { nearBottom.current = true; void onSearch(query.trim()); }
   }
   function showCitation(source, turnId) { setCitation({ ...source, turnId }); }
@@ -58,6 +58,30 @@ export function CustomerKnowledgeTool({ lookup, onSearch, onLoadHistory, onQuery
       {lookup.busy && <p className="sw-tool-status" role="status"><RefreshCw size={14} className="sw-spin" />{lookup.progress || 'Đang kiểm tra tài liệu và nguồn dẫn…'}</p>}
     </div>
     {(lookup.syncError || lookup.error) && <div className="sw-lookup-error" role="alert"><p>{lookup.syncError || lookup.error}</p>{lookup.errorRequestId && <small className="sw-lookup-request-id">Mã tra cứu: {lookup.errorRequestId}</small>}{lookup.needsSync ? <p>Cần tải lại lịch sử để xác nhận kết quả lượt trước khi hỏi tiếp.</p> : lookup.syncError && !lookup.accessDenied && <p>Bạn vẫn có thể tra cứu khi chưa tải được lịch sử.</p>}{(lookup.needsSync || lookup.syncError) && <button type="button" className="sw-text-button" disabled={lookup.loading} onClick={() => { void onLoadHistory().catch(() => {}); }}>Tải lại lịch sử</button>}</div>}
-    <form onSubmit={submit} className="sw-knowledge-form"><label htmlFor="sw-knowledge-query">{messages.length ? 'Hỏi tiếp về xe và chính sách' : 'Câu hỏi về xe và chính sách'}</label><textarea id="sw-knowledge-query" value={query} maxLength={4000} rows={2} placeholder="Hỏi về giá, phiên bản, pin, bảo hành…" onChange={(event) => onQueryChange(event.target.value)} /><div className="sw-lookup-composer-actions"><button type="submit" className="sw-primary-button" disabled={Boolean(busy) || query.trim().length < 2}><Search size={14} />{lookup.busy ? 'Đang tra cứu…' : 'Tra cứu'}</button></div></form>
+    <form onSubmit={submit} className="sw-knowledge-form">
+      <div className="sw-composer-box">
+        <textarea
+          id="sw-knowledge-query"
+          aria-label={messages.length ? 'Hỏi tiếp về xe và chính sách' : 'Câu hỏi về xe và chính sách'}
+          value={query}
+          maxLength={4000}
+          rows={1}
+          placeholder="Hỏi về giá, phiên bản, pin, bảo hành…"
+          disabled={Boolean(busy)}
+          onChange={(event) => onQueryChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              submit(event);
+            }
+          }}
+        />
+        <div className="sw-composer-tools">
+          <button className="sw-primary-button sw-send-button" type="submit" aria-label={lookup.busy ? 'Đang tra cứu' : 'Tra cứu'} disabled={Boolean(busy) || query.trim().length < 2}>
+            <Send size={15} />
+          </button>
+        </div>
+      </div>
+    </form>
   </div>;
 }

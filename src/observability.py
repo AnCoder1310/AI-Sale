@@ -516,6 +516,17 @@ def graph_config():
 
 
 @contextmanager
+def private_customer_context():
+    """Never export customer analysis, prompts, outputs or provider errors."""
+    token = _request.set(None)
+    try:
+        with tracing_context(enabled=False):
+            yield
+    finally:
+        _request.reset(token)
+
+
+@contextmanager
 def span(name, *, export=True, **metadata):
     scope = _request.get()
     values = safe_metadata(metadata)

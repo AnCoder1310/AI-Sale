@@ -130,14 +130,14 @@ test('summary and former profile entry show concise intelligence and keep fact e
   });
   for (const type of ['summary', 'profile']) {
     const html = renderToStaticMarkup(React.createElement(CustomerToolsDrawer, { type, customer, onConfirmFact() {} }));
-    for (const text of ['Bối cảnh khách hàng', 'Recap — Tổng quan', 'Key Points — Nội dung trao đổi', 'Commitments — Cam kết', '300.000.000',
-      'Đã xác nhận bởi sales', 'Sửa dữ kiện', 'Tin nguồn 1', 'Tư vấn tài chính', 'Chờ hồ sơ vay', 'Sales gửi bảng tính chiều nay']) assert.ok(html.includes(text), text);
+    for (const text of ['Bối cảnh khách hàng', 'Recap — Tổng quan', 'Key Points — Nội dung trao đổi', 'Hỏi lịch sử', '300.000.000',
+      'Đã xác nhận bởi sales', 'Sửa dữ kiện', 'Tin nguồn 1', 'Tư vấn tài chính', 'Chờ hồ sơ vay']) assert.ok(html.includes(text), text);
     assert.doesNotMatch(html, /Outcomes — Kết quả tư vấn|Diễn biến tư vấn|Hồ sơ hiện tại|Đã trao đổi phương án trả góp/);
     assert.match(html, /<details class="sw-intelligence-section sw-ci-facts"><summary>/);
   }
 });
 
-test('four intelligence sections render evidence and omit duplicate narrative', () => {
+test('intelligence separates facts, recap and history without duplicate commitment lists', () => {
   const customer = toWorkspaceCustomer({ conversation_id: 'four' }, { message_total: 80, messages: [], memory: {
     quick_summary: 'Khách đang chọn lịch lái thử.', detailed_summary: 'Không hiển thị lại diễn biến dài.', customer_intelligence: {
       key_points: [{ topic: 'Sạc', question: 'Sạc tại nhà thế nào?', answer: 'Sales giải thích lắp bộ sạc.', status: 'answered', source_message_ids: ['old-m1'] }],
@@ -146,9 +146,10 @@ test('four intelligence sections render evidence and omit duplicate narrative', 
     },
   } });
   const html = renderToStaticMarkup(React.createElement(ConversationSummary, { customer }));
-  for (const label of ['Recap — Tổng quan', 'Key Points — Nội dung trao đổi', 'Outcomes — Kết quả tư vấn', 'Commitments — Cam kết', 'Đã giải đáp', 'Tin nguồn 1']) assert.ok(html.includes(label));
+  for (const label of ['Recap — Tổng quan', 'Key Points — Nội dung trao đổi', 'Hỏi lịch sử', 'Sales đã trả lời', 'Tin nguồn 1']) assert.ok(html.includes(label));
   assert.doesNotMatch(html, /Không hiển thị lại diễn biến dài/);
-  assert.equal(html.split('Khách chọn VF 6.').length - 1, 1);
+  assert.equal(html.split('Khách chọn VF 6.').length - 1, 0);
+  assert.doesNotMatch(html, /Outcomes — Kết quả tư vấn|Commitments — Cam kết/);
 });
 
 test('access errors disable lookup and show the actual reason', () => {

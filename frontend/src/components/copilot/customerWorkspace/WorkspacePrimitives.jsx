@@ -65,8 +65,8 @@ export function ContextDrawerHost({ title, children, onClose }) {
     const query = 'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]';
     panel.querySelector(query)?.focus();
     const inShell = Boolean(panel.closest('.copilot-shell'));
-    const copilotColumns = inShell && Boolean(panel.closest('.sw-copilot-open'));
-    const media = window.matchMedia(copilotColumns ? '(max-width: 1099px)' : inShell ? '(max-width: 1599px)' : '(max-width: 1199px)');
+    const copilotColumns = Boolean(panel.closest('.sw-copilot-open'));
+    const media = window.matchMedia(copilotColumns ? '(max-width: 959px)' : inShell ? '(max-width: 1599px)' : '(max-width: 1199px)');
     const workspace = panel.closest('.sw-workspace-body');
     let modal = false;
     function syncModal() {

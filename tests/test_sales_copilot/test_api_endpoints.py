@@ -22,9 +22,8 @@ def client(tmp_path, monkeypatch):
         for index in range(12):
             repository.add_message(conversation_id, "customer", f"Câu hỏi kiểm thử {index}")
     analyzer = SalesCopilotAnalyzer(repository)
-    monkeypatch.setattr(analyzer, "_call_llm_analysis", AsyncMock(return_value={
-        "profile": {"usage_purpose": "Đi làm"},
-        "memory": {"quick_summary": "Khách cần tư vấn xe đi làm."},
+    monkeypatch.setattr(analyzer, "analyze_conversation", AsyncMock(return_value={
+        "status": "success", "profile": {}, "memory": {}, "tasks": [], "lead_status": {},
     }))
     isolated_app = FastAPI()
 
@@ -87,7 +86,7 @@ def test_preferences_endpoint(client):
     assert patch_res.status_code == 200
     updated = patch_res.json()
     assert updated["advisor_id"] == "endpoint-test"
-    assert updated["nba_enabled"] is True
+    assert "nba_enabled" not in updated
     assert updated["draft_enabled"] is True
 
 
@@ -131,6 +130,11 @@ def test_endpoints_do_not_expose_another_advisors_conversation(client):
 
 
 def test_copilot_contextual_chat_endpoint(tmp_path, monkeypatch, request):
+    from cryptography.fernet import Fernet
+    from pydantic import SecretStr
+
+    from src.config import get_settings
+    monkeypatch.setattr(get_settings(), "sales_pii_key", SecretStr(Fernet.generate_key().decode()))
     from fastapi import FastAPI
 
     from src.agents.copilot.runtime import CopilotAdmission
