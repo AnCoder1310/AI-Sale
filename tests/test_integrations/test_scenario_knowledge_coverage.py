@@ -4,6 +4,7 @@ from pathlib import Path
 from scripts.check_scenario_knowledge import check_coverage
 from src.agents.roleplay.scenario_loader import ScenarioRepository
 from src.integrations.practice_policy import OfflinePolicyRetriever
+from src.knowledge.validity import today_in_vietnam
 
 
 def offline_retriever():
@@ -11,7 +12,7 @@ def offline_retriever():
 
 
 def test_expected_policies_have_valid_corpus_sources():
-    rows, missing = check_coverage(ScenarioRepository(), offline_retriever(), date(2026, 10, 17))
+    rows, missing = check_coverage(ScenarioRepository(), offline_retriever(), today_in_vietnam())
     assert missing == 0, "\n".join(rows)
 
 
