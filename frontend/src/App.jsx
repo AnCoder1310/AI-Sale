@@ -174,7 +174,7 @@ export function App() {
         )}
 
         {(currentTab === 'copilot' || copilotOpened) && (
-          <div style={{ display: currentTab === 'copilot' ? 'block' : 'none' }}>
+          <div style={{ display: currentTab === 'copilot' ? 'flex' : 'none', flex: 1, minHeight: 0, height: '100%', flexDirection: 'column' }}>
           <CopilotView
             currentUser={currentUser}
             initialQuery={copilotQuery}

@@ -123,6 +123,13 @@ def schedule_corrective(state, *, anchors=None, feedback=""):
         or state.get("generation_count", 0) >= 2
         or runtime.remaining() < settings.copilot_corrective_min_seconds
         or runtime.attempts + (2 if anchors else 3) > runtime.max_attempts
+        or (
+            not anchors
+            and (
+                state.get("tool_calls", 0) >= settings.copilot_max_search_calls
+                or state.get("retrieval_rounds", 0) >= settings.copilot_max_retrieval_rounds
+            )
+        )
     ):
         return None
     annotate(corrective_round=1)

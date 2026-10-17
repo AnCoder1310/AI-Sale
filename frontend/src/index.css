@@ -3765,7 +3765,7 @@ a {
 /* Keep Copilot columns within the viewport; only their content scrolls. */
 .copilot-app-container { height: 100dvh; min-height: 0; overflow: hidden; }
 .copilot-app-container > .top-header { flex-shrink: 0; }
-.copilot-main-content { min-height: 0; padding-bottom: 24px; display: flex; flex-direction: column; }
+.copilot-main-content { min-height: 0; padding: 12px 20px; display: flex; flex-direction: column; max-width: 1560px; }
 .copilot-main-content > div { flex: 1; min-height: 0; }
 .copilot-grid-layout { height: 100%; min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); align-items: stretch; }
 .copilot-grid-layout.copilot-with-history { grid-template-columns: 240px minmax(0, 1fr) minmax(280px, 340px); }
