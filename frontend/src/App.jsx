@@ -179,6 +179,11 @@ export function App() {
 
         {currentTab === 'roleplay' && (
           <RoleplayView
+            onOpenKnowledge={() => {
+              setSourceDocumentId(null);
+              setSourceReference(null);
+              setCurrentTab('knowledge');
+            }}
             scenarios={scenarios}
             scenarioStatus={scenarioStatus}
             onRetryScenarios={() => {
