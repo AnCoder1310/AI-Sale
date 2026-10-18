@@ -21,260 +21,21 @@ import { ProductContextPanel } from './ProductContextPanel';
 import { createId, getCurrentTimeString } from '../../lib/id';
 import { copilotReason } from '../../lib/copilotStatus';
 import { SourceViewerModal } from './SourceViewerModal';
+import { CustomerSalesCopilotView } from './CustomerSalesCopilotView';
+import { CopilotWorkspace } from './agenda/CopilotWorkspace';
 
 const STORAGE_KEY_PREFIX = 'vinfast_copilot_chat_';
 
-function renderInlineWithCitations(text, citations = [], onCitationClick) {
-  if (!text) return null;
-  const parts = text.split(/(\[C\d+\])/g);
-  return parts.map((part, index) => {
-    const match = part.match(/^\[(C\d+)\]$/);
-    if (match) {
-      const cid = match[1];
-      const cite = citations.find((c) => c.citation_id === cid);
-      const title = cite?.title || cite?.document_id || cid;
-      const displayTitle = title.length > 26 ? title.slice(0, 26) + '…' : title;
-      return (
-        <button
-          key={`cite-${index}`}
-          type="button"
-          onClick={() => onCitationClick(cite || { citation_id: cid, title })}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '1px 6px',
-            margin: '0 3px',
-            borderRadius: 5,
-            backgroundColor: '#EFF6FF',
-            border: '1px solid #BFDBFE',
-            color: '#1D4ED8',
-            fontSize: '0.76rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            verticalAlign: 'baseline',
-            transition: 'all 0.15s ease',
-          }}
-          title={cite ? `${cite.title || cite.document_id} (${cite.version || ''})` : cid}
-        >
-          <span>📄 {displayTitle}</span>
-        </button>
-      );
-    }
-    return renderFormattedText(part, index);
-  });
+export function CopilotView(props) {
+  return import.meta.env.VITE_STANDALONE_COPILOT_ENABLED === 'true'
+    ? <LegacyCopilotView {...props} />
+    : <CopilotWorkspace key={props.currentUser?.user_id} currentUser={props.currentUser} onOpenDocument={props.onOpenDocument} />;
 }
 
-function renderFormattedText(text, keyPrefix) {
-  const boldParts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
-  return boldParts.map((bPart, bIdx) => {
-    if (bPart.startsWith('**') && bPart.endsWith('**')) {
-      return <strong key={`${keyPrefix}-b-${bIdx}`}>{bPart.slice(2, -2)}</strong>;
-    }
-    if (bPart.startsWith('*') && bPart.endsWith('*')) {
-      return <em key={`${keyPrefix}-i-${bIdx}`}>{bPart.slice(1, -1)}</em>;
-    }
-    const codeParts = bPart.split(/(`[^`]+`)/g);
-    return codeParts.map((cPart, cIdx) => {
-      if (cPart.startsWith('`') && cPart.endsWith('`')) {
-        return (
-          <code
-            key={`${keyPrefix}-c-${cIdx}`}
-            style={{
-              backgroundColor: '#F3F4F6',
-              padding: '1px 5px',
-              borderRadius: 4,
-              fontSize: '0.85em',
-              fontFamily: 'monospace',
-            }}
-          >
-            {cPart.slice(1, -1)}
-          </code>
-        );
-      }
-      return cPart;
-    });
-  });
-}
+import { renderMarkdownWithCitations } from './markdownRenderer';
 
-function renderMarkdownWithCitations(content, citations = [], onCitationClick) {
-  if (!content) return null;
-  const lines = content.split('\n');
-  const elements = [];
-  let tableRows = [];
-  let listItems = [];
-  let listType = null;
 
-  const flushTable = () => {
-    if (tableRows.length > 0) {
-      const headerRow = tableRows[0];
-      const hasSeparator = tableRows.length > 1 && /^\|?(\s*:?-+:?\s*\|?)+$/.test(tableRows[1].trim());
-      const bodyRows = hasSeparator ? tableRows.slice(2) : tableRows.slice(1);
-
-      const parseCells = (row) =>
-        row
-          .replace(/^\|/, '')
-          .replace(/\|$/, '')
-          .split('|')
-          .map((c) => c.trim());
-
-      const headers = parseCells(headerRow);
-
-      elements.push(
-        <div key={`table-${elements.length}`} style={{ overflowX: 'auto', margin: '12px 0' }}>
-          <table
-            style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: '0.84rem',
-              border: '1px solid #E5E7EB',
-            }}
-          >
-            <thead>
-              <tr style={{ backgroundColor: '#F9FAFB' }}>
-                {headers.map((h, i) => (
-                  <th
-                    key={i}
-                    style={{
-                      padding: '8px 12px',
-                      border: '1px solid #E5E7EB',
-                      textAlign: 'left',
-                      fontWeight: 700,
-                      color: '#111827',
-                    }}
-                  >
-                    {renderInlineWithCitations(h, citations, onCitationClick)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {bodyRows.map((r, rIdx) => {
-                const cells = parseCells(r);
-                return (
-                  <tr key={rIdx} style={{ backgroundColor: rIdx % 2 === 1 ? '#FAFAFA' : '#FFFFFF' }}>
-                    {cells.map((cell, cIdx) => (
-                      <td
-                        key={cIdx}
-                        style={{
-                          padding: '8px 12px',
-                          border: '1px solid #E5E7EB',
-                          color: '#374151',
-                        }}
-                      >
-                        {renderInlineWithCitations(cell, citations, onCitationClick)}
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      );
-      tableRows = [];
-    }
-  };
-
-  const flushList = () => {
-    if (listItems.length > 0) {
-      if (listType === 'ol') {
-        elements.push(
-          <ol key={`ol-${elements.length}`} style={{ paddingLeft: 22, margin: '8px 0', fontSize: '0.9rem' }}>
-            {listItems.map((item, i) => (
-              <li key={i} style={{ marginBottom: 4 }}>
-                {renderInlineWithCitations(item, citations, onCitationClick)}
-              </li>
-            ))}
-          </ol>
-        );
-      } else {
-        elements.push(
-          <ul key={`ul-${elements.length}`} style={{ paddingLeft: 20, margin: '8px 0', fontSize: '0.9rem' }}>
-            {listItems.map((item, i) => (
-              <li key={i} style={{ marginBottom: 4 }}>
-                {renderInlineWithCitations(item, citations, onCitationClick)}
-              </li>
-            ))}
-          </ul>
-        );
-      }
-      listItems = [];
-      listType = null;
-    }
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    if (trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.length > 2) {
-      flushList();
-      tableRows.push(trimmed);
-      continue;
-    } else {
-      flushTable();
-    }
-
-    if (/^[-*]\s+/.test(trimmed)) {
-      if (listType === 'ol') flushList();
-      listType = 'ul';
-      listItems.push(trimmed.replace(/^[-*]\s+/, ''));
-      continue;
-    }
-
-    if (/^\d+\.\s+/.test(trimmed)) {
-      if (listType === 'ul') flushList();
-      listType = 'ol';
-      listItems.push(trimmed.replace(/^\d+\.\s+/, ''));
-      continue;
-    }
-
-    flushList();
-
-    if (!trimmed) {
-      continue;
-    }
-
-    if (trimmed.startsWith('### ')) {
-      elements.push(
-        <h4 key={`h4-${elements.length}`} style={{ fontSize: '0.95rem', fontWeight: 700, margin: '14px 0 6px 0', color: '#111827' }}>
-          {renderInlineWithCitations(trimmed.slice(4), citations, onCitationClick)}
-        </h4>
-      );
-      continue;
-    }
-    if (trimmed.startsWith('## ')) {
-      elements.push(
-        <h3 key={`h3-${elements.length}`} style={{ fontSize: '1.02rem', fontWeight: 800, margin: '16px 0 8px 0', color: '#111827' }}>
-          {renderInlineWithCitations(trimmed.slice(3), citations, onCitationClick)}
-        </h3>
-      );
-      continue;
-    }
-    if (trimmed.startsWith('# ')) {
-      elements.push(
-        <h2 key={`h2-${elements.length}`} style={{ fontSize: '1.12rem', fontWeight: 800, margin: '18px 0 10px 0', color: '#111827' }}>
-          {renderInlineWithCitations(trimmed.slice(2), citations, onCitationClick)}
-        </h2>
-      );
-      continue;
-    }
-
-    elements.push(
-      <p key={`p-${elements.length}`} style={{ margin: '6px 0', lineHeight: 1.6 }}>
-        {renderInlineWithCitations(line, citations, onCitationClick)}
-      </p>
-    );
-  }
-
-  flushTable();
-  flushList();
-
-  return <>{elements}</>;
-}
-
-export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = null }) {
+function LegacyCopilotView({ onOpenDocument, initialQuery = '', currentUser = null }) {
   const [filterDomain, setFilterDomain] = useState('all');
   const [inputDraft, setInputDraft] = useState({ initialQuery, value: initialQuery || '' });
   const inputMessage = inputDraft.initialQuery === initialQuery ? inputDraft.value : initialQuery || '';
@@ -282,6 +43,8 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
 
   const storageKey = `${STORAGE_KEY_PREFIX}${currentUser?.username || 'advisor'}`;
 
+  // Top Tabs Mode: 'customer_sales' (Tab 2 - Chức năng mới) vs 'product_knowledge' (Tab 1 - Tra cứu hiện tại)
+  const [copilotMode, setCopilotMode] = useState('customer_sales');
 
   const [loading, setLoading] = useState(false);
   const [streamStatus, setStreamStatus] = useState('');
@@ -661,7 +424,87 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
   };
 
   return (
-    <div className={`copilot-grid-layout${showSidebar ? ' copilot-with-history' : ''}`}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%', minHeight: 0, flex: 1 }}>
+      {/* 2 TOP TABS NAVIGATION */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          padding: '5px',
+          backgroundColor: '#E2E8F0',
+          borderRadius: 10,
+          width: 'fit-content',
+          flexShrink: 0,
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setCopilotMode('customer_sales')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '7px 16px',
+            borderRadius: 8,
+            border: 'none',
+            fontSize: '0.86rem',
+            fontWeight: copilotMode === 'customer_sales' ? 700 : 500,
+            backgroundColor: copilotMode === 'customer_sales' ? '#FFFFFF' : 'transparent',
+            color: copilotMode === 'customer_sales' ? '#1D4ED8' : '#475569',
+            boxShadow: copilotMode === 'customer_sales' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span>🤝 Trợ lý bán hàng theo khách hàng</span>
+          <span style={{ fontSize: '0.7rem', backgroundColor: '#FEF3C7', color: '#92400E', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
+            Mới
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCopilotMode('product_knowledge')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '7px 16px',
+            borderRadius: 8,
+            border: 'none',
+            fontSize: '0.86rem',
+            fontWeight: copilotMode === 'product_knowledge' ? 700 : 500,
+            backgroundColor: copilotMode === 'product_knowledge' ? '#FFFFFF' : 'transparent',
+            color: copilotMode === 'product_knowledge' ? '#1D4ED8' : '#475569',
+            boxShadow: copilotMode === 'product_knowledge' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span>📚 Tra cứu & Hỏi đáp xe</span>
+          <Badge variant="default" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>RAG</Badge>
+        </button>
+      </div>
+
+      {/* TAB 2: CUSTOMER SALES COPILOT */}
+      {copilotMode === 'customer_sales' && (
+        <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <CustomerSalesCopilotView
+            currentUser={currentUser}
+            onOpenKnowledgeQuery={(q) => {
+              setFilterDomain('all');
+              setCustomerContext('');
+              setCopilotMode('product_knowledge');
+              handleSend(q);
+            }}
+            onOpenDocument={onOpenDocument}
+          />
+        </div>
+      )}
+
+      {/* TAB 1: PRODUCT KNOWLEDGE COPILOT (EXISTING) */}
+      <div style={{ display: copilotMode === 'product_knowledge' ? 'block' : 'none', flex: 1, minHeight: 0, height: '100%' }}>
+        <div className={`copilot-grid-layout${showSidebar ? ' copilot-with-history' : ''}`}>
       {/* SESSIONS SIDEBAR */}
       {showSidebar && (
         <div
@@ -1346,6 +1189,8 @@ export function CopilotView({ onOpenDocument, initialQuery = '', currentUser = n
         citation={activeCitation}
         onOpenDocument={onOpenDocument}
       />
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-"""Owned, expiring dialogue storage and conversation memory on Supabase PostgreSQL."""
+"""Owned dialogue storage: durable advisor/customer sessions and expiring standalone sessions."""
 
 import json
 import logging
@@ -15,6 +15,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
     create_engine,
     delete,
     desc,
@@ -22,6 +23,7 @@ from sqlalchemy import (
     select,
     update,
 )
+from sqlalchemy.exc import IntegrityError
 
 from src.integrations.practice_persistence import normalize_database_url
 from src.observability import db_connection, span
@@ -94,6 +96,25 @@ class SQLCopilotSessionsRepository:
             Column("updated_at", DateTime(timezone=True), nullable=False),
         )
 
+        # A binding gives a session durable, private customer scope. Legacy sessions keep their TTL.
+        self.lookup_sessions = Table(
+            "sales_copilot_lookup_sessions", self.metadata,
+            Column("owner_id", String(120), primary_key=True),
+            Column("sales_conversation_id", String(64), primary_key=True),
+            Column("session_id", String(64), nullable=False),
+            Column("created_at", DateTime(timezone=True), nullable=False),
+            Column("updated_at", DateTime(timezone=True), nullable=False),
+            UniqueConstraint("session_id", name="uq_sales_lookup_session"),
+        )
+
+        # Shared knowledge Q&A belongs to the advisor, independently of CRM customers.
+        self.advisor_sessions = Table(
+            "sales_copilot_advisor_sessions", self.metadata,
+            Column("owner_id", String(120), primary_key=True),
+            Column("session_id", String(64), nullable=False, unique=True),
+            Column("created_at", DateTime(timezone=True), nullable=False),
+        )
+
         self._ready = False
         self._lock = Lock()
 
@@ -105,7 +126,80 @@ class SQLCopilotSessionsRepository:
                         self.metadata.create_all(self.engine)
                     self._ready = True
 
-    def load(self, session_id: str, owner_id: str) -> dict:
+    def _scope(self, table, owner_id, customer_conversation_id=None, *, advisor=False):
+        bound = select(self.lookup_sessions.c.session_id).where(
+            self.lookup_sessions.c.session_id == table.c.session_id,
+        )
+        shared = select(self.advisor_sessions.c.session_id).where(
+            self.advisor_sessions.c.session_id == table.c.session_id,
+        )
+        if advisor:
+            return shared.where(self.advisor_sessions.c.owner_id == owner_id).exists() & ~bound.exists()
+        if customer_conversation_id is None:
+            return ~bound.exists() & ~shared.exists()
+        return bound.where(
+            self.lookup_sessions.c.owner_id == owner_id,
+            self.lookup_sessions.c.sales_conversation_id == customer_conversation_id,
+        ).exists()
+
+    def customer_session(self, owner_id, conversation_id, *, create=False):
+        """Resolve one stable session per advisor/customer conversation, without writes on GET."""
+        self._ensure_schema()
+        predicate = (
+            self.lookup_sessions.c.owner_id == owner_id,
+            self.lookup_sessions.c.sales_conversation_id == conversation_id,
+        )
+        with self.engine.connect() as connection:
+            sid = connection.execute(select(self.lookup_sessions.c.session_id).where(*predicate)).scalar()
+        if sid or not create:
+            return sid
+        sid, now = uuid4().hex, datetime.now(UTC)
+        try:
+            with self.engine.begin() as connection:
+                connection.execute(insert(self.lookup_sessions).values(
+                    owner_id=owner_id, sales_conversation_id=conversation_id, session_id=sid,
+                    created_at=now, updated_at=now,
+                ))
+                connection.execute(insert(self.sessions).values(
+                    session_id=sid, owner_id=owner_id, history_json="[]", customer_context="",
+                    revision=0, expires_at=now + self.ttl,
+                ))
+            return sid
+        except IntegrityError:
+            # A concurrent first question may have created the binding while we were reading.
+            with self.engine.connect() as connection:
+                existing = connection.execute(select(self.lookup_sessions.c.session_id).where(*predicate)).scalar()
+            if existing:
+                return existing
+            raise
+
+    def advisor_session(self, owner_id, *, create=False):
+        """One durable knowledge session per advisor. Reads do not create sessions."""
+        self._ensure_schema()
+        predicate = self.advisor_sessions.c.owner_id == owner_id
+        with self.engine.connect() as connection:
+            sid = connection.execute(select(self.advisor_sessions.c.session_id).where(predicate)).scalar()
+        if sid or not create:
+            return sid
+        sid, now = uuid4().hex, datetime.now(UTC)
+        try:
+            with self.engine.begin() as connection:
+                connection.execute(insert(self.advisor_sessions).values(
+                    owner_id=owner_id, session_id=sid, created_at=now,
+                ))
+                connection.execute(insert(self.sessions).values(
+                    session_id=sid, owner_id=owner_id, history_json="[]", customer_context="",
+                    revision=0, expires_at=now + self.ttl,
+                ))
+            return sid
+        except IntegrityError:
+            with self.engine.connect() as connection:
+                existing = connection.execute(select(self.advisor_sessions.c.session_id).where(predicate)).scalar()
+            if existing:
+                return existing
+            raise
+
+    def load(self, session_id: str, owner_id: str, *, customer_conversation_id=None, advisor=False) -> dict:
         """Load conversation history for Agent intake. Preserves backward compatibility contract."""
         self._ensure_schema()
         with db_connection(self.engine.connect, backend="session") as connection:
@@ -114,7 +208,8 @@ class SQLCopilotSessionsRepository:
                     select(self.sessions).where(
                         self.sessions.c.session_id == session_id,
                         self.sessions.c.owner_id == owner_id,
-                        self.sessions.c.expires_at > datetime.now(UTC),
+                        self._scope(self.sessions, owner_id, customer_conversation_id, advisor=advisor),
+                        self.sessions.c.expires_at > datetime.now(UTC) if customer_conversation_id is None and not advisor else True,
                     )
                 )
                 .mappings()
@@ -227,6 +322,8 @@ class SQLCopilotSessionsRepository:
         revision: int | None = None,
         *,
         rich_turn: dict[str, Any] | None = None,
+        customer_conversation_id: str | None = None,
+        advisor: bool = False,
     ):
         """Save dialogue history. Preserves optimistic concurrency and synchronizes both tables."""
         self._ensure_schema()
@@ -238,7 +335,20 @@ class SQLCopilotSessionsRepository:
             "expires_at": now + self.ttl,
         }
         with db_connection(self.engine.begin, backend="session") as connection:
-            connection.execute(delete(self.sessions).where(self.sessions.c.expires_at <= now))
+            expired_sids = [
+                r[0]
+                for r in connection.execute(
+                    select(self.sessions.c.session_id).where(
+                        self.sessions.c.expires_at <= now,
+                        self._scope(self.sessions, owner_id),
+                    )
+                ).fetchall()
+            ]
+            if expired_sids:
+                connection.execute(delete(self.sessions).where(self.sessions.c.session_id.in_(expired_sids)))
+                connection.execute(delete(self.conversations).where(self.conversations.c.session_id.in_(expired_sids)))
+                connection.execute(delete(self.messages).where(self.messages.c.session_id.in_(expired_sids)))
+                connection.execute(delete(self.memories).where(self.memories.c.session_id.in_(expired_sids)))
             if revision is None:
                 connection.execute(insert(self.sessions).values(session_id=session_id, owner_id=owner_id, **values))
             else:
@@ -248,7 +358,8 @@ class SQLCopilotSessionsRepository:
                         self.sessions.c.session_id == session_id,
                         self.sessions.c.owner_id == owner_id,
                         self.sessions.c.revision == revision,
-                        self.sessions.c.expires_at > now,
+                        self._scope(self.sessions, owner_id, customer_conversation_id, advisor=advisor),
+                        self.sessions.c.expires_at > now if customer_conversation_id is None and not advisor else True,
                     )
                     .values(**values)
                 )
@@ -293,6 +404,7 @@ class SQLCopilotSessionsRepository:
 
                 asst_msg_id = "msg-" + uuid4().hex[:12]
                 asst_meta = {
+                    "response_data": resp_data,
                     "time": time_str,
                     "citations": resp_data.get("citations", []),
                     "product_insights": resp_data.get("product_insights", []),
@@ -339,6 +451,12 @@ class SQLCopilotSessionsRepository:
                         expires_at=now + self.ttl,
                     )
                 )
+            if customer_conversation_id:
+                connection.execute(update(self.lookup_sessions).where(
+                    self.lookup_sessions.c.session_id == session_id,
+                    self.lookup_sessions.c.owner_id == owner_id,
+                    self.lookup_sessions.c.sales_conversation_id == customer_conversation_id,
+                ).values(updated_at=now))
             return last_seq
 
     def get_conversation_last_seq(self, session_id: str) -> int:
@@ -354,6 +472,13 @@ class SQLCopilotSessionsRepository:
         """Delete conversation across all tables."""
         self._ensure_schema()
         with db_connection(self.engine.begin, backend="session") as connection:
+            authorized = connection.execute(select(self.sessions.c.session_id).where(
+                self.sessions.c.session_id == session_id,
+                self.sessions.c.owner_id == owner_id,
+                self._scope(self.sessions, owner_id),
+            )).scalar()
+            if authorized is None:
+                raise CopilotSessionNotFoundError(session_id)
             result = connection.execute(
                 delete(self.sessions).where(
                     self.sessions.c.session_id == session_id,
@@ -387,6 +512,7 @@ class SQLCopilotSessionsRepository:
                     .where(
                         self.conversations.c.owner_id == owner_id,
                         self.conversations.c.expires_at > now,
+                        self._scope(self.conversations, owner_id),
                     )
                     .order_by(desc(self.conversations.c.updated_at))
                     .limit(limit)
@@ -421,6 +547,7 @@ class SQLCopilotSessionsRepository:
                         .where(
                             self.sessions.c.owner_id == owner_id,
                             self.sessions.c.expires_at > now,
+                            self._scope(self.sessions, owner_id),
                         )
                         .limit(limit)
                     )
@@ -455,6 +582,7 @@ class SQLCopilotSessionsRepository:
             query = select(self.sessions).where(
                 self.sessions.c.session_id == session_id,
                 self.sessions.c.expires_at > now,
+                self._scope(self.sessions, owner_id),
             )
             if owner_id is not None:
                 query = query.where(self.sessions.c.owner_id == owner_id)
@@ -520,31 +648,48 @@ class SQLCopilotSessionsRepository:
                 "messages": messages,
             }
 
-    def save_rich_turn(
-        self,
-        session_id: str,
-        owner_id: str,
-        request_id: str,
-        user_query: str,
-        response_data: dict[str, Any],
-        customer_context: str = "",
-        revision: int | None = None,
-    ):
-        """Atomically record user question and assistant response via unified save method."""
-        dialogue = [
-            {"role": "user", "content": user_query},
-            {"role": "assistant", "content": response_data.get("answer", "")[:4000]},
-        ]
-        return self.save(
-            session_id=session_id,
-            owner_id=owner_id,
-            history=dialogue,
-            customer_context=customer_context,
-            revision=revision,
-            rich_turn={
-                "request_id": request_id,
-                "user_query": user_query,
-                "response_data": response_data,
-            },
-        )
+    def customer_history(self, owner_id, conversation_id, *, before_seq=None, limit=20):
+        """Read a bounded rich page; customer authorization is performed by the adapter first."""
+        sid = self.customer_session(owner_id, conversation_id)
+        return self._history_page(sid, before_seq=before_seq, limit=limit)
+
+    def advisor_history(self, owner_id, *, before_seq=None, limit=20):
+        """Load only this advisor's shared knowledge history, with a bounded page."""
+        sid = self.advisor_session(owner_id)
+        return self._history_page(sid, before_seq=before_seq, limit=limit)
+
+    def _history_page(self, sid, *, before_seq=None, limit=20):
+        if not sid:
+            return {"session_id": None, "messages": [], "next_before_seq": None}
+        query = select(self.messages).where(self.messages.c.session_id == sid)
+        if before_seq is not None:
+            query = query.where(self.messages.c.seq < before_seq)
+        with self.engine.connect() as connection:
+            rows = connection.execute(query.order_by(self.messages.c.seq.desc()).limit(limit + 1)).mappings().all()
+        more, rows = len(rows) > limit, rows[:limit]
+        messages = []
+        for row in reversed(rows):
+            meta = json.loads(row["metadata_json"] or "{}")
+            messages.append({
+                "id": row["id"], "seq": row["seq"], "role": row["role"], "content": row["content"],
+                "request_id": row["request_id"], "created_at": row["created_at"].isoformat(),
+                **meta,
+            })
+        return {
+            "session_id": sid, "messages": messages,
+            "next_before_seq": rows[-1]["seq"] if more else None,
+        }
+
+    def summary_batch(self, session_id, *, after_seq, through_seq):
+        """Internal bounded read for rolling memory, valid for durable and legacy sessions."""
+        self._ensure_schema()
+        with self.engine.connect() as connection:
+            return [dict(row) for row in connection.execute(
+                select(self.messages.c.seq, self.messages.c.role, self.messages.c.content).where(
+                    self.messages.c.session_id == session_id,
+                    self.messages.c.seq > after_seq,
+                    self.messages.c.seq <= through_seq,
+                ).order_by(self.messages.c.seq).limit(20)
+            ).mappings()]
+
 

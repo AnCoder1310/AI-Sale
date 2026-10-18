@@ -16,6 +16,9 @@ from .practice_policy import valid_policy_chunk
 
 logger = logging.getLogger(__name__)
 
+# Charging tariffs and charging offers live in charging policies, not the car price list or sales promotions.
+_CHARGING_CLAIM = re.compile(r"kWh|(?:trạm|trụ|phiên|giá|phí|ưu đãi)\s+sạc", re.I)
+
 
 class KnowledgeRetriever(Protocol):
     def retrieve(
@@ -68,7 +71,8 @@ class RetrievalKnowledgeEvidenceProvider:
             document_type = None
             top_k = self._top_k_per_claim
             warranty = bool(re.search("bảo hành", claim.text, re.I)) or claim.category == "warranty"
-            promotion = (
+            charging = not warranty and bool(_CHARGING_CLAIM.search(claim.text))
+            promotion = not charging and (
                 bool(
                     re.search(
                         r"ưu đãi|giảm giá|giảm\s+\d+(?:[.,]\d+)?\s*%|Vì Tương Lai Xanh|khuyến mãi|chiết khấu",
@@ -79,6 +83,9 @@ class RetrievalKnowledgeEvidenceProvider:
                 or claim.category == "promotion"
             )
             if warranty:
+                top_k = 24
+            elif charging:
+                document_type = DocumentType.POLICY.value
                 top_k = 24
             elif promotion:
                 document_type = DocumentType.PROMOTION.value
@@ -112,6 +119,8 @@ class RetrievalKnowledgeEvidenceProvider:
             if warranty:
                 model_id = product_model.replace(" ", "") if product_model else ""
                 candidates = [chunk for chunk in candidates if chunk.document_id.startswith(f"FAQ_{model_id}")]
+            elif charging:
+                candidates = [chunk for chunk in candidates if chunk.metadata.policy_type == "charging"]
             elif promotion:
                 candidates = [chunk for chunk in candidates if chunk.document_id.startswith("PROMOTION_SALES_VINFAST_")]
                 # Discount calculations need both the promotion and the MSRP table.
@@ -131,7 +140,7 @@ class RetrievalKnowledgeEvidenceProvider:
             # Preferred-source misses must not erase otherwise useful evidence.
             # FAQ IDs are not a document_type, so warranty preference is applied
             # to the model-scoped candidates above; fallback retains all sources.
-            if (warranty or promotion) and not candidates:
+            if (warranty or charging or promotion) and not candidates:
                 candidates = self._retrieval_service.retrieve(
                     claim.text,
                     top_k=self._top_k_per_claim,
@@ -143,6 +152,7 @@ class RetrievalKnowledgeEvidenceProvider:
             price_evidence = [chunk for chunk in price_evidence if valid_policy_chunk(chunk, state.target_date)]
             candidates.sort(
                 key=lambda chunk: (
+                    promotion and not _names_same_program(claim.text, chunk),
                     chunk.document_id.startswith("PRODUCT_"),
                     not bool(trim and re.search(rf"\b{trim.group(1)}\b", chunk.content, re.I)),
                 )
@@ -161,3 +171,11 @@ class RetrievalKnowledgeEvidenceProvider:
             )
             for chunk in chunks_by_id.values()
         ]
+
+
+def _names_same_program(claim_text: str, chunk: KnowledgeChunk) -> bool:
+    """Whether the chunk's section heading shares a three-word run with the claim, e.g. a program name."""
+    heading = next((line for line in chunk.content.splitlines() if line.strip()), "")
+    claim_words, heading_words = re.findall(r"\w+", claim_text.lower()), re.findall(r"\w+", heading.lower())
+    claim_runs = {tuple(claim_words[i : i + 3]) for i in range(len(claim_words) - 2)}
+    return any(tuple(heading_words[i : i + 3]) in claim_runs for i in range(len(heading_words) - 2))

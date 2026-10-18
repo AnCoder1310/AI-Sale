@@ -85,6 +85,7 @@ class RoleplayState(BaseModel):
     current_intent: str
     current_topic: str | None = None
     pending_next_step_attempted: bool = False
+    consecutive_off_topic_turns: int = Field(default=0, ge=0)
     termination_status: TerminationStatus = TerminationStatus.ACTIVE
     termination_reason: str | None = None
     closing_outcome: str | None = None
@@ -182,6 +183,7 @@ class RoleplayState(BaseModel):
             "visible_context": self.visible_context,
             "customer_goals": self.customer_goals,
             "current_intent": self.current_intent,
+            "advisor_off_topic": self.consecutive_off_topic_turns > 0,
             "revealed_facts": revealed_fact_values,
             "spoken_fact_message_ids": self.spoken_fact_message_ids,
             "spoken_concern_message_ids": self.spoken_concern_message_ids,

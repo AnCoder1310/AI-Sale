@@ -14,7 +14,7 @@ import time
 from contextlib import contextmanager
 from copy import copy
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from functools import wraps
 from uuid import UUID, uuid4
 
@@ -22,15 +22,21 @@ from langchain_core.tracers.langchain import LangChainTracer
 from langsmith import Client, tracing_context
 from langsmith.run_helpers import get_current_run_tree
 from langsmith.run_trees import RunTree
+from pydantic import BaseModel
 from urllib3.util.retry import Retry
 
 logger = logging.getLogger("src.telemetry")
 _request = contextvars.ContextVar("copilot_telemetry", default=None)
 _log_span = contextvars.ContextVar("copilot_log_span", default=None)
 worker_timeout = contextvars.ContextVar("copilot_worker_timeout", default=None)
+node_observer = contextvars.ContextVar("copilot_node_observer", default=None)
 _warning_lock = threading.Lock()
 _last_warning = 0.0
 _META = {
+    "case_id", "evaluation_run_id", "dataset_hash", "code_hash", "snapshot_id",
+    "source_surface",
+    "session_id",
+    "conversation_id",
     "request_id",
     "app_env",
     "http_status",
@@ -70,9 +76,11 @@ _META = {
     "duration_ms",
     "workflow_version",
     "route",
+    "http_route",
     "profile",
     "selected_count",
     "context_characters",
+    "context_tokens_estimate",
     "reasoning_tokens",
     "finish_reason",
     "coverage_count",
@@ -91,9 +99,20 @@ _META = {
     "citation_id",
     "evidence_stage",
     "affinity",
+    "selection_strategy",
+    "selection_reason",
+    "candidate_rank",
+    "bundle_blocks",
+    "bundle_characters",
+    "bundle_hash",
+    "anchor_count",
+    "parent_context_reads",
     "missing_count",
     "claim_index",
     "verdict",
+    "decision_status",
+    "decision_route",
+    "decision_cost",
 }
 
 
@@ -132,6 +151,126 @@ def redact(value):
         text,
     )
     return text[:16000]
+
+
+_CONTENT_OMIT = {
+    "runtime",
+    "snapshot",
+    "readiness_loader",
+    "progress_queue",
+    "customer_context",
+    "parent_context_cache",
+    "jev_assessment_cache",
+    "callbacks",
+    "client",
+    "headers",
+    "authorization",
+    "cookie",
+    "password",
+    "secret",
+    "api_key",
+    "apikey",
+    "access_token",
+    "refresh_token",
+    "database_url",
+    "embedding",
+    "embeddings",
+    "vector",
+    "vectors",
+}
+_STATE_CONTENT_FIELDS = {
+    "analysis",
+    "answer_context",
+    "answer_kind",
+    "candidate_evidence",
+    "clarification_question",
+    "corrective_retrieval_count",
+    "domain",
+    "draft_answer",
+    "evidence_registry",
+    "evidence_selection_diagnostics",
+    "fallback_reason",
+    "feedback",
+    "final_response",
+    "generated_answer",
+    "generation_count",
+    "grounding_review",
+    "history",
+    "jev_conflict_chunk_ids",
+    "jev_status",
+    "memory_summary",
+    "product_models",
+    "profile_name",
+    "query",
+    "raw_search_results",
+    "recovery_requirement_ids",
+    "rejected_evidence_ids",
+    "request_id",
+    "requirements",
+    "resolved_date",
+    "retrieval_errors",
+    "retrieval_rounds",
+    "route",
+    "search_plan",
+    "search_signatures",
+    "selected_evidence",
+    "target_date",
+    "tool_calls",
+    "unsupported_claims",
+    "verified_snapshot",
+}
+
+
+def safe_content(value, *, state=False):
+    """Structured, bounded content without serializing runtime objects or credentials."""
+    remaining = 64000
+
+    def clean(item, depth=0):
+        nonlocal remaining
+        if remaining <= 0 or depth > 12:
+            return "[TRUNCATED]"
+        if item is None or isinstance(item, (bool, int, float)):
+            remaining -= 16
+            return item
+        if isinstance(item, str):
+            text = redact(item)
+            limit = min(16000, max(0, remaining))
+            remaining -= min(len(text), limit)
+            return text[:limit] + ("[TRUNCATED]" if len(item) > limit else "")
+        if isinstance(item, (date, UUID)):
+            return clean(str(item), depth + 1)
+        if isinstance(item, BaseModel):
+            return clean(item.model_dump(mode="python"), depth + 1)
+        if isinstance(item, dict):
+            result = {}
+            for key, child in item.items():
+                if not isinstance(key, str):
+                    continue
+                normalized = key.lower().replace("-", "_")
+                if normalized in _CONTENT_OMIT or re.search(
+                    r"(?:^|_)(?:api_key|password|secret|access_token|refresh_token)$", normalized
+                ):
+                    continue
+                if len(result) >= 100 or remaining <= 0:
+                    result["_truncated"] = True
+                    break
+                result[redact(key)[:120]] = clean(child, depth + 1)
+            return result
+        if isinstance(item, (list, tuple)):
+            result = []
+            for child in item[:100]:
+                if remaining <= 0:
+                    break
+                result.append(clean(child, depth + 1))
+            if len(result) < len(item):
+                result.append("[TRUNCATED]")
+            return result
+        # Do not call repr/str on clients, callbacks, queues or arbitrary objects.
+        return "[OMITTED]"
+
+    if state:
+        value = {key: child for key, child in (value or {}).items() if key in _STATE_CONTENT_FIELDS}
+    return clean(value)
 
 
 def warning(error=None):
@@ -220,6 +359,7 @@ class RequestTelemetry:
     service: TelemetryService
     root: RunTree | None = None
     content_allowed: bool = False
+    workflow_content: bool = False
     metadata: dict = field(default_factory=dict)
     tracer: SafeTracer | None = None
 
@@ -241,11 +381,17 @@ class SafeTracer(LangChainTracer):
     def _persist_run_single(self, run):
         if run.extra.get("__disabled"):
             return
+        metadata = run.extra.get("metadata", {})
+        logical_node = run.run_type == "chain" and (
+            run.name == "LangGraph" or run.name == metadata.get("langgraph_node")
+        )
         capture = (
-            run.run_type == "llm"
-            and self.scope.content_allowed
+            self.scope.content_allowed
             and self.scope.service.capture
-            and run.extra.get("metadata", {}).get("node") != "analyze_and_route"
+            and (
+                (run.run_type == "llm" and (self.scope.workflow_content or metadata.get("node") != "analyze_and_route"))
+                or (self.scope.workflow_content and logical_node)
+            )
         )
         if capture:
             self._capture_ids.add(run.id)
@@ -278,8 +424,8 @@ class SafeTracer(LangChainTracer):
             "parent_run_id": run.parent_run_id,
             "project_name": self.scope.service.project,
             "extra": {"metadata": metadata},
-            "inputs": {"content": redact(run.inputs)} if capture else {},
-            "outputs": {"content": redact(run.outputs)} if capture and run.outputs else {},
+            "inputs": safe_content(run.inputs, state=run.run_type == "chain") if capture else {},
+            "outputs": safe_content(run.outputs, state=run.run_type == "chain") if capture and run.outputs else {},
             "error": error,
             "tags": ["copilot", self.scope.service.app_env],
         }
@@ -339,11 +485,45 @@ def allow_content():
         scope.content_allowed = True
 
 
+def capture_knowledge_input(query):
+    """Opt in only for authenticated shared Q&A, before any graph node starts."""
+    scope = _request.get()
+    if (
+        scope
+        and scope.root
+        and scope.service.capture
+        and scope.metadata.get("http_route")
+        in {
+            "/api/v1/copilot/knowledge",
+            "/api/v1/copilot/knowledge/stream",
+        }
+    ):
+        scope.workflow_content = scope.content_allowed = True
+        scope.root.add_inputs(safe_content({"query": query}))
+
+
+def capture_knowledge_output(result):
+    scope = _request.get()
+    if scope and scope.root and scope.workflow_content and scope.service.capture:
+        scope.root.outputs = safe_content(result)
+
+
 def graph_config():
     scope = _request.get()
     if scope and scope.tracer:
         return {"callbacks": [scope.tracer], "metadata": {"request_id": scope.request_id}}
     return {}
+
+
+@contextmanager
+def private_customer_context():
+    """Never export customer analysis, prompts, outputs or provider errors."""
+    token = _request.set(None)
+    try:
+        with tracing_context(enabled=False):
+            yield
+    finally:
+        _request.reset(token)
 
 
 @contextmanager
@@ -475,7 +655,14 @@ class CopilotTelemetryMiddleware:
         self.app, self.service = app, service
 
     async def __call__(self, scope, receive, send):
-        if scope.get("type") != "http" or scope.get("path") != "/api/v1/copilot/query" or scope.get("method") != "POST":
+        traced_routes = {
+            ("POST", "/api/v1/copilot/query"),
+            ("POST", "/api/v1/copilot/query/stream"),
+            ("POST", "/api/v1/copilot/knowledge"),
+            ("POST", "/api/v1/copilot/knowledge/stream"),
+            ("GET", "/api/v1/copilot/knowledge"),
+        }
+        if scope.get("type") != "http" or (scope.get("method"), scope.get("path")) not in traced_routes:
             with tracing_context(enabled=False):
                 await self.app(scope, receive, send)
             return
@@ -507,6 +694,7 @@ class CopilotTelemetryMiddleware:
         try:
             with tracing_context(parent=telemetry.root, enabled=telemetry.root is not None, client=self.service.client):
                 event("request_start", operation="copilot.query")
+                annotate(route=scope["path"], http_route=scope["path"])
                 await self.app(scope, receive, correlated_send)
         except Exception as exc:
             error = type(exc).__name__
@@ -523,12 +711,23 @@ class CopilotTelemetryMiddleware:
             metadata = {
                 **telemetry.metadata,
                 "http_status": status,
-                "error_type": error or (telemetry.metadata.get("error_type") if status >= 500 else None),
+                # SSE reports service failures inside an HTTP 200 response.
+                "error_type": error or telemetry.metadata.get("error_type"),
             }
             event("request_end", duration_ms=round((time.monotonic() - started) * 1000, 3), **metadata)
             if telemetry.root:
+                if (
+                    telemetry.workflow_content
+                    and not telemetry.root.outputs
+                    and (metadata["error_type"] or status >= 400)
+                ):
+                    telemetry.root.outputs = {
+                        "status": "error",
+                        "error_type": metadata["error_type"] or f"HTTP_{status}",
+                    }
                 telemetry.root.end(
-                    error=error or (f"HTTP_{status}" if status >= 500 else None), metadata=safe_metadata(metadata)
+                    error=metadata["error_type"] or (f"HTTP_{status}" if status >= 500 else None),
+                    metadata=safe_metadata(metadata),
                 )
-                safe_call(telemetry.root.patch)
+                safe_call(telemetry.root.patch, exclude_inputs=not telemetry.workflow_content)
             _request.reset(token)

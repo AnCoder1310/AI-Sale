@@ -15,6 +15,8 @@ test('queryStream throws error if stream terminates before receiving final event
     status: 200,
     body: {
       getReader: () => ({
+        cancel: async () => {},
+        releaseLock() {},
         read: async () => {
           if (readIndex < mockChunks.length) {
             const encoder = new TextEncoder();
@@ -71,6 +73,8 @@ test('queryStream dispatches onInsights event and onFinal without swallowing cal
     status: 200,
     body: {
       getReader: () => ({
+        cancel: async () => {},
+        releaseLock() {},
         read: async () => {
           if (readIndex < mockChunks.length) {
             const encoder = new TextEncoder();
@@ -121,6 +125,8 @@ test('queryStream rethrows errors thrown from onFinal callback instead of treati
     status: 200,
     body: {
       getReader: () => ({
+        cancel: async () => {},
+        releaseLock() {},
         read: async () => {
           if (readIndex < mockChunks.length) {
             const encoder = new TextEncoder();

@@ -160,3 +160,14 @@ async def test_analyzer_preserves_original_casing_for_recorded_claim():
     result = await analyzer.analyze("Dạ, với VF 5 Plus chạy biển vàng có ưu đãi.", scenario, state)
 
     assert [claim.text for claim in result.factual_claims] == ["với VF 5 Plus chạy biển vàng"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("output,expected", [({}, False), ({"off_topic": True}, True), ({"off_topic": False}, False)])
+async def test_off_topic_survives_analysis_validation(output, expected):
+    scenario = ScenarioRepository(SCENARIOS).get("SCENARIO_01_VF5_TAXI")
+    state = RoleplayState.from_scenario("session-1", scenario)
+
+    analysis = await TurnAnalyzer(StaticAnalysisModel(output)).analyze("xyz xyz", scenario, state)
+
+    assert analysis.off_topic is expected
