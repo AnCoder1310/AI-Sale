@@ -1,4 +1,5 @@
-import { BookIcon, BellIcon, LogoutIcon } from '../common/Icons';
+import { BookIcon, BellIcon } from '../common/Icons';
+import { AccountMenu } from './AccountMenu';
 import { CopilotLogo } from '../common/CopilotLogo';
 
 export function Header({
@@ -61,19 +62,12 @@ export function Header({
             </button>
           )}
 
-          <div className="user-profile-badge">
-
-              <span className="header-user-avatar" aria-hidden="true">{advisorProfile.name.trim().charAt(0)}</span>
-              <div className="user-details">
-                <span className="user-name">{advisorProfile.name}</span>
-                <span className="user-role">{advisorProfile.role}</span>
-              </div>
-
-          </div>
-          <button className="header-logout-btn" type="button" onClick={onLogout}>
-            <LogoutIcon style={{ width: 17, height: 17 }} />
-            Đăng xuất
-          </button>
+          <AccountMenu
+            name={advisorProfile.name}
+            username={advisorProfile.username}
+            roleLabel={advisorProfile.role}
+            onLogout={onLogout}
+          />
         </div>
       </div>
 

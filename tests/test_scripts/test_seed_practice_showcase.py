@@ -69,7 +69,7 @@ async def test_apply_feeds_dashboard_and_second_run_is_idempotent(tmp_path, demo
     dashboard = await service.manager_dashboard(now=NOW)
     assert len(dashboard.skill_matrix) == 8
     assert dashboard.has_sample_data is True
-    assert next(r for r in dashboard.skill_matrix if r.advisor_id == "advisor-demo").display_name == "Trần Minh Khoa"
+    assert next(r for r in dashboard.skill_matrix if r.advisor_id == "advisor-demo").display_name == "Phạm Đình Duy"
     assert all(any(point.attempts for point in trend) for trend in dashboard.advisor_trends.values())
     assert all(6 <= point.attempts <= 13 for point in dashboard.team_trend[:-1])  # newest week is mostly pending
     demo_trend = dashboard.advisor_trends["advisor-demo"]
