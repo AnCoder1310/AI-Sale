@@ -73,7 +73,7 @@
   gap: 16px;
 }
 .ap-scenario-media { order: 2; flex: 0 0 200px; margin-left: auto; display: flex; flex-direction: column; gap: 10px; }
-.ap-scenario-media img { width: 200px; height: 124px; object-fit: cover; border-radius: 10px; background: var(--app-bg); display: block; }
+.ap-scenario-media img { width: 200px; height: 106px; object-fit: contain; border-radius: 10px; background: transparent; display: block; }
 .ap-scenario-body { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .ap-scenario-top { display: flex; gap: 10px; align-items: flex-start; }
 .ap-scenario-top h3 { margin: 0; flex: 1; font-size: 16px; font-weight: 600; line-height: 1.4; }
@@ -107,6 +107,11 @@
 
 /* assignments + history */
 .ap-lower { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+/* Score panel with the assigned exercises beside it (top right); history runs full width below the library. */
+.ap-top { display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch; }
+.ap-top > .ap-progress { flex: 3 1 640px; min-width: 0; }
+.ap-top > .ap-card:not(.ap-progress) { flex: 1 1 320px; min-width: 0; }
+.ap-lower--single > .ap-card { flex: 1 1 100%; }
 .ap-lower > .ap-card { flex: 1 1 380px; }
 .ap-lower > .ap-card--wide { flex: 2 1 560px; }
 .ap-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
