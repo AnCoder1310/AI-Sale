@@ -566,7 +566,7 @@ export function PracticeRoom({
         {mode === 'text' ? <>
           <aside className="pr-context" aria-label="Bối cảnh khách"><h2>Bối cảnh khách</h2>{context}</aside>
           <div className="pr-chat"><ol className="pr-messages" role="log" aria-label="Hội thoại" ref={chatListRef}>
-            {!messages.length && <li className="pr-empty" role="status">Bạn là tư vấn viên — hãy mở lời chào khách trước.</li>}
+            {!messages.length && <li className="pr-empty" role="status">Bạn là tư vấn viên.<br />Hãy mở lời chào khách trước.</li>}
             {messages.map((message, i) => <li key={message.message_id || i} className={`pr-message ${message.role === 'advisor' ? 'pr-advisor' : ''}`}>
               <span className="pr-message-avatar" aria-hidden="true">{message.role === 'advisor' ? 'TV' : 'KH'}</span><div className="pr-message-main"><div className="pr-message-meta"><strong>{message.role === 'advisor' ? 'Bạn' : 'Khách'}</strong>{message.timestamp && <><span>·</span><time dateTime={message.timestamp}>{new Date(message.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</time></>}</div><div className="pr-bubble"><p>{message.content}</p>{message.role === 'customer' && <button className="pr-replay" onClick={() => playCustomer(message)} disabled={speakingId === message.message_id} aria-label="Phát giọng khách"><SpeakerIcon /></button>}</div>{message.role === 'advisor' && i === messages.length - 1 && <span className="pr-receipt">{waiting ? 'Đã xem' : 'Đã gửi'}</span>}</div>
             </li>)}
