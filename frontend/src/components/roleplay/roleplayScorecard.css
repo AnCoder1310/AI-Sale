@@ -1,4 +1,4 @@
-.evaluation-page { width: 100%; max-width: 1160px; margin: 0 auto; padding: 22px 28px 48px; color: #0c1e49; }
+.evaluation-page { font-family: 'Be Vietnam Pro', system-ui, sans-serif; width: 100%; max-width: 1160px; margin: 0 auto; padding: 22px 28px 48px; color: #0c1e49; }
 .evaluation-header { position: relative; margin: -22px -28px 28px; padding: 22px 28px 30px; background: linear-gradient(120deg, #edf5ff 0%, #f8fbff 68%, #e8f2ff 100%); }
 .evaluation-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
 .evaluation-toolbar button, .evaluation-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 0; cursor: pointer; font-weight: 700; }
@@ -19,8 +19,8 @@
 .evaluation-score-ring strong { font-size: 2.7rem; line-height: 1; }
 .evaluation-score-ring span { margin-left: 4px; color: #566582; font-size: 1rem; }
 .evaluation-score-ring small { display: block; width: 100%; margin-top: -30px; color: #60718d; font-size: .78rem; }
-.evaluation-status { padding: 7px 12px; border-radius: 999px; background: #ffe5e5; color: #b52528; font-size: .7rem; font-weight: 800; white-space: nowrap; }
-.evaluation-status.approved { background: #ddf6e8; color: #147445; }
+.evaluation-status { padding: 7px 12px; border-radius: 999px; background: #E8EFFF; color: #1646C8; font-size: .7rem; font-weight: 800; text-align: center; }
+.evaluation-status.approved { background: #E8EFFF; color: #1646C8; }
 .evaluation-overview-body h2 { font-size: 1.13rem; font-weight: 800; }
 .evaluation-overview-body > p { margin-top: 9px; color: #52617b; font-size: .87rem; line-height: 1.55; }
 .evaluation-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
@@ -44,8 +44,8 @@
 .evaluation-criterion-toggle:hover { background: #f6faff; }
 .evaluation-criterion-number { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border: 5px solid #dbeaff; border-radius: 50%; background: #2261b3; color: #fff; font-size: .85rem; font-weight: 800; box-sizing: content-box; }
 .evaluation-criterion-name { flex: 1; font-size: .94rem; font-weight: 800; }
-.evaluation-criterion-score { padding: 6px 13px; border-radius: 999px; background: #ffe8e9; color: #982325; font-size: .82rem; white-space: nowrap; }
-.evaluation-criterion-score.unassessed { background: #edf1f6; color: #52637a; }
+.evaluation-criterion-score { padding: 6px 13px; border-radius: 999px; background: #FFEBDB; color: #8A3D00; font-size: .82rem; white-space: nowrap; }
+.evaluation-criterion-score.unassessed { background: #F4F7FE; color: #566176; }
 .evaluation-criterion-score strong { font-size: 1rem; }
 .evaluation-chevron { font-size: 1.6rem; line-height: .7; transform: rotate(0); transition: transform .2s; }
 .evaluation-chevron.open { transform: rotate(180deg); }
@@ -57,7 +57,7 @@
 .evaluation-evidence { padding: 13px; border: 1px dashed #d2ddeb; border-radius: 10px; }
 .evaluation-evidence h3 { display: flex; align-items: center; gap: 11px; margin-bottom: 9px; }
 .evaluation-evidence h3 span { color: #2c83e8; font-size: 2rem; line-height: .5; }
-.evaluation-quote { margin: 6px 0 0 30px; border-left: 3px solid #13244b; border-radius: 0 7px 7px 0; background: #f4f6fa; color: #56627a; font-size: .78rem; font-style: italic; }
+.evaluation-quote { margin: 6px 0 0 30px; border-radius: 12px; background: #F4F7FE; color: #56627a; font-size: .78rem; font-style: italic; }
 .evaluation-quote a, .evaluation-quote button, .evaluation-quote > span { display: flex; justify-content: space-between; gap: 12px; width: 100%; padding: 8px 12px; border: 0; background: transparent; color: inherit; text-align: left; text-decoration: none; }
 .evaluation-quote a:hover, .evaluation-quote button:hover { color: #0a65cf; }
 .evaluation-improvement { display: flex; align-items: flex-start; gap: 15px; padding: 14px; border-radius: 10px; background: #edf4ff; }
@@ -94,3 +94,17 @@
 @media (prefers-reduced-motion: reduce) {
   .evaluation-chevron { transition: none; }
 }
+
+.evaluation-status { display: inline-flex; align-items: center; justify-content: center; gap: 8px; line-height: 1.5; }
+.evaluation-status svg { flex: none; width: 16px; height: 16px; }
+.evaluation-criterion-score.band-3 { background: #E8EFFF; color: #1646C8; }
+.evaluation-criterion-score.band-2 { background: #EEF2FA; color: #33405A; }
+.evaluation-criterion-score.band-1 { background: #FFEBDB; color: #8A3D00; }
+.evaluation-highlight { margin-bottom: 20px; padding: 20px 24px; background: #FFF7F0; border: 1px solid #F3D3B5; border-radius: 18px; }
+.evaluation-highlight h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.evaluation-highlight p { margin: 10px 0; color: #33405A; font-size: 15px; line-height: 1.6; }
+.evaluation-highlight a { display: inline-flex; align-items: center; min-height: 32px; color: #1646C8; font-size: 14px; font-weight: 600; }
+.evaluation-criterion { scroll-margin-top: 24px; }
+.evaluation-page button { font-family: inherit; }
+.evaluation-page button:focus-visible, .evaluation-page a:focus-visible { outline: 2px solid #2F6BFF; outline-offset: 3px; }
+.evaluation-pending { font-family: 'Be Vietnam Pro', system-ui, sans-serif; }

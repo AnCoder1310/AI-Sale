@@ -3,13 +3,13 @@ import { BookIcon, CheckIcon, ChevronLeft, ClockIcon, LightbulbIcon, RefreshIcon
 import './roleplayScorecard.css';
 import './advisorProgress.css';
 
-const labels = {
-  need_discovery: 'Need Discovery (Khai thác Nhu cầu)',
-  product_knowledge: 'Product Knowledge (Kiến thức Sản phẩm)',
-  objection_handling: 'Objection Handling (Xử lý Băn khoăn)',
-  policy_accuracy: 'Policy Accuracy (Độ chính xác Chính sách)',
-  closing_next_step: 'Closing / Next Step (Chốt & Bước tiếp theo)',
-};
+import { CRITERION_LABEL as labels } from '../../utils/scoreFormat';
+
+function isAssessed(criterion) {
+  return criterion.status === 'assessed' && [1, 2, 3].includes(criterion.score);
+}
+
+const scoreBands = { 3: 'Tốt', 2: 'Đạt', 1: 'Cần rèn' };
 
 function downloadReport(result, scenario, evaluation) {
   const lines = [
@@ -59,6 +59,10 @@ export function EvaluationScorecard({ result, scenario, onRetry, onBackToCatalog
   const score = typeof evaluation.overall_score === 'number' ? evaluation.overall_score : null;
   const scoreText = score === null ? '—' : score.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
   const progress = score === null ? 0 : Math.min(100, Math.max(0, score / 3 * 100));
+  const highlight = (evaluation.evaluations || []).reduce((lowest, criterion, index) => {
+    if (!isAssessed(criterion) || !criterion.improvement_suggestion?.trim()) return lowest;
+    return !lowest || criterion.score < lowest.criterion.score ? { criterion, index } : lowest;
+  }, null);
   const summary = [...(evaluation.summary_strengths || []), ...(evaluation.summary_weaknesses || [])].join(' ');
 
   return (
@@ -76,12 +80,18 @@ export function EvaluationScorecard({ result, scenario, onRetry, onBackToCatalog
         <p>Phiên ID: {result.session_id} <span aria-hidden="true">•</span> Trạng thái: <strong>{approved ? 'Quản lý đã duyệt' : 'Bản nháp AI (Chờ Quản lý duyệt)'}</strong> <span aria-hidden="true">•</span> Đã chấm {evaluation.assessed_criteria_count}/5 kỹ năng</p>
       </header>
 
+      {highlight && <section className="evaluation-highlight" aria-labelledby="evaluation-highlight-heading">
+        <h2 id="evaluation-highlight-heading">Gợi ý cải thiện: {labels[highlight.criterion.criterion] || highlight.criterion.criterion}</h2>
+        <p>{highlight.criterion.improvement_suggestion}</p>
+        <a href={`#evaluation-criterion-row-${highlight.index}`} onClick={() => setCollapsed((current) => ({ ...current, [highlight.index]: false }))}>Xem bằng chứng trong hội thoại</a>
+      </section>}
+
       <section className="evaluation-overview" aria-label="Tổng quan đánh giá">
         <div className="evaluation-score-side">
           <div className="evaluation-score-ring" style={{ '--score-progress': `${progress}%` }} aria-label={`Tổng điểm ${scoreText} trên 3`}>
             <div><strong>{scoreText}</strong><span>/ 3</span><small>Tổng điểm</small></div>
           </div>
-          <span className={`evaluation-status ${approved ? 'approved' : ''}`}>{approved ? 'KẾT QUẢ ĐÃ DUYỆT' : 'BẢN NHÁP AI • CHƯA DUYỆT'}</span>
+          <span className={`evaluation-status ${approved ? 'approved' : ''}`}>{approved ? <CheckIcon aria-hidden="true" /> : <ClockIcon aria-hidden="true" />}{approved ? 'KẾT QUẢ ĐÃ DUYỆT' : 'Chờ quản lý duyệt. Điểm chỉ tính vào tiến độ sau khi duyệt.'}</span>
         </div>
         <div className="evaluation-overview-body">
           <h2>Tổng quan đánh giá</h2>
@@ -110,11 +120,11 @@ export function EvaluationScorecard({ result, scenario, onRetry, onBackToCatalog
           const isOpen = collapsed[index] !== true;
           const panelId = `evaluation-criterion-${index}`;
           return (
-            <section className="evaluation-criterion" key={criterion.criterion || index}>
+            <section id={`evaluation-criterion-row-${index}`} className="evaluation-criterion" key={criterion.criterion || index}>
               <button type="button" className="evaluation-criterion-toggle" aria-expanded={isOpen} aria-controls={panelId} onClick={() => setCollapsed((current) => ({ ...current, [index]: !current[index] }))}>
                 <span className="evaluation-criterion-number">{index + 1}</span>
                 <span className="evaluation-criterion-name">{labels[criterion.criterion] || criterion.criterion}</span>
-                <span className={`evaluation-criterion-score ${criterion.score == null ? 'unassessed' : ''}`}><strong>{criterion.score ?? '—'}</strong> / 3 điểm</span>
+                <span className={`evaluation-criterion-score ${isAssessed(criterion) ? `band-${criterion.score}` : 'unassessed'}`}>{isAssessed(criterion) ? <><strong>{criterion.score} / 3</strong> {scoreBands[criterion.score]}</> : 'Chưa đủ dữ liệu'}</span>
                 <span className={`evaluation-chevron ${isOpen ? 'open' : ''}`} aria-hidden="true">⌄</span>
               </button>
               {isOpen && <div id={panelId} className="evaluation-criterion-detail">
