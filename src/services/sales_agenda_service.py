@@ -234,8 +234,8 @@ class SalesAgendaService:
                 rec.created_at.desc(), rec.id.desc()).limit(1).correlate(r.customers).scalar_subquery()
 
         query = select(
-            c.id, c.name, c.location, ranked.c.id.label("conversation_id"),
-            r.lead_scores.c.stage, r.lead_scores.c.score, r.lead_scores.c.action_priority,
+            c.id, c.name, c.phone, c.location, ranked.c.id.label("conversation_id"),
+            r.lead_scores.c.stage, r.lead_scores.c.score, r.lead_scores.c.action_priority, r.lead_scores.c.rationale,
             r.snapshots.c.snapshot_json, r.memories.c.quick_summary,
             r.memories.c.pending_items_json, r.memories.c.key_promises_json,
             r.memories.c.updated_at.label("analyzed_at"),
@@ -323,7 +323,8 @@ class SalesAgendaService:
             for field, fact in decoded(customer["profile_override"], {}).items():
                 if isinstance(fact, dict) and "value" in fact:
                     profile[field] = fact["value"]
-            stage = decoded(customer["stage_override"], {}).get("stage") or customer["stage"] or "new"
+            stage_override_payload = decoded(customer["stage_override"], {})
+            stage = stage_override_payload.get("stage") or customer["stage"] or "new"
             if stage in ("appointment", "unknown"):
                 stage = "needs_confirmation"
             stages[stage] += 1
@@ -337,16 +338,26 @@ class SalesAgendaService:
             customer_models = sorted(normalized_models)
             for name in customer_models:
                 models[name] += 1
-            choice = {"customer_id": customer["id"], "customer_name": customer["name"], "conversation_id": customer["conversation_id"]}
-            choices.append(choice)
+            choice = {
+                "customer_id": customer["id"],
+                "customer_name": customer["name"],
+                "conversation_id": customer["conversation_id"],
+            }
             customer_map[customer["id"]] = choice
 
             budget_raw = profile.get("budget_vnd")
             budget_vnd = int(budget_raw) if isinstance(budget_raw, (int, float)) and budget_raw > 0 else None
+            down_raw = profile.get("down_payment_vnd")
+            down_payment_vnd = int(down_raw) if isinstance(down_raw, (int, float)) and down_raw > 0 else None
             payment_method = str(profile.get("payment_method") or "").strip() or None
             charging_condition = str(profile.get("charging_condition") or "").strip() or None
             purchase_timeline = str(profile.get("purchase_timeline") or "").strip() or None
             usage_purpose = str(profile.get("usage_purpose") or "").strip() or None
+            competitor_models = [str(m).strip() for m in (profile.get("competitor_models") or []) if str(m).strip()]
+            buying_signals = [str(s).strip() for s in (profile.get("buying_signals") or []) if str(s).strip()]
+            objections = [str(o).strip() for o in (profile.get("objections_and_concerns") or []) if str(o).strip()]
+            rationale = str(stage_override_payload.get("reason") or customer["rationale"] or "").strip() or None
+            phone = str(customer["phone"] or "").strip() or None
             score = int(customer["score"] or 0)
             priority = customer["action_priority"] or "medium"
             quick_summary = str(customer["quick_summary"] or "").strip()
@@ -358,7 +369,7 @@ class SalesAgendaService:
             pending_proposals_total += pending_props_count
 
             issues, seen = [], set()
-            for issue in [*decoded(customer["pending_items_json"], []), *(profile.get("unresolved_questions") or [])]:
+            for issue in [*decoded(customer["pending_items_json"], []), *(profile.get("unresolved_questions") or []), *objections]:
                 if not isinstance(issue, str):
                     continue
                 key = " ".join(issue.casefold().split())
@@ -366,18 +377,40 @@ class SalesAgendaService:
                     seen.add(key)
                     issues.append(issue.strip())
             promises = [p.strip() for p in decoded(customer["key_promises_json"], []) if isinstance(p, str) and p.strip()]
+            since = aware(customer["waiting_since"]) if customer["last_sender"] == "customer" else None
+
+            choices.append(choice | {
+                "stage": stage,
+                "score": score,
+                "models": customer_models,
+                "competitor_models": competitor_models[:2],
+                "budget_vnd": budget_vnd,
+                "waiting_since": since.isoformat() if since else None,
+                "last_message": last_message[:180] if last_message else None,
+                "buying_signals": buying_signals[:2],
+                "issues": issues[:2],
+                "promises": promises[:2],
+                "quick_summary": quick_summary,
+            })
 
             if customer["last_sender"] == "customer":
-                since = aware(customer["waiting_since"])
                 waiting.append(choice | {
                     "waiting_since": since.isoformat() if since else None,
                     "stage": stage,
                     "score": score,
                     "priority": priority,
                     "models": customer_models,
+                    "competitor_models": competitor_models[:2],
                     "budget_vnd": budget_vnd,
+                    "down_payment_vnd": down_payment_vnd,
+                    "payment_method": payment_method,
+                    "purchase_timeline": purchase_timeline,
+                    "phone": phone,
                     "location": customer["location"],
                     "last_message": last_message[:180] if last_message else None,
+                    "buying_signals": buying_signals[:2],
+                    "issues": issues[:2],
+                    "promises": promises[:2],
                     "unanalyzed_count": unanalyzed_count,
                 })
             if issues:
@@ -385,11 +418,16 @@ class SalesAgendaService:
                 intelligence.append(choice | {
                     "issues": issues,
                     "promises": promises[:3],
+                    "buying_signals": buying_signals[:2],
+                    "competitor_models": competitor_models[:2],
                     "analyzed_at": analyzed.isoformat() if analyzed else None,
                     "stage": stage,
                     "score": score,
                     "models": customer_models,
                     "budget_vnd": budget_vnd,
+                    "payment_method": payment_method,
+                    "phone": phone,
+                    "location": customer["location"],
                     "quick_summary": quick_summary,
                     "purchase_timeline": purchase_timeline,
                     "unanalyzed_count": unanalyzed_count,
@@ -440,16 +478,25 @@ class SalesAgendaService:
                     "score": score,
                     "priority": priority,
                     "models": customer_models,
+                    "competitor_models": competitor_models[:2],
                     "budget_vnd": budget_vnd,
+                    "down_payment_vnd": down_payment_vnd,
                     "payment_method": payment_method,
                     "charging_condition": charging_condition,
                     "purchase_timeline": purchase_timeline,
                     "usage_purpose": usage_purpose,
+                    "phone": phone,
                     "location": customer["location"],
+                    "rationale": rationale,
                     "quick_summary": quick_summary,
+                    "last_message": last_message[:140] if last_message else None,
+                    "waiting_since": since.isoformat() if since else None,
                     "is_waiting": customer["last_sender"] == "customer",
                     "unanalyzed_count": unanalyzed_count,
                     "pending_proposals": pending_props_count,
+                    "buying_signals": buying_signals[:2],
+                    "issues": issues[:2],
+                    "promises": promises[:2],
                     "issues_count": len(issues),
                 })
 
@@ -468,6 +515,7 @@ class SalesAgendaService:
             item["customer_name"],
         ))
         hot_leads = sum(1 for item in priority_pool if item["stage"] in ("considering", "negotiating", "deposit_process") or item["score"] >= 70)
+        closing_leads = sum(1 for item in priority_pool if item["stage"] in ("negotiating", "deposit_process"))
         series = {(today - timedelta(days=i)).isoformat(): {"customer": 0, "sales": 0} for i in range(activity_days - 1, -1, -1)}
         for row in activity:
             key = str(row["day"])
@@ -485,6 +533,7 @@ class SalesAgendaService:
                 "upcoming_events": counts["upcoming_events"],
                 "total_tasks": counts["total_tasks"],
                 "hot_leads": hot_leads,
+                "closing_leads": closing_leads,
                 "unanalyzed_customers": unanalyzed_customers,
                 "stale_tasks": counts["stale_tasks"],
                 "review_tasks": counts["review_tasks"],
@@ -500,7 +549,7 @@ class SalesAgendaService:
             "unscheduled": {"total": counts["unscheduled"], "items": unscheduled_items},
             "waiting_customers": waiting,
             "customer_intelligence": intelligence[:5],
-            "priority_customers": priority_pool[:6],
+            "priority_customers": priority_pool[:8],
             "portfolio_insights": {
                 "work_counts": {
                     "today": counts["today_events"],
@@ -522,7 +571,7 @@ class SalesAgendaService:
                 ],
                 "budget_segments": [
                     {"key": "under_600m", "label": "Dưới 600 triệu (VF 3, VF 5)", "count": budget_tiers["under_600m"]},
-                    {"key": "600m_to_1b", "label": "600 triệu – 1 tỷ (VF 6, VF 7)", "count": budget_tiers["600m_to_1b"]},
+                    {"key": "600m_to_1b", "label": "600 triệu - 1 tỷ (VF 6, VF 7)", "count": budget_tiers["600m_to_1b"]},
                     {"key": "over_1b", "label": "Trên 1 tỷ (VF 8, VF 9)", "count": budget_tiers["over_1b"]},
                     {"key": "unknown", "label": "Chưa rõ ngân sách", "count": budget_tiers["unknown"]},
                 ],

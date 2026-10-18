@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Star, Plus, MessageSquare, Send, Sparkles, CheckCheck, ListTodo, RefreshCw, ChevronDown, X, Bot } from 'lucide-react';
+import { ArrowLeft, Star, MessageSquare, Send, Sparkles, CheckCheck, ListTodo, RefreshCw, ChevronDown, X, Bot } from 'lucide-react';
 import { Avatar, StageBadge, IconButton, CopilotBubble } from './WorkspacePrimitives';
 import { DraftReply } from './ConversationIntelligence';
 import { LeadStageEditor } from './CustomerToolsDrawer';
@@ -131,7 +131,7 @@ function MessageComposer({ value, onChange, onSend, inputRef, customer, sending,
   </form>;
 }
 
-export function ConversationWorkspace({ customer, onStar, onCreateTask, highlight, composerValue, onComposerChange, onSend, composerRef, onBack, onShowTool, loading, error, onRetry, sending, onRefresh, draftOpen, onOpenDraft, onCloseDraft, draftEnabled, onToggleDraft, preferenceBusy, onGenerateDraft, draftBusy, onInsertDraft, onLoadOlder, loadingOlder, onSaveStage, stageBusy, activeTool, onAnalyze, analyzing, onSuggestTaskFromMessage, suggestingMessageId, onAskCopilotFromMessage }) {
+export function ConversationWorkspace({ customer, onStar, highlight, composerValue, onComposerChange, onSend, composerRef, onBack, onShowTool, loading, error, onRetry, sending, onRefresh, draftOpen, onOpenDraft, onCloseDraft, draftEnabled, onToggleDraft, preferenceBusy, onGenerateDraft, draftBusy, onInsertDraft, onLoadOlder, loadingOlder, onSaveStage, stageBusy, activeTool, onAnalyze, analyzing, onSuggestTaskFromMessage, suggestingMessageId, onAskCopilotFromMessage }) {
   const [stageOpen, setStageOpen] = useState(false);
   const stageRef = useRef(null); const stageTrigger = useRef(null);
   const now = useWorkspaceClock(); const counts = taskCounts(customer.tasks, now);
@@ -159,7 +159,6 @@ export function ConversationWorkspace({ customer, onStar, onCreateTask, highligh
         </div>
         <IconButton label={customer.starred ? 'Bỏ đánh dấu khách hàng' : 'Đánh dấu khách hàng'} className={customer.starred ? 'sw-starred' : ''} aria-pressed={customer.starred} onClick={onStar}><Star size={14} fill={customer.starred ? 'currentColor' : 'none'} /></IconButton>
       </div></div>
-      <button type="button" className="sw-primary-button sw-create-task" aria-label="Tạo công việc" disabled={!customer.loaded} onClick={() => { setStageOpen(false); onCreateTask(); }}><Plus size={14} /><span>Tạo công việc</span></button>
     </div>
     <div className="sw-tab-panel">
       {error && <div className="sw-error-banner" role="alert"><span>{error}</span><button type="button" className="sw-text-button" onClick={onRetry}>Thử lại</button></div>}
