@@ -1,6 +1,9 @@
-# P-043 — AI Sales Coach cho tư vấn viên VinFast
+# P-043 — VinFast AI Sales Coach & Copilot
 
-> Tóm tắt 1 câu: tư vấn viên mới tốn thời gian kèm cặp và dễ tư vấn sai → AI khách hàng để luyện tập, AI chấm điểm có dẫn chứng được quản lý duyệt, Copilot tra cứu có nguồn → cho tư vấn viên bán hàng VinFast và quản lý của họ.
+**Đề tài:** VFO2O-20 — AI Agent Huấn luyện & hỗ trợ tư vấn viên bán xe (Sales Enablement)
+**Đội:** 043Nova
+
+> Copilot giúp sales nắm bối cảnh, tư vấn và theo sát nhiều khách hàng; Roleplay giúp sales luyện tình huống VinFast và nhận phản hồi được quản lý kiểm duyệt.
 
 **Live URL:** https://c4-app-043.itup.io.vn/ (URL do nhóm cung cấp; cấu hình triển khai xem [hướng dẫn triển khai](docs/deployment.md)).
 
@@ -8,29 +11,36 @@ TODO (team): ảnh chụp màn hình Practice Room / Copilot / Manager.
 
 Ảnh trong [báo cáo UI evidence](report/roleplay-supervisor-showcase-with-ui-evidence.html) được ghi rõ là prototype/UI concept; cần bổ sung ảnh ứng dụng hiện tại để đáp ứng mục screenshot.
 
-## Vấn đề (Problem)
+## Copilot — hỗ trợ tư vấn và chăm sóc khách hàng
 
-Đào tạo tư vấn viên bán hàng mới hiện gặp hai painpoint chính:
+### Pain points
 
-1. **Tốn nhân lực và thời gian của quản lý:** tư vấn viên mới thường cần quản lý kèm cặp trực tiếp trong lúc trò chuyện với khách. Mỗi người mới lại chiếm thêm thời gian của quản lý, nên chi phí đào tạo tăng theo số người được tuyển.
-2. **Rủi ro tư vấn sai, mất khách:** khi không được hướng dẫn kịp thời, tư vấn viên dễ nói sai thông số xe, giá hay chính sách. Sai sót này làm giảm lòng tin của khách và khiến mất cơ hội bán hàng.
+Một sales phải trao đổi với nhiều khách qua nhiều ngày nên khó nhớ từng người quan tâm xe gì, ngân sách bao nhiêu, đã hỏi gì và còn vướng ở đâu. Thông tin, lời hứa gửi báo giá và lịch hẹn nằm rải rác trong tin nhắn; đọc lại toàn bộ lịch sử hoặc hỏi lại khách làm gián đoạn cuộc tư vấn. Khi chưa biết thông số hay chính sách, sales còn phải chuyển sang tài liệu hoặc công cụ AI khác để tìm và kiểm tra thông tin.
 
-Bên cạnh đó, thông số xe, chính sách pin/sạc, giá và biểu phí thay đổi liên tục, nên tư vấn viên khó tra cứu nhanh và có nguồn khi đang tư vấn.
+### Solution
 
-## Giải pháp (Solution)
+Copilot tập hợp hội thoại theo từng khách, hồ sơ nhu cầu, bản tóm tắt tình hình, nội dung đã trao đổi và câu hỏi còn mở. Sales có thể xem tin nhắn nguồn, sửa hoặc xác nhận dữ kiện, sử dụng nháp trả lời theo bối cảnh khách và tài liệu VinFast, đồng thời theo dõi công việc và lịch hẹn. Tra cứu có nguồn là một phần của không gian làm việc này.
 
-Ứng dụng cung cấp một môi trường luyện tập riêng, nơi tư vấn viên luyện đi luyện lại các tình huống với khách hàng AI để nâng cao năng lực trước khi gặp khách thật, giảm rủi ro tư vấn sai (painpoint 2). Đồng thời, để giảm thời gian kèm cặp (painpoint 1), quản lý xem được lịch sử luyện tập role-play của từng tư vấn viên — transcript và bản đánh giá của mỗi buổi — vào bất cứ lúc nào thuận tiện, rồi đưa ra nhận xét có trọng tâm trong thời gian ngắn hơn nhiều.
+Giá trị hướng tới: giúp sales nắm lại bối cảnh khi khách quay lại, chuẩn bị câu trả lời phù hợp và theo sát việc đã hứa. Customer Intelligence v2 cần bật cấu hình và khóa PII phù hợp; có code không đồng nghĩa mọi môi trường đã bật tính năng. Bàn giao tự động từ chatbot website và đồng bộ Zalo/Facebook còn cần tích hợp.
 
-MVP gồm **Copilot** tra cứu kiến thức xe/chính sách có trích nguồn và **Practice Room** trò chuyện nhiều lượt với AI Customer, nhận đánh giá có dẫn chứng từ transcript. Advisor xem lịch sử và bài được giao; manager giao kịch bản, xem hàng đợi, transcript, duyệt/sửa đánh giá và theo dõi năng lực đội ngũ từ các bài đã duyệt. Đây là sản phẩm học tập dùng corpus công khai và khách hàng giả lập, không phải kênh công bố chính sách chính thức của VinFast.
+## Roleplay — luyện tư vấn và được quản lý huấn luyện
 
-- **Copilot:** trả lời có trích nguồn từ corpus công khai, từ chối khi thiếu bằng chứng.
-- **Practice Room:** tư vấn viên mở lời trước, AI Customer phản hồi nhiều lượt (chat chữ hoặc giọng nói), AI judge riêng chấm theo rubric kèm evidence.
-- **Manager console:** giao bài, duyệt/sửa đánh giá, xem năng lực đội.
+### Pain points
+
+Nhân viên mới cần thực hành cách hỏi nhu cầu, xử lý phản đối và vận dụng kiến thức VinFast trước khi gặp khách thật. Thiếu luyện tập có thể dẫn đến nói ngập ngừng, tư vấn sai hoặc làm giảm niềm tin của khách. Đào tạo trực tiếp phụ thuộc vào thời gian của quản lý; thiếu transcript và đánh giá có cấu trúc khiến việc review và nhận diện điểm yếu khó hơn.
+
+### Solution
+
+Practice Room cho luyện nhiều lượt bằng chữ hoặc giọng nói với AI Customer theo tình huống VinFast. Mirror giúp người học tự quan sát phong thái, không ghi hình hoặc tự chấm biểu cảm. AI evaluator tạo bản nháp đánh giá theo năm tiêu chí, kèm dẫn chứng hội thoại. Manager xem transcript, sửa hoặc duyệt kết quả, góp ý và giao bài luyện tiếp; năng lực đội ngũ sử dụng kết quả đã duyệt.
+
+Giá trị hướng tới: nhân viên có thêm cơ hội luyện trước khi gặp khách; quản lý có thể review vào thời điểm thuận tiện với bản phân tích ban đầu. Chưa có phép đo xác nhận mức giảm thời gian, chi phí đào tạo hoặc tăng doanh thu.
 
 ## Target User
 
-- Primary: **Tư vấn viên bán hàng VinFast (Advisor)**, nhất là người mới: luyện tình huống với khách hàng AI, tra cứu thông số/chính sách có nguồn khi tư vấn.
-- Secondary: **Quản lý bán hàng (Manager)**: giao bài luyện tập, xem transcript và duyệt/sửa đánh giá thay vì kèm cặp trực tiếp từng buổi, theo dõi năng lực đội.
+- **Advisor:** tư vấn và chăm sóc nhiều khách, tra cứu có nguồn, luyện kỹ năng và xem phản hồi.
+- **Manager:** giao bài, xem lịch sử/transcript, duyệt đánh giá và theo dõi kỹ năng cần huấn luyện.
+
+Định vị, pain point/solution và ranh giới bằng chứng chi tiết nằm trong [BRIEF](docs/gate1/BRIEF.md); [bản nội dung trình bày để review](presentation/PRODUCT_STORY_REVIEW.md) chuyển nội dung này thành lời dẫn demo. Đây là dự án học tập, không phải kênh công bố chính sách chính thức của VinFast; dữ liệu showcase hư cấu không phải bằng chứng hiệu quả với khách thật.
 
 ## Tech Stack
 
@@ -54,7 +64,14 @@ Kiến trúc chi tiết: [ARCHITECTURE.md](ARCHITECTURE.md) và [sơ đồ kiế
 flowchart LR
   A[Advisor / Manager] --> UI[React + Vite]
   UI -->|REST + cookie| API[FastAPI]
-  API --> CP[Copilot LangGraph]
+  API --> SW[Sales Copilot: hội thoại, hồ sơ, tóm tắt, nháp, lịch]
+  SW --> SQL
+  SW --> CI[Customer Intelligence: phân tích và hỏi đáp lịch sử]
+  CI --> LLM
+  SW --> DRAFT[Soạn nháp theo khách và văn phong sales]
+  DRAFT --> RET
+  DRAFT --> LLM
+  SW --> CP[Workflow tra cứu LangGraph]
   API --> RP[Practice LangGraph]
   CP --> RET[Hybrid retrieval] --> VEC[(pgvector / Chroma)]
   CP --> LLM[OpenRouter]
@@ -99,7 +116,7 @@ cp .env.example .env
 | Trace Roleplay/Practice (tài khoản riêng) | `ROLEPLAY_LANGSMITH_TRACING`, `ROLEPLAY_LANGSMITH_API_KEY`, `ROLEPLAY_LANGSMITH_ENDPOINT`, `ROLEPLAY_LANGSMITH_PROJECT`, `ROLEPLAY_LANGSMITH_CAPTURE_CONTENT` |
 | Docker / hosted frontend | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `FRONTEND_PORT`, `RENDER_BACKEND_URL` |
 
-Theo [cấu hình Python](src/config.py), generator mặc định là `openai/gpt-6-luna`, embedding là `openai/text-embedding-3-small` qua OpenRouter. Judge mặc định dùng provider OpenRouter và model `deepseek/deepseek-v3.2`, temperature 0; runtime không cho judge trùng cả provider lẫn model với generator. Chạy trực tiếp mặc định SQLite ở `data/app.db` và Chroma ở `data/chroma`. Đổi embedding model cần reindex phù hợp. Xem [.env.example](.env.example) và [hướng dẫn database](docs/database-backends.md).
+Theo [cấu hình Python](src/config.py), generator mặc định là `openai/gpt-6-luna`, embedding là `openai/text-embedding-3-small` qua OpenRouter. Judge mặc định dùng provider OpenRouter và model `deepseek/deepseek-v3.2`, temperature 0; runtime không cho judge trùng cả provider lẫn model với generator. Chạy trực tiếp mặc định SQLite ở `data/app.db` và Chroma ở `data/chroma`. Đổi embedding model cần reindex phù hợp. Xem [.env.example](.env.example) và [hướng dẫn database](docs/deployment.md).
 
 Trong `.env`, đặt `DEMO_ADVISOR_PASSWORD` và `DEMO_MANAGER_PASSWORD` riêng, rồi seed tài khoản local:
 
@@ -165,7 +182,7 @@ Kịch bản 04 chấp nhận cả `close_eco` và `upsell_plus`; upsell là k�
 
 Guardrail hai lớp gồm [lọc cục bộ](src/agents/roleplay/guardrails.py) trước lời gọi model và cờ `unsafe_or_abusive` của analyzer. Vi phạm dẫn tới `advisor_misconduct`, dừng hội thoại; evaluator ép điểm đã chấm về 1. Lỗi Practice có mã ổn định và thông báo tiếng Việt từ [practice_errors.py](src/api/practice_errors.py), được UI ánh xạ thành notice dialog với hành động phù hợp như thử lại hoặc đăng nhập.
 
-1. Đăng nhập Advisor. Hỏi Copilot: **“Giá niêm yết VF 8 Thế hệ mới theo bảng giá VinFast là bao nhiêu?”** Mở citation. Câu ngoài kho: **“Giá bảo hiểm chính xác của đại lý X ngày mai là bao nhiêu?”** phải không tự bịa.
+1. Đăng nhập Advisor, mở một khách có hội thoại: xem hồ sơ/tóm tắt, kiểm tra tin nguồn và nội dung còn mở; tạo nháp, chỉnh sửa trước khi sử dụng, kiểm tra công việc/lịch hẹn. Sau đó hỏi công cụ tra cứu trong Copilot: **“Giá niêm yết VF 8 Thế hệ mới theo bảng giá VinFast là bao nhiêu?”** Mở citation. Câu ngoài kho: **“Giá bảo hiểm chính xác của đại lý X ngày mai là bao nhiêu?”** phải không tự bịa.
 2. Vào Practice Room, chọn **VF 5 Plus — khách chạy dịch vụ**. Tư vấn viên mở lời chào khách trước; khách phản hồi theo nhu cầu của kịch bản. Hỏi quãng đường/ngày, tiền xăng Vios thực tế và giờ nghỉ/sạc; xử lý lo ngại chi phí, tránh cam kết tiết kiệm khi chưa đủ dữ liệu. Kết thúc để xem điểm AI dự thảo, transcript evidence và lịch sử.
 3. Đăng xuất, đăng nhập Manager. Vào **Giao bài**, chọn Advisor và kịch bản rồi đặt hạn. Đăng nhập lại Advisor, bắt đầu bài trong Practice Room và hoàn thành phiên. Đăng nhập Manager để thấy trạng thái hoàn thành.
 4. Manager xem hàng đợi và transcript, nhập lý do khi duyệt; vào **Năng lực** để xem điểm kỹ năng từ các phiên đã duyệt. Advisor chưa có ít nhất 3 phiên được duyệt và có điểm sẽ chưa được xếp hạng.
@@ -176,9 +193,9 @@ Không biến giá niêm yết thành “giá lăn bánh” hay tự suy ra mọ
 
 ### Giám sát Copilot
 
-Xem [workflow Copilot: từng node, state và prompt](docs/copilot-workflow.md) để theo dõi luồng hiện tại.
+Xem [workflow Copilot](docs/copilot-workflow.md): §1–5 mô tả graph tra cứu, §7 mô tả toàn bộ Sales Copilot Workspace với Customer Intelligence, nháp cá nhân hóa, dashboard và lịch.
 
-Copilot dùng Structured Outputs cho phân tích, lập kế hoạch, sinh câu trả lời và kiểm tra từng phát biểu; code xác định độ bao phủ requirement và gắn citation trước khi công bố.
+Riêng workflow tra cứu dùng Structured Outputs cho phân tích câu hỏi, lập kế hoạch, sinh câu trả lời và kiểm tra từng phát biểu; code xác định độ bao phủ requirement và gắn citation trước khi công bố.
 
 Workflow `v9-evidence-review` mặc định dùng Jev qua OpenRouter để chọn evidence (`COPILOT_EVIDENCE_SELECTION_STRATEGY=jev_context`); có fallback RRF khi Jev lỗi và log quyết định từng cụm nguồn.
 
@@ -188,7 +205,7 @@ Dùng `.venv` làm môi trường Python chính. Dependency trực tiếp nằm 
 
 ### Kiến trúc, kiểm thử và bằng chứng
 
-Xem [sơ đồ kiến trúc](docs/architecture_diagram.md) và [hướng dẫn Database](docs/database-backends.md). React/Vite gọi FastAPI bằng cookie phiên; Copilot dùng LangGraph, hybrid retrieval, vector index và OpenRouter. Practice dùng LangGraph giữ trạng thái, AI Customer, evaluator rubric có evidence và manager HITL. Docker dùng PostgreSQL + pgvector local; chạy Python trực tiếp mặc định SQLite + Chroma (hoặc PostgreSQL hosted khi cấu hình `DATABASE_URL`). Dữ liệu trên ổ local **không tự bền vững** khi deploy lên filesystem tạm.
+Xem [sơ đồ kiến trúc](docs/architecture_diagram.md) và [hướng dẫn cấu hình database và triển khai](docs/deployment.md). React/Vite gọi FastAPI bằng cookie phiên; Sales Copilot gồm hội thoại theo khách, phân tích/tóm tắt có tin nguồn, hỏi đáp lịch sử, nháp trả lời và công việc/lịch; graph LangGraph với hybrid retrieval là workflow tra cứu kiến thức bên trong phân hệ. Practice dùng LangGraph giữ trạng thái, AI Customer, evaluator rubric có evidence và manager HITL. Docker dùng PostgreSQL + pgvector local; chạy Python trực tiếp mặc định SQLite + Chroma (hoặc PostgreSQL hosted khi cấu hình `DATABASE_URL`). Dữ liệu trên ổ local **không tự bền vững** khi deploy lên filesystem tạm.
 
 ```bash
 ruff check src tests
@@ -199,9 +216,28 @@ cd frontend && npm run lint && npm run build
 
 Workflow [CI](.github/workflows/ci.yml) chạy Ruff và pytest backend trên push/PR vào `main`/`develop`; lint/build frontend và kiểm tra format ở trên là kiểm tra riêng, chưa nằm trong workflow này.
 
-Kiểm thử phần mềm khác đánh giá AI. [Báo cáo Gate 2](eval/results/gate2_manual_cases_2026-10-04.md) ghi 5 ca thủ công với input, output quan sát, expected và giới hạn. [Benchmark Copilot 50 case](eval/datasets/copilot_benchmark.json) là tập rộng hơn, **không tự chứng minh 50 lời gọi thật đã chạy**. Các smoke trước nằm trong `eval/results/`. Trạng thái GitHub Actions phải xem trên PR; job không bắt đầu không phải CI pass.
+Kiểm thử phần mềm khác đánh giá AI. [Báo cáo Gate 2](eval/results/gate2_manual_cases_2026-10-04.md) ghi 5 ca thủ công với input, output quan sát, expected và giới hạn. [Benchmark Copilot 50 case](eval/datasets/copilot_benchmark.json) có báo cáo chạy live ngày 18/10 được dẫn ở trên; kết quả này đánh giá workflow tra cứu, không xác nhận chất lượng tóm tắt khách hay toàn bộ workspace. Các smoke trước nằm trong `eval/results/`. Trạng thái GitHub Actions phải xem trên PR; job không bắt đầu không phải CI pass.
 
 Feature branch → PR `develop` → kiểm tra/review → PR `develop` → `main` khi đủ điều kiện. Không push trực tiếp vào `main`. [Kịch bản video Gate 2](presentation/GATE2_DEMO.md) mô tả 3 phút cần quay. AI usage log, Git worklog và eval evidence là các bằng chứng riêng; không trộn với file chứa key.
+
+### Chi phí API theo định mức sử dụng
+
+Nhóm lập ngân sách cho **10 phiên Roleplay voice/nhân viên/tuần**, **40 giây nói/lượt**, quy mô tính **10 lượt/phiên**. Chi phí gồm analyzer, AI Customer, evaluator, một batch factual dự phòng, embedding, STT/TTS và phân bổ phí credits OpenRouter.
+
+| Hạng mục | USD/nhân viên/tháng trung bình |
+|---|---:|
+| Roleplay voice | 1,79 |
+| Sales Copilot theo định mức sử dụng chi tiết | 2,20 |
+| Tổng API | 3,98 |
+| Ngân sách cộng 30% dự phòng | 5,18 |
+
+Tổng tính từ số chưa làm tròn; các dòng hiển thị làm tròn đến hai chữ số thập phân.
+
+Kịch bản sử dụng cao **15 phiên/người/tuần**: Roleplay **2,68 USD/người/tháng**, tổng cùng Copilot **4,88 USD**, ngân sách có 30% dự phòng **6,34 USD**. Workload Copilot giữ nguyên; tần suất luyện là định mức ngân sách, không phải quota phần mềm.
+
+Copilot tính trên 5 ngày/tuần, mỗi ngày 10 tra cứu, 20 phân tích+recap, 20 nháp trả lời, 5 hỏi lịch sử và 5 gợi ý công việc. Đây là ngân sách theo định mức, không phải kết quả khảo sát token hoặc hóa đơn production. Không tính phần cứng/hosting, benchmark/test và thuế; không khấu trừ free tier/cache. Đơn giá tra ngày 18/10/2026; tháng tính 52/12 tuần.
+
+Công thức, đơn giá có nguồn và bảng quy mô đội: [Chi phí API vận hành](docs/operating-costs.md).
 
 ## Project Structure (Cấu trúc thư mục)
 
@@ -236,6 +272,10 @@ Base path `/api/v1` (trừ `/health`, `/ready`). Đăng nhập tạo cookie phi�
 | POST | `/copilot/query`, `/copilot/query/stream` | Hỏi Copilot (trả lời có trích nguồn; bản stream) | `{query, target_date?, session_id?, customer_context?, domain?}` |
 | GET / DELETE | `/copilot/sessions`, `/copilot/sessions/{session_id}` | Lịch sử hội thoại Copilot | — |
 | GET | `/copilot/sources/{document_id}` | Xem tài liệu nguồn được trích | — |
+| GET | `/sales-copilot/conversations`, `/sales-copilot/conversations/{id}` | Hội thoại theo khách, hồ sơ và tóm tắt | — |
+| POST | `/sales-copilot/conversations/{id}/analyze`, `/sales-copilot/customers/{id}/history-chat` | Phân tích/tóm tắt và hỏi đáp lịch sử có tin nguồn | Theo schema endpoint |
+| POST | `/sales-copilot/conversations/{id}/draft`, `/sales-copilot/conversations/{id}/copilot-chat` | Nháp trả lời theo khách và tra cứu có nguồn | Theo schema endpoint |
+| GET | `/sales-copilot/dashboard`, `/sales-copilot/calendar` | Công việc, lịch hẹn và tổng quan khách | Theo schema endpoint |
 | GET | `/practice/scenarios` | Danh sách kịch bản | — |
 | POST | `/practice/sessions` | Bắt đầu phiên luyện tập | `{scenario_id, max_turns?, assignment_id?}` |
 | POST | `/practice/{session_id}/message` | Gửi lượt của Advisor, nhận phản hồi khách AI | `{message}` |
@@ -256,7 +296,7 @@ Base path `/api/v1` (trừ `/health`, `/ready`). Đăng nhập tạo cookie phi�
 - [x] README.md
 - [x] Architecture Diagram ([docs/architecture_diagram.md](docs/architecture_diagram.md), [ARCHITECTURE.md](ARCHITECTURE.md))
 - [x] AI Logs (tự động thu thập qua hook, `.ai-log/`)
-- [x] Live URL / Deploy: https://aisale.itup.io.vn/
+- [x] Live URL / Deploy: https://c4-app-043.itup.io.vn/
 - [ ] Video Demo — TODO (team)
 - [ ] Pitch Deck (`presentation/`) — TODO (team)
 - [x] Weekly Journal ([JOURNAL.md](JOURNAL.md))
