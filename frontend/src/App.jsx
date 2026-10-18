@@ -19,6 +19,7 @@ export function App() {
   const [scenarioStatus, setScenarioStatus] = useState('loading');
   const [scenarioReloadToken, setScenarioReloadToken] = useState(0);
   const [sourceDocumentId, setSourceDocumentId] = useState(null);
+  const [sourceReference, setSourceReference] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [copilotQuery, setCopilotQuery] = useState('');
@@ -167,8 +168,9 @@ export function App() {
           <CopilotView
             currentUser={currentUser}
             initialQuery={copilotQuery}
-            onOpenDocument={(documentId) => {
+            onOpenDocument={(documentId, reference = null) => {
               setSourceDocumentId(documentId);
+              setSourceReference(reference);
               setCurrentTab('knowledge');
             }}
           />
@@ -189,6 +191,7 @@ export function App() {
         {currentTab === 'knowledge' && (
           <KnowledgeView
             sourceDocumentId={sourceDocumentId}
+            sourceReference={sourceReference}
           />
         )}
 

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Car, ChevronDown, FileText, Maximize2, MessageCircleQuestion, Minimize2, Receipt, Search, X } from 'lucide-react';
+import { Car, ChevronDown, FileText, Maximize2, Minimize2, MessageCircleQuestion, Receipt, Search, X } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { VEHICLES, MODEL_SVG_MAP } from '../../data/vehicleData';
 import { POLICIES } from '../../data/policyData';
 import { PRICING_TARIFFS } from '../../data/feeData';
 import { FAQ_QUESTIONS } from '../../data/faqData';
 import { copilotApi } from '../../api/copilotApi';
+import { sourceHighlight, verifySourceReference } from './sourceReference';
 import './knowledge.css';
 
 const TABS = [
@@ -148,7 +149,7 @@ function PdfDrawer({ doc, onClose }) {
   </div>;
 }
 
-export function KnowledgeView({ sourceDocumentId }) {
+export function KnowledgeView({ sourceDocumentId, sourceReference }) {
   const [tab, setTab] = useState('vehicles');
   const [query, setQuery] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -165,10 +166,15 @@ export function KnowledgeView({ sourceDocumentId }) {
     if (!sourceDocumentId) return;
     let active = true;
     copilotApi.getSource(sourceDocumentId)
-      .then((document) => { if (active) setSelectedDocument(document); })
-      .catch(() => { if (active) setSourceError('Không mở được tài liệu gốc. Vui lòng thử lại.'); });
+      .then((document) => {
+        if (!active) return;
+        verifySourceReference(document, sourceReference);
+        setSourceError('');
+        setSelectedDocument({ ...document, sourceHighlight: sourceHighlight(document, sourceReference) });
+      })
+      .catch((error) => { if (active) { setSelectedDocument(null); setSourceError(error.message || 'Không mở được tài liệu gốc. Vui lòng thử lại.'); } });
     return () => { active = false; };
-  }, [sourceDocumentId]);
+  }, [sourceDocumentId, sourceReference]);
 
   async function openSource(id) {
     const request = ++sourceRequestRef.current;
@@ -223,7 +229,7 @@ export function KnowledgeView({ sourceDocumentId }) {
       </div>}
     </Modal>
     <Modal isOpen={Boolean(selectedDocument)} onClose={() => setSelectedDocument(null)} title={selectedDocument?.title || ''} maxWidth={780}>
-      {selectedDocument && <div className="kb-modal-content"><dl className="kb-document-meta"><div><dt>Mã văn bản</dt><dd>{selectedDocument.document_id}</dd></div><div><dt>Ngày hiệu lực</dt><dd>{selectedDocument.effective_date || 'Chưa xác định'}</dd></div><div><dt>Dòng xe</dt><dd>{selectedDocument.product_model || 'Tất cả'}</dd></div><div><dt>Trạng thái</dt><dd>{selectedDocument.status || 'Chưa xác định'}</dd></div></dl><div className="kb-document-text">{selectedDocument.content || 'Nội dung tài liệu đang cập nhật.'}</div></div>}
+      {selectedDocument && <div className="kb-modal-content"><dl className="kb-document-meta"><div><dt>Mã văn bản</dt><dd>{selectedDocument.document_id}</dd></div><div><dt>Ngày hiệu lực</dt><dd>{selectedDocument.effective_date || 'Chưa xác định'}</dd></div><div><dt>Dòng xe</dt><dd>{selectedDocument.product_model || 'Tất cả'}</dd></div><div><dt>Trạng thái</dt><dd>{selectedDocument.status || 'Chưa xác định'}</dd></div></dl><div className="kb-document-text">{selectedDocument.sourceHighlight ? <>{selectedDocument.sourceHighlight.before}<mark ref={(node) => { if (node) requestAnimationFrame(() => { if (node.isConnected) node.scrollIntoView({ block: 'center' }); }); }}>{selectedDocument.sourceHighlight.text}</mark>{selectedDocument.sourceHighlight.after}</> : (selectedDocument.content || 'Nội dung tài liệu đang cập nhật.')}</div></div>}
     </Modal>
   </div>;
 }

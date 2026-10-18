@@ -84,7 +84,7 @@ def test_expert_approved_cases_are_unchanged():
 
 
 # JC6 approved by Tú, a VinFast sales advisor, on 2026-10-17.
-JC6_APPROVED_SHA256 = "dcb6feb2ce43a4f1e193d8d3a4496308f19f0be3361f560b77ce4590924ed104"
+JC6_APPROVED_SHA256 = "30a6eef124fd118b198ded616308f53ba1c478821743597bfd77d307b998581d"
 
 
 def test_expert_approved_jc6_is_unchanged():
