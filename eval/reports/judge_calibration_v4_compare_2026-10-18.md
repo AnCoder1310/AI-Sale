@@ -57,5 +57,3 @@ về giá hoặc chính sách. Không bao giờ cho điểm thấp khi không c�
   JC2 objection_handling = 2, JC4 product_knowledge = 1, JC5 need_discovery = 2.
 - JC1 policy_accuracy: chuyên gia chấm 1, nhưng judge để "chưa chấm" ở cả 3 lần
   (nhân viên không hề nói về chính sách).
-
-5 ô này đang chờ chuyên gia sale Tú kiểm tra lại.
