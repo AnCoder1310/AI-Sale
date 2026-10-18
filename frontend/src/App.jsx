@@ -115,12 +115,6 @@ export function App() {
     }
   };
 
-  const handleConsultCopilot = (query) => {
-    setCopilotQuery(query);
-    setCopilotOpened(true);
-    setCurrentTab('copilot');
-  };
-
   if (authStatus === 'loading') {
     return <div className="auth-loading" role="status">Đang kiểm tra phiên đăng nhập…</div>;
   }
@@ -194,7 +188,6 @@ export function App() {
 
         {currentTab === 'knowledge' && (
           <KnowledgeView
-            onOpenCopilotQuery={handleConsultCopilot}
             sourceDocumentId={sourceDocumentId}
           />
         )}

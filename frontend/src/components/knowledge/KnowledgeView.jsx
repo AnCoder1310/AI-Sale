@@ -36,7 +36,7 @@ import {
 } from '../../data/requiredDocsData';
 import { copilotApi } from '../../api/copilotApi';
 
-export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
+export function KnowledgeView({ sourceDocumentId }) {
   const [subTab, setSubTab] = useState('policies'); // 'policies' | 'fees' | 'vehicles' | 'faq' | 'checklist'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -180,13 +180,6 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
             <span className="knowledge-pdf-preview-icon"><FileTextIcon style={{ width: 40, height: 40 }} /></span>
             <span className="knowledge-pdf-preview-label">Mở PDF</span>
           </button>
-          <button
-            type="button"
-            className="btn-outline knowledge-document-copilot"
-            onClick={() => onOpenCopilotQuery && onOpenCopilotQuery(`Tra cứu tóm tắt điều khoản trong tài liệu "${doc.title}"`)}
-          >
-            Hỏi Copilot <SparkleIcon style={{ width: 13, height: 13 }} />
-          </button>
         </div>
       </div>
     </article>
@@ -300,14 +293,6 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
             >
               <span>Kiểm tra tệp mẫu</span>
               <ChevronRight style={{ width: 12, height: 12 }} />
-            </button>
-            <button
-              className="btn-primary"
-              onClick={() => onOpenCopilotQuery && onOpenCopilotQuery(`Tra cứu thông tin về ${pdf.title} theo mã ${pdf.document_id}`)}
-              style={{ fontSize: '0.78rem', padding: '6px 12px' }}
-            >
-              <span>Hỏi Copilot</span>
-              <SparkleIcon style={{ width: 12, height: 12 }} />
             </button>
           </div>
         </div>
@@ -720,14 +705,6 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
                         <span>Văn bản gốc</span>
                       </button>
                     )}
-                    <button
-                      className="btn-outline"
-                      onClick={() => onOpenCopilotQuery && onOpenCopilotQuery(`Tư vấn thông số kỹ thuật xe ${v.name}`)}
-                      style={{ fontSize: '0.8rem', padding: '8px 10px' }}
-                      title="Hỏi Copilot về xe này"
-                    >
-                      <SparkleIcon style={{ width: 14, height: 14 }} />
-                    </button>
                   </div>
                 </div>
               </div>
@@ -834,14 +811,6 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
                         title="Xem toàn bộ tài liệu FAQ gốc"
                       >
                         <span>Văn bản gốc FAQ</span>
-                      </button>
-                      <button
-                        className="btn-primary"
-                        onClick={() => onOpenCopilotQuery && onOpenCopilotQuery(f.query || f.question)}
-                        style={{ fontSize: '0.75rem', padding: '4px 12px' }}
-                      >
-                        <span>Hỏi Copilot</span>
-                        <SparkleIcon style={{ width: 12, height: 12 }} />
                       </button>
                     </div>
                   </div>
@@ -1183,18 +1152,6 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
                     <span>Xem tài liệu gốc Corpus</span>
                   </button>
                 )}
-                <button
-                  className="btn-primary"
-                  onClick={() => {
-                    const vName = selectedVehicle.name;
-                    setSelectedVehicle(null);
-                    onOpenCopilotQuery && onOpenCopilotQuery(`Tư vấn thông số kỹ thuật và so sánh xe ${vName}`);
-                  }}
-                  style={{ fontSize: '0.82rem', padding: '8px 16px' }}
-                >
-                  <span>Hỏi kịch bản tư vấn với Copilot</span>
-                  <SparkleIcon style={{ width: 14, height: 14 }} />
-                </button>
               </div>
             </div>
           </div>
@@ -1238,19 +1195,6 @@ export function KnowledgeView({ onOpenCopilotQuery, sourceDocumentId }) {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10, borderTop: '1px solid #F0F0EE' }}>
-              <button
-                className="btn-primary"
-                onClick={() => {
-                  const docTitle = selectedDocument.title;
-                  const docId = selectedDocument.document_id;
-                  setSelectedDocument(null);
-                  onOpenCopilotQuery && onOpenCopilotQuery(`Tư vấn và giải thích chi tiết nội dung tài liệu ${docTitle} (${docId})`);
-                }}
-                style={{ fontSize: '0.82rem', padding: '8px 16px' }}
-              >
-                <span>Hỏi Copilot về tài liệu này</span>
-                <SparkleIcon style={{ width: 14, height: 14 }} />
-              </button>
             </div>
           </div>
         )}
