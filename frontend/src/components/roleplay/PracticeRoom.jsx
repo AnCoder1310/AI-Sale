@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, SendIcon, MicIcon, SpeakerIcon } from '../common/Icons';
-import { Video, VideoOff, ShieldCheck, Clock, X } from 'lucide-react';
+import { Video, VideoOff, ShieldCheck, Clock, X, Captions, CaptionsOff } from 'lucide-react';
 import { getVehicleImage } from '../../data/vehicleData';
 import { FinishConfirmDialog } from './FinishConfirmDialog';
 import { practiceApi } from '../../api/practiceApi';
@@ -229,6 +229,8 @@ export function PracticeRoom({
   const camera = useLocalCamera();
   const [mirrorEnabled, setMirrorEnabled] = useState(() => readPreference('practice.mirror.enabled', 'false') === 'true');
   const [mirrorLayout, setMirrorLayout] = useState(() => readPreference('practice.mirror.layout', 'split'));
+  const [captionsOn, setCaptionsOn] = useState(() => readPreference('practice.mirror.captions', 'true') !== 'false');
+  const toggleCaptions = () => setCaptionsOn((value) => { savePreference('practice.mirror.captions', String(!value)); return !value; });
   const [phone, setPhone] = useState(() => window.matchMedia('(max-width: 768px)').matches);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [callSeconds, setCallSeconds] = useState(0);
@@ -579,8 +581,8 @@ export function PracticeRoom({
               {!focusMirror && <div className="pr-video-top"><span className="pr-private"><ShieldCheck size={18} />Mirror chỉ hiện trên máy này, không ghi hình</span>{layoutControl}<button onClick={toggleMirror}><VideoOff size={18} />Tắt Mirror</button></div>}
               <div className="pr-video-bottom">
                 <div className="pr-customer-card"><CustomerAvatar thinking={thinking} /><div><strong>Khách</strong><span role="status">{statusText}</span></div></div>
-                {focusMirror && <div className="pr-focus-caption" aria-live="polite"><p>{latestCustomer?.content || 'Phụ đề lời khách sẽ hiện ở đây khi khách nói.'}</p><small>Bạn: {recording ? <span className="pr-caret">…</span> : transcribing ? 'Đang chuyển giọng nói thành chữ…' : latestAdvisor?.content || 'giữ nút để trả lời'}</small></div>}
-                <div className="pr-call-controls"><button className="pr-drawer-trigger" ref={drawerTriggerRef} onClick={() => setDrawerOpen(true)} aria-expanded={drawerOpen}>Hội thoại ({messages.length})</button>{mic}{talkHint}<button className="pr-phone-text" onClick={toggleVoiceMode} disabled={recorder.recordingState !== 'idle' || transcribing}>Nhắn tin</button></div>
+                {focusMirror && captionsOn && <div className="pr-focus-caption" aria-live="polite"><p>{latestCustomer?.content || 'Phụ đề lời khách sẽ hiện ở đây khi khách nói.'}</p><small>Bạn: {recording ? <span className="pr-caret">…</span> : transcribing ? 'Đang chuyển giọng nói thành chữ…' : latestAdvisor?.content || 'giữ nút để trả lời'}</small></div>}
+                <div className="pr-call-controls"><span className="pr-focus-tools"><button className="pr-caption-toggle" onClick={toggleCaptions} aria-pressed={captionsOn}>{captionsOn ? <CaptionsOff aria-hidden="true" /> : <Captions aria-hidden="true" />}{captionsOn ? 'Ẩn phụ đề' : 'Hiện phụ đề'}</button><button className="pr-drawer-trigger" ref={drawerTriggerRef} onClick={() => setDrawerOpen(true)} aria-expanded={drawerOpen}>Hội thoại ({messages.length})</button></span>{mic}{talkHint}<button className="pr-phone-text" onClick={toggleVoiceMode} disabled={recorder.recordingState !== 'idle' || transcribing}>Nhắn tin</button></div>
               </div>
             </> : <>
               <span className="pr-call-timer">Cuộc gọi luyện tập · {clock(callSeconds).padStart(5, '0')}</span>

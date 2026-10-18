@@ -160,7 +160,10 @@
 .pr-focus-caption p { font-size: 24px; font-weight: 500; line-height: 1.5; max-height: 25dvh; overflow-y: auto; }
 .pr-focus-caption small { display: block; font-size: 14px; color: #C9D3E6; padding-top: 8px; max-height: 10dvh; overflow-y: auto; }
 .pr-focus .pr-call-controls { position: relative; }
-.pr-focus .pr-drawer-trigger { display: block; position: absolute; right: 0; top: 50%; transform: translateY(-50%); background: #ffffff14; color: white; border-color: #ffffff40; }
+.pr-focus-tools { display: none; }
+.pr-focus .pr-focus-tools { display: flex; gap: 8px; position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+.pr-focus .pr-drawer-trigger, .pr-focus .pr-caption-toggle { display: inline-flex; align-items: center; gap: 8px; background: #ffffff14; color: white; border-color: #ffffff40; white-space: nowrap; }
+.pr-focus .pr-caption-toggle[aria-pressed="false"] { background: #ffffff2e; }
 .pr-focus .pr-talk-hint { grid-column: 3; }
 .pr-focus .pr-toast { top: auto; bottom: 150px; }
 .pr-caret::after { content: '|'; animation: pr-caret 1s steps(2) infinite; }
@@ -244,7 +247,8 @@
   .pr-focus .pr-customer-card .pr-avatar { width: 32px; height: 32px; font-size: 12px; }
   .pr-focus .pr-talk-hint { display: none; }
   .pr-focus .pr-phone-text { display: block; grid-column: 3; justify-self: end; background: #ffffff14; color: white; border-color: #ffffff40; padding: 0 10px; font-size: 13px; }
-  .pr-focus .pr-drawer-trigger { font-size: 13px; padding: 0 10px; white-space: nowrap; }
+  .pr-focus .pr-focus-tools { position: static; transform: none; grid-column: 1; justify-self: start; flex-direction: column; gap: 6px; }
+  .pr-focus .pr-drawer-trigger, .pr-focus .pr-caption-toggle { font-size: 13px; padding: 0 10px; }
   .pr-focus .pr-call-controls { grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr); gap: 10px; }
   .pr-toast { font-size: 12px; }
   .pr-focus .pr-toast { bottom: 135px; }
