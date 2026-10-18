@@ -311,16 +311,45 @@ export function PracticeRoom({
     event.currentTarget.style.setProperty('--my', String(Math.max(-1, Math.min(1, (event.clientY - bounds.top) / bounds.height * 2 - 1))));
   };
   const roomKeyDown = (event) => {
-    if (event.key === 'Escape') { setDrawerOpen(false); return; }
-    if (event.key !== ' ' || mode !== 'voice' || event.target.closest('input, textarea, [contenteditable="true"]')) return;
-    event.preventDefault();
-    if (!event.repeat && !micDisabled && !showFinishConfirm && !notice && !drawerOpen) recorder.start();
+    if (event.key === 'Escape') setDrawerOpen(false);
   };
-  const roomKeyUp = (event) => {
-    if (event.key === ' ' && mode === 'voice' && !event.target.closest('input, textarea, [contenteditable="true"]')) {
-      event.preventDefault(); recorder.stop();
-    }
+  // Space talks from anywhere on the page in voice mode, except while typing or when another control has focus.
+  const spaceTalksFrom = (target) => {
+    if (!(target instanceof Element)) return true;
+    if (target.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return false;
+    const control = target.closest('button, a[href], summary');
+    return !control || control.classList.contains('pr-mic');
   };
+  const micRef = useRef(null);
+  // Entering voice mode hands keyboard focus to the mic, so Space talks straight away.
+  useEffect(() => {
+    if (mode === 'voice') micRef.current?.focus({ preventScroll: true });
+  }, [mode]);
+  const spaceRef = useRef({});
+  useEffect(() => {
+    spaceRef.current = {
+    down(event) {
+      if (event.key !== ' ' || mode !== 'voice' || !spaceTalksFrom(event.target)) return;
+      event.preventDefault();
+      if (!event.repeat && !micDisabled && !showFinishConfirm && !notice && !drawerOpen) recorder.start();
+    },
+    up(event) {
+      if (event.key !== ' ' || mode !== 'voice' || !spaceTalksFrom(event.target)) return;
+      event.preventDefault();
+      recorder.stop();
+    },
+    };
+  });
+  useEffect(() => {
+    const onDown = (event) => spaceRef.current.down?.(event);
+    const onUp = (event) => spaceRef.current.up?.(event);
+    document.addEventListener('keydown', onDown);
+    document.addEventListener('keyup', onUp);
+    return () => {
+      document.removeEventListener('keydown', onDown);
+      document.removeEventListener('keyup', onUp);
+    };
+  }, []);
 
   const stageLabels = {
     opening: 'Giai đoạn: Chào hỏi & Mở đầu',
@@ -504,7 +533,7 @@ export function PracticeRoom({
   </div>;
   const mic = <span className={`pr-mic-wrap ${recording ? 'pr-recording' : ''}`}>
     {recording && <DotField green />}
-    <button className="pr-mic" disabled={micDisabled} aria-label={autoSendPreference ? 'Bấm giữ để nói, thả để gửi' : 'Bấm giữ để nói, thả để chép vào ô nhập'} aria-pressed={recording}
+    <button ref={micRef} className="pr-mic" disabled={micDisabled} aria-label={autoSendPreference ? 'Bấm giữ để nói, thả để gửi' : 'Bấm giữ để nói, thả để chép vào ô nhập'} aria-pressed={recording}
       onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); recorder.start(); }}
       onPointerUp={() => recorder.stop()} onPointerLeave={() => recorder.stop()} onPointerCancel={() => recorder.stop()} onLostPointerCapture={() => recorder.stop()} onBlur={() => recorder.stop()}
       onKeyDown={(event) => { if (event.key === 'Enter' && !event.repeat && !micDisabled) { event.preventDefault(); recorder.start(); } }}
@@ -521,7 +550,7 @@ export function PracticeRoom({
   </div>;
   const vehicle = getVehicleImage(scenario?.model_badge || scenario?.model || scenario?.title);
   return (
-    <section className={`pr-room ${mode === 'voice' ? 'pr-voice' : 'pr-text'} ${mirrorOn ? 'pr-mirror' : ''} ${focusMirror ? 'pr-focus' : ''}`} aria-label="Phiên luyện tập" onKeyDown={roomKeyDown} onKeyUp={roomKeyUp}>
+    <section className={`pr-room ${mode === 'voice' ? 'pr-voice' : 'pr-text'} ${mirrorOn ? 'pr-mirror' : ''} ${focusMirror ? 'pr-focus' : ''}`} aria-label="Phiên luyện tập" onKeyDown={roomKeyDown}>
       <NoticeDialog notice={notice} onAction={handleNoticeAction} onClose={() => setNotice(null)} />
       <header className="pr-bar">
         <button className="pr-back" onClick={onExit} aria-label="Rời phòng"><ChevronLeft /><span>Rời phòng</span></button>
