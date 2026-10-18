@@ -8,6 +8,7 @@ const DIFFICULTY = {
 
 /** Scenario -> official transparent VinFast exterior photo. */
 function carFor(scenario) {
+  if (scenario.scenario_id === 'SCENARIO_03_VF6_APARTMENT') return { src: '/vehicles/official/vf-6-green.webp', alt: 'VinFast VF 6 màu xanh', width: 200, height: 106 };
   const match = /VF[\s_-]*(Wild|[356789])(?![a-z0-9])/i.exec(`${scenario.model_badge || ''} ${scenario.model || ''} ${scenario.scenario_id} ${scenario.title}`);
   if (!match) return null;
   const model = match[1].toLowerCase();

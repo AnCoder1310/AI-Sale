@@ -227,7 +227,7 @@ export function PracticeRoom({
   };
 
   const camera = useLocalCamera();
-  const [mirrorEnabled, setMirrorEnabled] = useState(() => readPreference('practice.mirror.enabled', 'false') === 'true');
+  const [mirrorEnabled, setMirrorEnabled] = useState(false);
   const [mirrorLayout, setMirrorLayout] = useState(() => readPreference('practice.mirror.layout', 'split'));
   const [captionsOn, setCaptionsOn] = useState(() => readPreference('practice.mirror.captions', 'true') !== 'false');
   const toggleCaptions = () => setCaptionsOn((value) => { savePreference('practice.mirror.captions', String(!value)); return !value; });
@@ -298,7 +298,6 @@ export function PracticeRoom({
   const toggleMirror = () => {
     const next = !mirrorEnabled || ['denied', 'error', 'unsupported'].includes(camera.status);
     setMirrorEnabled(next);
-    savePreference('practice.mirror.enabled', String(next));
     if (next && mirrorEnabled) startCamera();
     if (!next) stopCamera();
   };
@@ -550,13 +549,16 @@ export function PracticeRoom({
       <button className="pr-send" onClick={() => handleSendMessage()} disabled={!inputMessage.trim() || waiting || finishing || transcribing || recorder.recordingState !== 'idle' || terminationStatus !== 'active'} aria-label="Gửi tin nhắn"><SendIcon /></button></div>
     <p className="pr-hint">{waiting ? 'Bạn vẫn gõ trước được. Nút gửi mở lại khi khách trả lời xong.' : 'Enter để gửi, Shift + Enter để xuống dòng.'}</p>
   </div>;
-  const vehicle = getVehicleImage(scenario?.model_badge || scenario?.model || scenario?.title);
+  const vehicleModel = /VF[\s_-]*(Wild|[356789])(?![a-z0-9])/i.exec(`${scenario?.model_badge || ''} ${scenario?.model || ''} ${scenario?.scenario_id || ''} ${scenario?.title || ''}`)?.[1].toLowerCase();
+  const isApartmentScenario = scenario?.scenario_id === 'SCENARIO_03_VF6_APARTMENT';
+  const vehicle = isApartmentScenario ? '/vehicles/official/vf-6-green.webp' : vehicleModel ? `/vehicles/official/vf-${vehicleModel}.webp` : getVehicleImage(scenario?.model_badge || scenario?.model || scenario?.title);
+  const vehicleAlt = isApartmentScenario ? 'VinFast VF 6 màu xanh' : vehicleModel ? `VinFast VF ${vehicleModel === 'wild' ? 'Wild' : vehicleModel}` : 'Xe luyện tập';
   return (
     <section className={`pr-room ${mode === 'voice' ? 'pr-voice' : 'pr-text'} ${mirrorOn ? 'pr-mirror' : ''} ${focusMirror ? 'pr-focus' : ''}`} aria-label="Phiên luyện tập" onKeyDown={roomKeyDown}>
       <NoticeDialog notice={notice} onAction={handleNoticeAction} onClose={() => setNotice(null)} />
       <header className="pr-bar">
         <button className="pr-back" onClick={onExit} aria-label="Rời phòng"><ChevronLeft /><span>Rời phòng</span></button>
-        {vehicle && <img className="pr-vehicle" src={vehicle} alt={scenario?.model_badge || scenario?.model || 'Xe luyện tập'} />}
+        {vehicle && <img className="pr-vehicle" src={vehicle} alt={vehicleAlt} width={200} height={106} />}
         <div className="pr-identity"><h2>{scenario?.title}</h2><div className="pr-meta"><span className="pr-model">{scenario?.model_badge || scenario?.model}</span><span className="pr-stage-label">{stageLabels[stage] || stage}</span><span>Lượt {turnCount} / {maxTurns}</span><progress aria-label="Tiến độ lượt trao đổi" value={turnCount} max={maxTurns} />{focusMirror && <span>Cuộc gọi {clock(callSeconds)}</span>}</div></div>
         {modeControl}
         {focusMirror && <><span className="pr-private"><ShieldCheck size={16} />Chỉ trên máy này</span>{layoutControl}<button className="pr-mirror-off" onClick={toggleMirror} aria-label="Tắt Mirror"><VideoOff size={18} /></button></>}
