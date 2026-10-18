@@ -93,9 +93,7 @@ class ProductInsight(BaseModel):
     insight_id: str | None = None
     variant: str | None = Field(default=None, description="Explicit version/configuration from the request or resolved history. Null means an overview of available source-scoped versions; do not choose a default.")
     essential_conditions: str | None = None
-    advisory_hint: str | None = None
     applicability: Literal["confirmed", "conditional"] | None = None
-    origin_message_id: str | None = None
 
 
 class CopilotResponse(BaseModel):
@@ -183,6 +181,14 @@ class Requirement(StrictContract):
     qualifiers: list[SuggestionText] = Field(default_factory=list, max_length=6)
     operation: Literal["lookup", "compare", "calculate"] = "lookup"
     depends_on: list[RequirementId] = Field(default_factory=list, max_length=MAX_REQUIREMENTS)
+
+    @field_validator("product_model")
+    @classmethod
+    def canonical_model(cls, value):
+        if value:
+            match = re.search(r"\bVF[\s-]*(\d+)\b", value, re.I)
+            return "VF " + match.group(1) if match else value
+        return value
 
 
 class SearchRequest(StrictContract):

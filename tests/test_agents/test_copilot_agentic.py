@@ -101,6 +101,11 @@ def scripted(monkeypatch, outputs):
     return model
 
 
+@pytest.fixture(autouse=True)
+def disable_live_jev(monkeypatch):
+    monkeypatch.setattr(get_settings(), "openrouter_api_key", "")
+
+
 @pytest.fixture
 def offline(monkeypatch):
     async def snapshot(state):
@@ -525,3 +530,78 @@ async def test_scope_filter_prevents_other_vehicle_from_spending_candidate_pool(
     }
     result = await nodes.select_evidence(state)
     assert {h["chunk_id"] for h in result["candidate_evidence"]} == {"c-2", "c-3"}
+
+
+def test_requirement_canonicalizes_vf_variant_model_names():
+    req = Requirement(requirement_id="R1", description="Giá VF 5 Plus", product_model="VF 5 Plus")
+    assert req.product_model == "VF 5"
+    req_hyphen = Requirement(requirement_id="R2", description="Thông số VF-7", product_model="vf-7")
+    assert req_hyphen.product_model == "VF 7"
+
+
+def test_intake_and_plan_handle_input_grounded_non_catalog_models(monkeypatch):
+    from src.agents.copilot.nodes.guard import _validate_intake
+    from src.agents.copilot.nodes.planning import validate_plan
+    from src.agents.copilot.state import IntakeDecision, PlannedSearch, SearchPlan, SearchRequest
+
+    catalog = {
+        "product_model": ["ALL", "VF 3", "VF 5", "VF 6", "VF 7", "VF 8", "VF 9"],
+        "document_type": ["product_specs", "price_list", "policy", "faq", "battlecard"],
+        "policy_type": ["pricing", "warranty", "charging"],
+    }
+    monkeypatch.setattr(planning, "_catalog", lambda state: catalog)
+    state = {"query": "So sánh giá Minio Green, EC Van và VF 5 Plus giúp mình", "customer_context": "", "history": []}
+    decision = IntakeDecision(
+        guard_decision={"decision": "allow", "reason": "none"},
+        task="comparison",
+        route="complex",
+        requirements=[
+            Requirement(requirement_id="R1", description="Giá bán", product_model="Minio Green"),
+            Requirement(requirement_id="R2", description="Giá bán EC Van", product_model="EC Van"),
+            Requirement(requirement_id="R3", description="Giá bán VF 5 Plus", product_model="VF 5 Plus"),
+        ],
+        product_models=["Minio Green", "EC Van", "VF 5 Plus"],
+        simple_search=None,
+    )
+    _validate_intake(decision, state, [])
+    assert decision.product_models == ["VF 5"]
+    assert decision.requirements[0].product_model is None
+    assert "Minio Green" in decision.requirements[0].description
+    assert decision.requirements[1].product_model is None
+    assert decision.requirements[2].product_model == "VF 5"
+
+    plan = SearchPlan(
+        searches=[
+            PlannedSearch(
+                query="giá xe thương mại",
+                product_model="Minio Green",
+                document_type="price_list",
+                requirement_ids=["R1", "R2"],
+            ),
+            PlannedSearch(
+                query="giá VF 5",
+                product_model="VF 5",
+                document_type="price_list",
+                requirement_ids=["R3"],
+            ),
+        ]
+    )
+    validate_plan(plan, {**state, "analysis": decision, "requirements": decision.requirements})
+    assert plan.searches[0].product_model is None
+    assert "Minio Green" in plan.searches[0].query
+    assert plan.searches[1].product_model == "VF 5"
+
+    with pytest.raises(ValueError, match="requirement model outside intake scope"):
+        _validate_intake(
+            IntakeDecision(
+                guard_decision={"decision": "allow", "reason": "none"},
+                task="knowledge",
+                route="simple",
+                requirements=[Requirement(requirement_id="R1", description="Giá Ford Ranger", product_model="Ford Ranger")],
+                product_models=["Ford Ranger"],
+                simple_search=SearchRequest(query="Giá Ford Ranger", product_model="Ford Ranger"),
+            ),
+            state,
+            [],
+        )
+

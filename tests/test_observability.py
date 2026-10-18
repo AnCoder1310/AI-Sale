@@ -534,6 +534,7 @@ async def test_real_copilot_http_graph_session_and_guard_export(client, tmp_path
     from src.agents.copilot.nodes import retrieval
     from src.agents.copilot.tools import _make_hit
     from src.api.copilot import current_copilot_user
+    from src.config import get_settings
     from src.integrations.copilot_sessions import SQLCopilotSessionsRepository
     from src.knowledge.index_readiness import CorpusSnapshot, load_snapshot
     from src.knowledge.schemas import ChunkMetadata, KnowledgeChunk
@@ -541,6 +542,7 @@ async def test_real_copilot_http_graph_session_and_guard_export(client, tmp_path
     from tests.test_agents.test_copilot_agentic import checked, generated, intake
 
     recorder = RecordingClient()
+    monkeypatch.setattr(get_settings(), "openrouter_api_key", "")
     service = app.state.copilot_telemetry
     knowledge = surface != "legacy"
     for name, value in {"enabled": True, "client": recorder, "capture": blocked or knowledge, "sampling": 1.0}.items():

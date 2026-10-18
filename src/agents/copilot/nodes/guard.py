@@ -136,7 +136,26 @@ def _validate_intake(decision, state, history):
     if len(decision.requirements) > get_settings().copilot_max_requirements:
         raise ValueError("intake exceeds requirement budget")
     models = set(planning._catalog(state)["product_model"])
+    text = " ".join(
+        [
+            state["query"],
+            state.get("customer_context", ""),
+            state.get("memory_summary") or "",
+            *[m.get("content", "") for m in history],
+        ]
+    ).casefold()
+    decision.product_models = [
+        m for m in decision.product_models if m in models or m.casefold() not in text
+    ]
     for requirement in decision.requirements:
+        if (
+            requirement.product_model is not None
+            and requirement.product_model not in models
+            and requirement.product_model.casefold() in text
+        ):
+            if requirement.product_model.casefold() not in requirement.description.casefold():
+                requirement.description = f"{requirement.product_model}: {requirement.description}"[:500]
+            requirement.product_model = None
         if requirement.product_model is not None and (
             requirement.product_model not in models
             or requirement.product_model not in {*decision.product_models, "ALL"}
@@ -146,6 +165,14 @@ def _validate_intake(decision, state, history):
         return
     if decision.simple_search is None:
         return
+    if (
+        decision.simple_search.product_model is not None
+        and decision.simple_search.product_model not in models
+        and decision.simple_search.product_model.casefold() in text
+    ):
+        if decision.simple_search.product_model.casefold() not in decision.simple_search.query.casefold():
+            decision.simple_search.query = f"{decision.simple_search.product_model} {decision.simple_search.query}"[:1000]
+        decision.simple_search.product_model = None
     search = PlannedSearch(
         **decision.simple_search.model_dump(), requirement_ids=[r.requirement_id for r in decision.requirements]
     )

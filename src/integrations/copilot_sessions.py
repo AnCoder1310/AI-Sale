@@ -682,31 +682,4 @@ class SQLCopilotSessionsRepository:
                 ).order_by(self.messages.c.seq).limit(20)
             ).mappings()]
 
-    def save_rich_turn(
-        self,
-        session_id: str,
-        owner_id: str,
-        request_id: str,
-        user_query: str,
-        response_data: dict[str, Any],
-        customer_context: str = "",
-        revision: int | None = None,
-    ):
-        """Atomically record user question and assistant response via unified save method."""
-        dialogue = [
-            {"role": "user", "content": user_query},
-            {"role": "assistant", "content": response_data.get("answer", "")[:4000]},
-        ]
-        return self.save(
-            session_id=session_id,
-            owner_id=owner_id,
-            history=dialogue,
-            customer_context=customer_context,
-            revision=revision,
-            rich_turn={
-                "request_id": request_id,
-                "user_query": user_query,
-                "response_data": response_data,
-            },
-        )
 

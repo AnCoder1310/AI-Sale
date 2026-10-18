@@ -40,7 +40,9 @@ def validate_plan(plan, state):
             *[m.get("content", "") for m in state.get("history", [])],
         ]
     )
-    observed_models = {"VF " + v for v in re.findall(r"\bVF[\s-]*(\d+)\b", text, re.I)}
+    observed_models = {"VF " + v for v in re.findall(r"\bVF[\s-]*(\d+)\b", text, re.I)} | {
+        m for m in catalog["product_model"] if m != "ALL" and m.casefold() in text.casefold()
+    }
     signatures = set(state.get("search_signatures", []))
     req_map = _requirements(state)
     all_req_ids = set(req_map.keys())
@@ -61,6 +63,14 @@ def validate_plan(plan, state):
         if state.get("recovery_requirement_ids") and not search_reqs <= set(state["recovery_requirement_ids"]):
             raise ValueError("corrective query outside missing requirements")
         union_search_req_ids |= search_reqs
+        if (
+            search.product_model
+            and search.product_model not in catalog["product_model"]
+            and search.product_model.casefold() in text.casefold()
+        ):
+            if search.product_model.casefold() not in search.query.casefold():
+                search.query = f"{search.product_model} {search.query}"[:1000]
+            search.product_model = None
         for key in ("product_model", "document_type", "policy_type"):
             value = getattr(search, key)
             if value and value not in catalog[key]:

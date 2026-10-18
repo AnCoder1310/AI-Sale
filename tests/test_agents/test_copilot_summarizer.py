@@ -22,7 +22,6 @@ def test_format_summary_for_context():
         "pending_concerns": "Chính sách thuê pin",
     }
     res = format_summary_for_context(summary)
-    res = format_summary_for_context(summary)
     assert "[Thông tin ngữ cảnh từ các lượt trao đổi trước:" in res
     assert "VF 5 Plus" in res
     assert "Ngân sách 500 triệu" in res

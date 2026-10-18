@@ -71,11 +71,9 @@ class ExactCacheService:
         self,
         ttl_hours: int = 24,
         max_entries: int = 500,
-        similarity_threshold: float = 1.0,
     ):
         self.ttl = timedelta(hours=ttl_hours)
         self.max_entries = max_entries
-        self.similarity_threshold = similarity_threshold
         self._keys: list[str] = []
         self._cache_map: dict[str, ExactCacheEnvelope] = {}
         self._last_fingerprint: str | None = None
@@ -112,6 +110,47 @@ class ExactCacheService:
             return True
         return False
 
+    def _resolve_snapshot_and_key(
+        self,
+        query: str,
+        domain: str,
+        target_date: date | str | None,
+        resolved_date: str | None,
+        readiness_loader: Any,
+    ) -> tuple[Any, str, str] | None:
+        """Resolve corpus snapshot, lookup date string, and deterministic cache key."""
+        date_mode = "explicit" if target_date is not None else "current"
+        lookup_date_str = str(target_date) if target_date else str(resolved_date or today_in_vietnam())
+
+        from src.knowledge.chunking import CHUNK_OVERLAP, CHUNK_SIZE, chunking_identity
+        from src.knowledge.index_readiness import load_snapshot
+
+        try:
+            snapshot = readiness_loader() if readiness_loader else load_snapshot()
+        except Exception as exc:
+            logger.debug("Readiness snapshot unavailable for cache: %s", exc)
+            return None
+
+        if self._last_fingerprint and self._last_fingerprint != snapshot.fingerprint:
+            self.invalidate_all()
+        self._last_fingerprint = snapshot.fingerprint
+
+        settings = get_settings()
+        chunk_id = chunking_identity(CHUNK_SIZE, CHUNK_OVERLAP)
+        prov_model = f"{getattr(settings, 'llm_provider', 'openrouter')}:{settings.model_name}"
+
+        key = build_cache_key(
+            query=query,
+            domain=domain,
+            lookup_date=lookup_date_str,
+            date_mode=date_mode,
+            corpus_fingerprint=snapshot.fingerprint,
+            chunking_identity=chunk_id,
+            workflow_version="v9-evidence-review:" + selection_identity(settings),
+            provider_model=prov_model,
+        )
+        return snapshot, lookup_date_str, key
+
     async def get(
         self,
         query: str,
@@ -134,37 +173,10 @@ class ExactCacheService:
         ):
             return None
 
-        date_mode = "explicit" if target_date is not None else "current"
-        lookup_date_str = str(target_date) if target_date else str(resolved_date or today_in_vietnam())
-
-        from src.knowledge.chunking import CHUNK_OVERLAP, CHUNK_SIZE, chunking_identity
-        from src.knowledge.index_readiness import load_snapshot
-
-        try:
-            snapshot = readiness_loader() if readiness_loader else load_snapshot()
-        except Exception as exc:
-            logger.debug("Readiness snapshot unavailable for cache get: %s", exc)
+        resolved = self._resolve_snapshot_and_key(query, domain, target_date, resolved_date, readiness_loader)
+        if resolved is None:
             return None
-
-        # Check if corpus identity changed; invalidate stale readiness
-        if self._last_fingerprint and self._last_fingerprint != snapshot.fingerprint:
-            self.invalidate_all()
-        self._last_fingerprint = snapshot.fingerprint
-
-        settings = get_settings()
-        chunk_id = chunking_identity(CHUNK_SIZE, CHUNK_OVERLAP)
-        prov_model = f"{getattr(settings, 'copilot_llm_provider', 'openrouter')}:{settings.model_name}"
-
-        key = build_cache_key(
-            query=query,
-            domain=domain,
-            lookup_date=lookup_date_str,
-            date_mode=date_mode,
-            corpus_fingerprint=snapshot.fingerprint,
-            chunking_identity=chunk_id,
-            workflow_version="v9-evidence-review:" + selection_identity(settings),
-            provider_model=prov_model,
-        )
+        snapshot, lookup_date_str, key = resolved
 
         entry = self._cache_map.get(key)
         if not entry:
@@ -253,32 +265,10 @@ class ExactCacheService:
             logger.warning("Refusing to cache invalid CopilotResponse: %s", val_err)
             return
 
-        date_mode = "explicit" if target_date is not None else "current"
-        lookup_date_str = str(target_date) if target_date else str(resolved_date or today_in_vietnam())
-
-        from src.knowledge.chunking import CHUNK_OVERLAP, CHUNK_SIZE, chunking_identity
-        from src.knowledge.index_readiness import load_snapshot
-
-        try:
-            snapshot = readiness_loader() if readiness_loader else load_snapshot()
-        except Exception as exc:
-            logger.debug("Readiness snapshot unavailable for cache put: %s", exc)
+        resolved = self._resolve_snapshot_and_key(query, domain, target_date, resolved_date, readiness_loader)
+        if resolved is None:
             return
-
-        settings = get_settings()
-        chunk_id = chunking_identity(CHUNK_SIZE, CHUNK_OVERLAP)
-        prov_model = f"{getattr(settings, 'copilot_llm_provider', 'openrouter')}:{settings.model_name}"
-
-        key = build_cache_key(
-            query=query,
-            domain=domain,
-            lookup_date=lookup_date_str,
-            date_mode=date_mode,
-            corpus_fingerprint=snapshot.fingerprint,
-            chunking_identity=chunk_id,
-            workflow_version="v9-evidence-review:" + selection_identity(settings),
-            provider_model=prov_model,
-        )
+        _, _, key = resolved
 
         expires_at = datetime.now(UTC) + self.ttl
         envelope = ExactCacheEnvelope(cache_key=key, response_data=clean_dict, expires_at=expires_at)
