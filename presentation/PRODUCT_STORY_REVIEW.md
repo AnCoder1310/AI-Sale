@@ -1,6 +1,6 @@
 # Nội dung sản phẩm — bản để review
 
-Ngày: 18/10/2026. Nội dung chuyển thể từ [BRIEF](../docs/gate1/BRIEF.md), đã tách hai phần độc lập. Đây là lời dẫn đề xuất, chưa phải pitch deck hoặc video hoàn thành. 
+Ngày: 18/10/2026. Nội dung chuyển thể từ [BRIEF](../docs/gate1/BRIEF.md), đã tách hai phần độc lập. Đây là lời dẫn đề xuất, chưa phải pitch deck hoặc video hoàn thành.
 
 ## Phần 1 — Copilot: pain points
 
@@ -12,7 +12,7 @@ Ngày: 18/10/2026. Nội dung chuyển thể từ [BRIEF](../docs/gate1/BRIEF.md
 
 “Copilot giữ hội thoại và hồ sơ theo từng khách. Sales mở khách để xem tóm tắt tình hình, nhu cầu, ngân sách, xe quan tâm và những vấn đề còn vướng; có thể mở tin nguồn để kiểm tra. Trong cùng không gian, sales tra cứu tài liệu VinFast, chuẩn bị nháp trả lời và theo dõi việc cần làm, lịch hẹn. Mục tiêu là giúp sales tiếp tục đúng câu chuyện và đúng việc, kể cả khi khách quay lại sau nhiều ngày.”
 
-**Demo đề xuất:** mở khách đã có hội thoại → xem hồ sơ/tóm tắt → mở tin nguồn → xem vấn đề còn mở → tạo và kiểm tra nháp → xem công việc/lịch hẹn. 
+**Demo đề xuất:** mở khách đã có hội thoại → xem hồ sơ/tóm tắt → mở tin nguồn → xem vấn đề còn mở → tạo và kiểm tra nháp → xem công việc/lịch hẹn.
 
 ## Phần 3 — Roleplay: pain points
 
