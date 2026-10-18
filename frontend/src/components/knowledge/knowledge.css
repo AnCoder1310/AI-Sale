@@ -58,6 +58,13 @@
 .kb-muted { color: var(--app-muted); font-size: 13px; }
 .kb-empty { margin: 0; padding: 24px 12px; text-align: center; border: 1px dashed var(--app-border); border-radius: 16px; background: var(--kb-white); color: var(--app-muted); line-height: 1.65; }
 .kb-vehicle-image { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radius: 12px; background: var(--app-bg); padding: 12px; }
+.kb-grid--vehicles { row-gap: 28px; overflow: visible; }
+/* 88% image width × 637/1200 height × 58% overlap ≈ 27.1% of content width.
+   Card margins reserve that space before every row, including the first. */
+.kb-vehicle { position: relative; overflow: visible; margin-top: calc(27.1% + 12px); }
+.kb-vehicle-photo { position: relative; z-index: 1; flex: none; width: 88%; margin: calc(-27.1% - 20px) auto 0; padding: 0; border: 0; background: none; overflow: visible; }
+.kb-vehicle-photo .kb-vehicle-image { height: auto; aspect-ratio: auto; padding: 0; border: 0; border-radius: 0; background: none; object-fit: contain; filter: drop-shadow(0 14px 14px rgba(11,18,32,.18)); transition: transform 250ms ease; }
+.kb-vehicle:hover .kb-vehicle-photo .kb-vehicle-image { transform: translateY(-6px); }
 .kb-vehicle h3 { margin: 0; font-size: 17px; }
 .kb-specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 12px; border: 1px solid var(--app-border); border-radius: 12px; background: var(--app-bg); }
 .kb-specs dt, .kb-document-meta dt { font-size: 12px; color: var(--app-muted); margin-bottom: 4px; }
@@ -112,11 +119,16 @@
   .kb-tabs { grid-template-columns: repeat(2, 1fr); }
   .kb-page .kb-tab { min-height: 48px; font-size: 14px; }
   .kb-doc, .kb-vehicle, .kb-faq { padding: 16px; }
+  .kb-grid--vehicles { row-gap: 24px; }
+  .kb-vehicle { margin-top: calc(23.4% + 12px); }
+  .kb-vehicle-photo { margin-top: calc(-23.4% - 16px); }
   .kb-drawer-head { padding: 12px 0; gap: 4px; }
   .kb-drawer-head h2 { font-size: 16px; }
   .kb-document-meta { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
+  .kb-vehicle-photo .kb-vehicle-image { transition: none; }
+  .kb-vehicle:hover .kb-vehicle-photo .kb-vehicle-image { transform: none; }
   .kb-page .kb-tab { transition: none; }
   .kb-drawer-layer, .kb-drawer, .kb-drawer-shade, .kb-chevron { transition: none; }
 }

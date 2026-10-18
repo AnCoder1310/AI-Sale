@@ -6,14 +6,13 @@ const DIFFICULTY = {
   Easy: 'Dễ', Medium: 'Trung bình', Hard: 'Khó', 'Cơ bản': 'Dễ', 'Tiêu chuẩn': 'Trung bình', 'Nâng cao': 'Khó',
 };
 
-/** Scenario -> car photo. vf-7.jpg is 2400px, so the card uses the 800px copy. */
+/** Scenario -> official transparent VinFast exterior photo. */
 function carFor(scenario) {
-  const match = /VF\s*_?(\d)/i.exec(`${scenario.scenario_id} ${scenario.title}`);
-  const model = match?.[1];
-  if (model === '5') return { src: '/vehicles/vf-5.jpg', alt: 'VinFast VF 5 màu trắng', width: 200, height: 124 };
-  if (model === '6') return { src: '/vehicles/vf-6.jpg', alt: 'VinFast VF 6', width: 200, height: 124 };
-  if (model === '7') return { src: '/vehicles/vf-7-card.jpg', alt: 'VinFast VF 7 trên đường', width: 200, height: 124 };
-  return null;
+  if (scenario.scenario_id === 'SCENARIO_03_VF6_APARTMENT') return { src: '/vehicles/official/vf-6-green.webp', alt: 'VinFast VF 6 màu xanh', width: 200, height: 106 };
+  const match = /VF[\s_-]*(Wild|[356789])(?![a-z0-9])/i.exec(`${scenario.model_badge || ''} ${scenario.model || ''} ${scenario.scenario_id} ${scenario.title}`);
+  if (!match) return null;
+  const model = match[1].toLowerCase();
+  return { src: `/vehicles/official/vf-${model}.webp`, alt: `VinFast VF ${model === 'wild' ? 'Wild' : model}`, width: 200, height: 106 };
 }
 
 /** The customer's quoted opening line inside visible_context, else the whole context. */
@@ -58,8 +57,11 @@ export function ScenarioCatalog({
             const opening = openingLine(scenario.visible_context);
             const assigned = assignedFor(scenario.scenario_id);
             const due = assigned?.due_date ? fmtDayMonth(`${assigned.due_date}T00:00:00`) : '';
+            // Scenarios whose acceptable outcomes include an upsell get the "Luyện Upsale!" sticker.
+            const upsell = (scenario.outcome_labels || []).some((label) => /upsell/i.test(label));
             return (
               <li className="ap-scenario" key={scenario.scenario_id}>
+                {upsell && <span className="ap-upsell">Luyện Upsale!</span>}
                 <div className="ap-scenario-media">
                   {car && <img src={car.src} alt={car.alt} width={car.width} height={car.height} loading="lazy" />}
                   <button type="button" className="ap-btn ap-btn--primary" onClick={() => onStartScenario(scenario.scenario_id)} disabled={starting}>

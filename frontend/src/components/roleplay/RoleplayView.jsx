@@ -182,7 +182,17 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
               <p>{approvedCount} bài đã được quản lý duyệt. Điểm bên dưới chỉ tính các bài đó.</p>
             )}
           </div>
-          <AdvisorProgress progress={progress} />
+          <div className="ap-top">
+            <AdvisorProgress progress={progress} />
+            <AdvisorAssignmentsView
+              scenarios={scenarios}
+              assignments={assignmentsLoad.data || []}
+              status={assignmentsLoad.status}
+              error={assignmentsLoad.error}
+              onReload={assignmentsLoad.reload}
+              onStart={(assignment) => requestStartScenario(assignment.scenario_id, assignment.assignment_id)}
+            />
+          </div>
           <ScenarioCatalog
             scenarios={scenarios}
             onStartScenario={requestStartScenario}
@@ -192,15 +202,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
             assignments={assignmentsLoad.data || []}
             starting={starting}
           />
-          <div className="ap-lower">
-            <AdvisorAssignmentsView
-              scenarios={scenarios}
-              assignments={assignmentsLoad.data || []}
-              status={assignmentsLoad.status}
-              error={assignmentsLoad.error}
-              onReload={assignmentsLoad.reload}
-              onStart={(assignment) => requestStartScenario(assignment.scenario_id, assignment.assignment_id)}
-            />
+          <div className="ap-lower ap-lower--single">
             <PracticeHistory
               history={history}
               status={historyStatus}

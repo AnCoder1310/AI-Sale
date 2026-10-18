@@ -12,7 +12,7 @@ export function Header({
   onLogout,
 }) {
   const tabs = [
-    { id: 'copilot', label: 'Trợ lý Copilot', icon: <CopilotLogo style={{ width: 18, height: 18 }} /> },
+    { id: 'copilot', label: 'Trợ lý Co-pilot', icon: <CopilotLogo style={{ width: 18, height: 18 }} /> },
     { id: 'roleplay', label: 'Phòng luyện tập', icon: <span className="roleplay-file-icon" aria-hidden="true" /> },
     { id: 'knowledge', label: 'Kho kiến thức', icon: <BookIcon style={{ width: 18, height: 18 }} /> },
   ];

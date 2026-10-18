@@ -15,7 +15,7 @@
 .pr-room summary { cursor: pointer; min-height: 44px; padding: 10px 0; }
 .pr-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--pr-border); flex: none; z-index: 3; background: white; }
 .pr-back { display: inline-flex; align-items: center; gap: 6px; flex: none; }
-.pr-vehicle { width: 64px; height: 44px; border-radius: 8px; background: var(--pr-bg); object-fit: contain; flex: none; }
+.pr-vehicle { width: 64px; height: 34px; border-radius: 8px; background: transparent; object-fit: contain; flex: none; }
 .pr-identity { flex: 1; min-width: 120px; }
 .pr-identity h2 { font-size: 17px; font-weight: 700; line-height: 1.4; }
 .pr-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--pr-muted); font-size: 12px; margin-top: 4px; }

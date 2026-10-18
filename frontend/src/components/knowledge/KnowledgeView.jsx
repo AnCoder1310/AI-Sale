@@ -9,12 +9,21 @@ import { copilotApi } from '../../api/copilotApi';
 import './knowledge.css';
 
 const TABS = [
+  { id: 'vehicles', title: 'Dòng xe', icon: Car, data: VEHICLES, unit: 'dòng xe' },
   { id: 'policies', title: 'Chính sách & hợp đồng', icon: FileText, data: POLICIES, unit: 'tài liệu' },
   { id: 'fees', title: 'Giá & phí', icon: Receipt, data: PRICING_TARIFFS, unit: 'tài liệu' },
-  { id: 'vehicles', title: 'Dòng xe', icon: Car, data: VEHICLES, unit: 'dòng xe' },
   { id: 'faq', title: 'FAQ', icon: MessageCircleQuestion, data: FAQ_QUESTIONS, unit: 'câu hỏi' },
 ];
 const FAQ_MODELS = ['Tất cả', 'VF 3', 'VF 5', 'VF 6', 'VF 7', 'VF 8', 'VF 9'];
+const OFFICIAL_VEHICLE_IMAGES = {
+  vf3: '/vehicles/official/vf-3.webp',
+  vf5: '/vehicles/official/vf-5.webp',
+  vf6: '/vehicles/official/vf-6.webp',
+  vf7: '/vehicles/official/vf-7.webp',
+  vf8: '/vehicles/official/vf-8.webp',
+  vf9: '/vehicles/official/vf-9.webp',
+  vfwild: '/vehicles/official/vf-wild.webp',
+};
 const CORE_SPECS = [['range', 'Quãng đường'], ['power', 'Công suất'], ['battery_capacity', 'Dung lượng pin'], ['charging_dc', 'Sạc nhanh DC']];
 const DRIVE_SPECS = [...CORE_SPECS, ['torque', 'Mô-men xoắn'], ['drivetrain', 'Hệ dẫn động']];
 const DIMENSION_SPECS = [['dimensions', 'Kích thước (D × R × C)'], ['wheelbase', 'Chiều dài cơ sở'], ['ground_clearance', 'Khoảng sáng gầm'], ['top_speed', 'Tốc độ tối đa']];
@@ -46,7 +55,7 @@ function vehicleSpec(vehicle, key) {
   return vehicle.specs?.[key] || vehicle[key] || (key === 'charging_dc' ? vehicle.charging_time : '') || 'Đang cập nhật';
 }
 function VehicleImage({ vehicle }) {
-  return <img className="kb-vehicle-image" src={vehicle.image} alt={vehicle.name} loading="lazy" onError={(event) => {
+  return <img className="kb-vehicle-image" src={OFFICIAL_VEHICLE_IMAGES[vehicle.id] || vehicle.image} alt={vehicle.name} loading="lazy" onError={(event) => {
     const fallback = MODEL_SVG_MAP[vehicle.id];
     if (fallback && event.currentTarget.dataset.fallback !== 'true') {
       event.currentTarget.dataset.fallback = 'true';
@@ -83,7 +92,7 @@ function DocumentCard({ doc, onOpen }) {
 }
 function VehicleCard({ vehicle, onSelect }) {
   return <article className="kb-vehicle">
-    <VehicleImage vehicle={vehicle} />
+    <div className="kb-vehicle-photo"><VehicleImage vehicle={vehicle} /></div>
     <div><h3>{vehicle.name}</h3><p className="kb-muted">{vehicle.segment}</p></div>
     <Specs vehicle={vehicle} fields={CORE_SPECS} />
     <Prices vehicle={vehicle} />
@@ -140,7 +149,7 @@ function PdfDrawer({ doc, onClose }) {
 }
 
 export function KnowledgeView({ sourceDocumentId }) {
-  const [tab, setTab] = useState('policies');
+  const [tab, setTab] = useState('vehicles');
   const [query, setQuery] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [selectedDocument, setSelectedDocument] = useState(null);
@@ -203,7 +212,7 @@ export function KnowledgeView({ sourceDocumentId }) {
     <nav className="kb-tabs" aria-label="Danh mục kiến thức">{TABS.map((item) => <button type="button" key={item.id} className="kb-tab" aria-pressed={tab === item.id} onClick={() => setTab(item.id)}><item.icon size={20} aria-hidden="true" />{item.title}<span className="kb-tab-count">{item.data.length}</span></button>)}</nav>
     {tab === 'faq' && <div className="kb-filters" role="group" aria-label="Lọc theo dòng xe">{FAQ_MODELS.map((model) => <button type="button" className="kb-filter" key={model} aria-pressed={faqModel === model} onClick={() => setFaqModel(model)}>{model}</button>)}</div>}
     {filtered && <p className="kb-muted" role="status">{items.length} kết quả</p>}
-    {items.length ? <div className="kb-grid">{items.map(renderItem)}</div> : <p className="kb-empty">{filtered ? 'Không tìm thấy kết quả. Hãy thử từ khóa hoặc bộ lọc khác.' : `Chưa có ${activeTab.unit} trong mục này.`}</p>}
+    {items.length ? <div className={`kb-grid${tab === 'vehicles' ? ' kb-grid--vehicles' : ''}`}>{items.map(renderItem)}</div> : <p className="kb-empty">{filtered ? 'Không tìm thấy kết quả. Hãy thử từ khóa hoặc bộ lọc khác.' : `Chưa có ${activeTab.unit} trong mục này.`}</p>}
     <PdfDrawer doc={viewingPdf} onClose={closePdf} />
     <Modal isOpen={Boolean(selectedVehicle)} onClose={() => setSelectedVehicle(null)} title={selectedVehicle?.name || ''} maxWidth={900}>
       {selectedVehicle && <div className="kb-modal-content"><VehicleImage vehicle={selectedVehicle} /><div><h3>{selectedVehicle.name}</h3><p className="kb-muted">{selectedVehicle.segment}</p>{selectedVehicle.tagline && <p>{selectedVehicle.tagline}</p>}</div><Prices vehicle={selectedVehicle} />
