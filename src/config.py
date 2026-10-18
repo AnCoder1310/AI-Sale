@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     )
 
     practice_judge_provider: Literal["openai", "openrouter", "gemini", "grok", "deepseek"] = "openrouter"
-    practice_judge_model: str = "google/gemini-3.8-flash"
+    practice_judge_model: str = "deepseek/deepseek-v3.2"
 
     # Model Configuration
     model_name: str = Field(

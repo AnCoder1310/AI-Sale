@@ -1,8 +1,4 @@
-# Workflow tra cứu Copilot sau khi dọn code
-
-Đối chiếu code ngày 17/10/2026. Jev là bộ chọn evidence mặc định. Graph có chín node;
-chỉ bốn node gọi chat LLM. Jev gọi Decisions API riêng trong `select_evidence`.
-State của graph chỉ sống trong một request; history và memory được service lưu riêng.
+# Workflow tra cứu Copilot & Kiến trúc Sales Copilot Workspace
 
 ## 1. Luồng chạy
 
@@ -51,8 +47,7 @@ Code: [guard.py](../src/agents/copilot/nodes/guard.py).
   ngày mua/hóa đơn là dữ kiện điều kiện, không tự đổi thành ngày tra cứu.
 - Gọi `INTAKE_PROMPT`, nhận `IntakeDecision`. Pydantic kiểm tra schema; code kiểm tra
   mẫu xe và filters với catalog, phạm vi requirement và budget search. Schema native dùng giới hạn requirements theo request, không chỉ ghi trong prompt.
-- Tạo requirement fact/advice/external, phân loại factual/mixed/coaching. Không còn
-  tách requirement lần hai bằng regex. Coaching thiếu goal được thêm chính query làm advice goal.
+- Tạo requirement fact/advice/external, phân loại factual/mixed/coaching. Coaching thiếu goal được thêm chính query làm advice goal.
 - Code nâng simple thành complex khi có nhiều fact, nhiều mẫu hoặc comparison.
   Nếu vẫn có fact tra cứu được, thiếu nhu cầu khách/dữ liệu đại lý không chặn toàn bộ câu hỏi.
 - Simple tạo sẵn một `SearchPlan`, bỏ qua planner. Coaching không cần fact bỏ qua retrieval.
@@ -356,24 +351,93 @@ Simple thường có ba chat calls: intake, generate, checker. Complex thêm pla
 Coaching có ba chat calls nhưng không search/Jev. Lời chào cố định không gọi model.
 Recovery không được coi là vòng lặp mở: scheduler kiểm tra cả số lượt, thời gian và attempts còn lại.
 
-## 6. Kết quả đánh giá đang được giữ
+## 6. Kết quả đánh giá đang được giữ (Cập nhật 18/10/2026)
 
-Báo cáo duy nhất của Copilot nằm tại
-[benchmark ngày 17/10/2026](../eval/results/copilot-benchmark-20261017/report.md).
-Số liệu và denominator nằm trong
-[summary.json](../eval/results/copilot-benchmark-20261017/summary.json).
-Xem [runbook](copilot-benchmark-runbook.md) để đọc từng case, trace và các giới hạn.
+- Báo cáo đánh giá đầy đủ bằng tiếng Việt & bảng thông số vận hành:
+  [eval/reports/copilot_benchmark_live_2026-10-18.md](../eval/reports/copilot_benchmark_live_2026-10-18.md).
+- Tổng hợp metrics & chẩn đoán:
+  [eval/reports/copilot_benchmark_live_2026-10-18_summary.json](../eval/reports/copilot_benchmark_live_2026-10-18_summary.json).
+- Kết quả chi tiết từng câu trả lời và chấm điểm LLM Judge + Ragas (50 cases):
+  [eval/reports/copilot_benchmark_live_2026-10-18_results.json](../eval/reports/copilot_benchmark_live_2026-10-18_results.json) và
+  [eval/reports/copilot_benchmark_live_2026-10-18_reviews.json](../eval/reports/copilot_benchmark_live_2026-10-18_reviews.json).
 
-Workflow v9-evidence-review đạt 35/49 case sau review, còn một case unresolved.
-Đây là kết quả của benchmark đã hiệu đính và corpus được khóa trong manifest;
-không đại diện trực tiếp cho dữ liệu nguyên bản của team trên develop.
-Các lượt development, A/B và báo cáo thử nghiệm cũ đã được dọn khỏi workspace.
-
-Các điểm chưa đạt: eligibility nguồn lịch sử, packing làm mất bằng chứng,
-lỗi hợp đồng generate/checker và hỏi làm rõ chưa phù hợp. Faithfulness cao trên
-các câu đã trả lời không chứng minh toàn bộ request được hoàn thành.
+Sau khi chuẩn hóa `Requirement.product_model` (hỗ trợ cả các mẫu xe nằm trong tài liệu phạm vi `"ALL"` như `Minio Green`, `Limo Green`, `EC Van`, `VF Wild`) và đồng bộ 50/50 case trong `eval/datasets/copilot_benchmark.json` với `data/knowledge/corpus.json` (359 chunks), đợt chạy `copilot-benchmark-20261018` đạt:
+- **Tổng số case Pass: 44 / 50 (88.0%)** (`outcomes: 50/50`, `valid: 50/50`, `unresolved: 0`, `request_error_rate: 0%`).
+- **Theo nhóm:** `negative` đạt **15 / 15 (100.0%)**, `edge` đạt **4 / 5 (80.0%)**, `on_topic` đạt **25 / 30 (83.3%)**.
+- **Điểm trung bình (LLM Judge `deepseek/deepseek-v3.2` + Ragas):** `relevance = 0.980`, `scope_unit_date_conditions = 0.950`, `fact_correctness = 0.910`, `goal_completeness = 0.900`, `ragas.faithfulness = 0.919`, `citation_support = 0.838`, `ragas.context_recall = 0.773`.
+- **Thông số vận hành (50 cases):** `latency_seconds` trung bình `19.79s` (`p50 = 17.74s`, `p95 = 41.02s`), `provider_error_attempt_rate = 0%`, `llm_timeout_attempt_rate = 0%`, `jev_decisions = 569` (`jev_evidence: 76`, `jev_irrelevant: 489`, `jev_no_evidence: 4`), RAM đỉnh `~186.1 MB`.
 
 Test cơ chế hiện tại vẫn được giữ cho schema, citation/quote, ngân sách, Jev,
-packing, recovery, snapshot, API và lỗi dependency. Test khóa cứng kết quả của
-một lượt lịch sử và file grounding trùng coverage đã được bỏ. Lịch sử đầy đủ của
+packing, recovery, snapshot, API và lỗi dependency. Lịch sử đầy đủ của
 lượt benchmark được giữ nguyên; không thay điểm hoặc xóa attempt lỗi.
+
+---
+
+## 7. Không gian làm việc Sales Copilot, Customer Intelligence & Soạn nháp Cá nhân hóa (`/api/v1/sales-copilot/*`)
+
+Bên cạnh luồng tra cứu RAG 9-node dùng chung cho cả màn hình **Hỏi đáp chính sách** (`/api/v1/copilot/query`) và khung **Tra cứu riêng theo từng khách hàng** (`/api/v1/sales-copilot/conversations/{id}/copilot-chat`), phân hệ Sales Copilot bao gồm 3 dịch vụ lõi:
+
+```mermaid
+flowchart TB
+  subgraph FE["Frontend (React / Vite — frontend/src/components/copilot/)"]
+    DASH["DashboardView.jsx\n(KPI Strip, Funnel, Danh sách việc & Khách chờ)"]
+    CW["CustomerWorkspace.jsx\n(3-Column CRM, Chat, AI Context Drawer)"]
+    CAL["CalendarView.jsx\n(Lịch tuần 7 ngày, Lịch hẹn & Đầu việc)"]
+    QA["CopilotView.jsx\n(Tra cứu RAG & Trích dẫn nguồn)"]
+  end
+
+  subgraph API["FastAPI Routers (src/api/)"]
+    CP_API["copilot.py\n(/api/v1/copilot/*)"]
+    SC_API["sales_copilot.py\n(/api/v1/sales-copilot/*)"]
+  end
+
+  subgraph CORE["Core Services & LangGraph Workflows"]
+    GRAPH["Copilot 9-Node LangGraph\n(src/agents/copilot/graph.py)"]
+    INTEL["IntelligenceEngine\n(src/services/intelligence_engine.py)"]
+    DRAFT["SalesCopilotAssistant\n(src/services/sales_copilot_assistant.py)"]
+    AGENDA["SalesAgendaService\n(src/services/sales_agenda_service.py)"]
+    RET["RetrievalService\n(Hybrid Dense pgvector + BM25 + RRF)"]
+  end
+
+  QA --> CP_API --> GRAPH --> RET
+  DASH & CAL --> SC_API --> AGENDA
+  CW --> SC_API
+  SC_API --> GRAPH
+  SC_API --> INTEL
+  SC_API --> DRAFT --> RET
+```
+
+### 7.1. Customer Intelligence Engine — Phân tích Hội thoại có Bằng chứng ([`intelligence_engine.py`](../src/services/intelligence_engine.py))
+- **Ẩn danh PII trước khi gọi LLM**: Tự động mã hóa thông tin cá nhân qua [`CustomerPII`](../src/services/customer_pii.py).
+- **Kiểm chứng bằng chứng tin nhắn (`_repair_and_filter_extraction`)**: Mọi dữ kiện (`FactChange`), chủ đề (`Topic`: `open` / `answered` / `confirmed`) và sự kiện/cột mốc (`Event`: `contacted`, `needs_understood`, `evaluating`, `negotiating`, `deposit_agreed`, `quote_sent`, `test_drive_completed`, `deposit_received`, `contract_signed`, `delivered`, `follow_up`, `appointment`, `closed_lost`) do LLM trích xuất đều bắt buộc kèm `Evidence(message_id, quote)` nguyên văn trong tin nhắn. Các mục không khớp bằng chứng bị loại bỏ trước khi lưu.
+- **Đề xuất công việc & xác nhận cột mốc**: Các sự kiện `follow_up` / `appointment` tạo thành đề xuất (`proposals`) để Sales duyệt (`review_proposal`); các cột mốc tiến triển chỉ đổi giai đoạn phễu (`stage`) khi Sales xác nhận (`confirm_milestone`).
+- **Bóc tách công việc/lịch hẹn trực tiếp từ một tin nhắn (`suggest_tasks_from_message`)**: Khi Sales bấm tạo việc từ tin nhắn cụ thể của khách, AI tách thành một hoặc nhiều mục (`item_type='task'` hoặc `'appointment'`) kèm khung giờ `starts_at` và `ends_at` chuẩn ISO 8601 (`+07:00`).
+- **Hỏi đáp trên lịch sử hội thoại khách hàng (`history-chat`)**: Trả lời câu hỏi của Sales về ngữ cảnh trao đổi với khách kèm trích dẫn `message_id` và `quote`.
+
+### 7.2. Soạn nháp Tin nhắn Cá nhân hóa & Bắt chước Văn phong Sales ([`sales_copilot_assistant.py`](../src/services/sales_copilot_assistant.py))
+- Khi Sales yêu cầu tạo nháp trả lời (`POST /conversations/{id}/draft`), hệ thống lấy 6 tin nhắn gần nhất kết hợp với:
+  1. **Văn phong của chính Sales (`_extract_sales_style`)**: Học đại từ xưng hô (`self_pronoun`: *"em"*, *"mình"*), cách gọi khách (`customer_address`: *"anh Khoa"*, *"chị Lan"*) và từ đệm quen thuộc (`tone_markers`: *"Dạ"*, *"ạ"*, *"nhé"*).
+  2. **Hồ sơ & bối cảnh khách hàng (`_build_customer_context`)**: Dòng xe quan tâm, ngân sách, hình thức thanh toán, các câu hỏi đang mở (`open_questions`) và băn khoăn (`objections_and_concerns`).
+  3. **Tri thức sản phẩm/chính sách (`RetrievalService`)**: Tra cứu thông số và chính sách VinFast đang có hiệu lực để soạn câu trả lời tự nhiên như chính Sales đang nhắn.
+
+### 7.3. Quản lý Lịch biểu & Dashboard ([`sales_agenda_service.py`](../src/services/sales_agenda_service.py)) và các Endpoint [`sales_copilot.py`](../src/api/sales_copilot.py)
+
+| Nhóm chức năng | Endpoint | Mô tả |
+|---|---|---|
+| **Dashboard & Lịch** | `GET /api/v1/sales-copilot/dashboard` | Số liệu tổng quan, phễu khách hàng, danh sách việc cần làm (`today`, `upcoming`, `stale`, `unscheduled`, `review`, `completed`) và khách hàng đang chờ phản hồi |
+| | `GET /api/v1/sales-copilot/calendar` | Lịch hẹn và công việc theo tuần 7 ngày (`week_start`) trên Thời khóa biểu |
+| | `GET /api/v1/sales-copilot/tasks/overlaps` | Kiểm tra xung đột khung giờ trước khi tạo/sửa lịch hẹn hoặc đầu việc |
+| | `POST /api/v1/sales-copilot/tasks` / `PATCH /tasks/{id}` | Tạo mới hoặc cập nhật trạng thái/thời gian đầu việc và lịch hẹn |
+| **Hội thoại & Hồ sơ** | `GET /api/v1/sales-copilot/conversations` | Danh sách cuộc hội thoại khách hàng thuộc quyền quản lý của Advisor |
+| | `GET /api/v1/sales-copilot/conversations/{id}` | Chi tiết hội thoại, tin nhắn, hồ sơ khách hàng (`profile`) và tóm tắt (`memory`) |
+| | `PATCH /api/v1/sales-copilot/conversations/{id}/profile-fact` | Sales xác nhận hoặc ghi đè dữ kiện hồ sơ khách hàng |
+| | `PATCH /api/v1/sales-copilot/conversations/{id}/lead-stage` | Cập nhật giai đoạn phễu (`stage`) kèm lý do ghi vào lịch sử chuyển đổi |
+| **AI Phân tích & Soạn nháp** | `POST /api/v1/sales-copilot/conversations/{id}/analyze` | Chạy `IntelligenceEngine` trích xuất `facts`, `topics`, `events`, `recap` có kiểm chứng bằng chứng |
+| | `GET /api/v1/sales-copilot/customers/{id}/intelligence` | Trạng thái phân tích, đề xuất công việc (`proposals`), lịch sử cột mốc (`milestones`) và `stage_history` |
+| | `POST /api/v1/sales-copilot/customers/{id}/proposals/{pid}/review` | Sales duyệt hoặc chỉnh sửa đề xuất công việc/lịch hẹn do AI bóc tách |
+| | `POST /api/v1/sales-copilot/customers/{id}/milestones/{eid}/confirm` | Sales xác nhận hoặc thu hồi cột mốc tiến triển của khách hàng |
+| | `POST /api/v1/sales-copilot/customers/{id}/history-chat` | Hỏi đáp với AI dựa trên lịch sử hội thoại của khách hàng kèm trích dẫn tin nhắn gốc |
+| | `POST /api/v1/sales-copilot/conversations/{id}/draft` | Soạn bản nháp tin nhắn trả lời khách hàng bắt chước văn phong của Sales và bám sát tài liệu VinFast |
+| | `POST /api/v1/sales-copilot/conversations/{id}/messages/{mid}/suggest-tasks` | Bóc tách 1 hoặc nhiều công việc/lịch hẹn kèm khung giờ ISO 8601 từ một tin nhắn cụ thể |
+| | `POST /api/v1/sales-copilot/conversations/{id}/copilot-chat` | Tra cứu chính sách/sản phẩm qua luồng RAG 9-node ngay trong ngữ cảnh cuộc trò chuyện của khách hàng |
+

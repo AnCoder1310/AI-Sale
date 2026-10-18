@@ -1390,8 +1390,8 @@
   cursor: not-allowed;
 }
 .copilot-shell :focus-visible {
-  outline: 2px solid #0f172a;
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(47, 107, 255, 0.14);
 }
 .sw-context-drawer-host.is-overlay {
   position: absolute;

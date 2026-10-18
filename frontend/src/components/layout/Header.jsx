@@ -1,18 +1,19 @@
-import { BookIcon, BellIcon, LogoutIcon } from '../common/Icons';
+import { BookIcon, BellIcon } from '../common/Icons';
+import { AccountMenu } from './AccountMenu';
 import { CopilotLogo } from '../common/CopilotLogo';
 
 export function Header({
   currentTab,
   onTabChange,
   unreadCount = 0,
+  hasNotifications = false,
   onOpenNotifications,
   advisorProfile,
   onLogout,
 }) {
   const tabs = [
-    { id: 'home', label: 'Trang chủ', icon: <span className="header-home-icon" aria-hidden="true">⌂</span> },
-    { id: 'copilot', label: 'Trợ lý Copilot', icon: <CopilotLogo style={{ width: 18, height: 18 }} /> },
-    { id: 'roleplay', label: 'Thực chiến', icon: <span className="roleplay-file-icon" aria-hidden="true" /> },
+    { id: 'copilot', label: 'Trợ lý Co-pilot', icon: <CopilotLogo style={{ width: 18, height: 18 }} /> },
+    { id: 'roleplay', label: 'Phòng luyện tập', icon: <span className="roleplay-file-icon" aria-hidden="true" /> },
     { id: 'knowledge', label: 'Kho kiến thức', icon: <BookIcon style={{ width: 18, height: 18 }} /> },
   ];
 
@@ -20,7 +21,7 @@ export function Header({
     <header className="top-header">
       <div className="top-header-inner">
         {/* BRAND LOGO */}
-        <button className="brand-section" type="button" onClick={() => onTabChange('home')}>
+        <button className="brand-section" type="button" onClick={() => onTabChange('copilot')}>
           <span className="header-brand-logo"><img src="/vinfast-official-logo.png?v=silver" alt="VinFast" /></span>
           <div className="brand-info">
             <span className="brand-title">AI Sales Coach &amp; Co-pilot</span>
@@ -49,29 +50,24 @@ export function Header({
         {/* HEADER ACTIONS */}
         <div className="header-actions">
           {/* Notifications button */}
-          <button
-            className="icon-badge-btn"
-            onClick={onOpenNotifications}
-            aria-label="Thông báo"
-            title="Thông báo"
-          >
-            <BellIcon style={{ width: 16, height: 16 }} />
-            {unreadCount > 0 && <span className="notif-badge-pill">{unreadCount}</span>}
-          </button>
+          {hasNotifications && (
+            <button
+              className="icon-badge-btn"
+              onClick={onOpenNotifications}
+              aria-label="Thông báo"
+              title="Thông báo"
+            >
+              <BellIcon style={{ width: 16, height: 16 }} />
+              {unreadCount > 0 && <span className="notif-badge-pill">{unreadCount}</span>}
+            </button>
+          )}
 
-          <div className="user-profile-badge">
-
-              <span className="header-user-avatar" aria-hidden="true">{advisorProfile.name.trim().charAt(0)}</span>
-              <div className="user-details">
-                <span className="user-name">{advisorProfile.name}</span>
-                <span className="user-role">{advisorProfile.role}</span>
-              </div>
-
-          </div>
-          <button className="header-logout-btn" type="button" onClick={onLogout}>
-            <LogoutIcon style={{ width: 17, height: 17 }} />
-            Đăng xuất
-          </button>
+          <AccountMenu
+            name={advisorProfile.name}
+            username={advisorProfile.username}
+            roleLabel={advisorProfile.role}
+            onLogout={onLogout}
+          />
         </div>
       </div>
 

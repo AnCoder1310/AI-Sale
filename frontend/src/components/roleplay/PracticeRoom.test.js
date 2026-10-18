@@ -131,7 +131,7 @@ for (const name of ['loadHistory', 'handleStartScenario', 'openAttempt']) {
         setNotice: (value) => { notice = value; },
         setHistoryError: (value) => { message = value; },
         setStartError: (value) => { message = value; },
-        setHistory() {}, setHistoryStatus() {}, setActiveScenario() {}, setStarting() {}, setLastMaxTurns() {},
+        setHistory() {}, setHistoryStatus() {}, setActiveScenario() {}, setStarting() {}, setLastMaxTurns() {}, setInitialMode() {},
         setActiveSession() {}, setViewMode() {}, setHistoryScenarioId() {}, setSelectedSessionId() {},
         setDetailStatus() {}, setAttemptDetail() {}, setRetryEvaluationError() {},
       };

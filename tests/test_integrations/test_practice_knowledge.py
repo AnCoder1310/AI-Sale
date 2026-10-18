@@ -259,3 +259,87 @@ async def test_claim_evidence_uses_session_date_and_drops_expired_windows():
 
     assert await RetrievalKnowledgeEvidenceProvider(Retriever()).for_session(scenario, state) == []
     assert all(call["target_date"] == date(2026, 12, 20) for call in calls)
+
+
+def charging_chunk(chunk_id: str, document_id: str, content: str, document_type: str, policy_type: str | None):
+    chunk = knowledge_chunk(chunk_id, content)
+    chunk.document_id = document_id
+    chunk.metadata.document_id = document_id
+    chunk.metadata.document_type = document_type
+    chunk.metadata.policy_type = policy_type
+    return chunk
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text,category",
+    [
+        ("Ở trạm sạc công cộng VinFast, đơn giá sạc là 3.858 VNĐ/kWh anh ạ.", "price"),
+        ("Theo chính sách ngày 19/09/2026, với xe biển vàng, ưu đãi sạc chỉ áp dụng khung 23:00–06:00.", "promotion"),
+    ],
+)
+async def test_charging_tariff_and_policy_claims_use_charging_policy_sources(text, category):
+    scenario, state = scenario_and_state()
+    state.factual_claims = [AdvisorFactualClaim(message_id="m1", text=text, category=category)]
+
+    class Retriever(RecordingRetriever):
+        def retrieve(self, query, *, top_k=4, product_model=None, document_type=None, target_date=None):
+            self.calls.append((query, top_k, product_model, document_type))
+            chunks = [
+                charging_chunk("deposit", "POLICY_DEPOSIT_test", "Điều khoản đặt cọc", "policy", "general"),
+                charging_chunk("tariff", "CHARGING_TARIFF_test", "đơn giá 3.858 VNĐ/kWh", "policy", "charging"),
+                charging_chunk("yellow", "POLICY_CHARGING_test", "xe biển vàng 23:00–06:00", "policy", "charging"),
+            ]
+            return [chunk for chunk in chunks if document_type in (None, chunk.metadata.document_type)]
+
+    retriever = Retriever()
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+
+    assert retriever.calls == [(text, 24, "VF 5", "policy")]
+    assert [item.source_id for item in evidence] == ["tariff", "yellow"]
+
+
+@pytest.mark.asyncio
+async def test_charging_claim_without_charging_sources_falls_back_to_general():
+    scenario, state = scenario_and_state()
+    text = "Đơn giá sạc là 3.858 VNĐ/kWh"
+    state.factual_claims = [AdvisorFactualClaim(message_id="m1", text=text, category="battery_charging")]
+
+    class Retriever(RecordingRetriever):
+        def retrieve(self, query, *, top_k=4, product_model=None, document_type=None, target_date=None):
+            self.calls.append((query, top_k, product_model, document_type))
+            return [charging_chunk("faq", "FAQ_VF5_test", text, "product_specs", None)]
+
+    retriever = Retriever()
+    evidence = await RetrievalKnowledgeEvidenceProvider(retriever).for_session(scenario, state)
+
+    assert [call[3] for call in retriever.calls] == ["policy", None]
+    assert [item.source_id for item in evidence] == ["faq"]
+
+
+@pytest.mark.asyncio
+async def test_promotion_claim_prefers_section_naming_the_same_program():
+    scenario, state = scenario_and_state()
+    text = "Chương trình Vì Tương Lai Xanh 2 đang giảm 15% giá niêm yết cho VF 6 chị ạ."
+    state.factual_claims = [AdvisorFactualClaim(message_id="m1", text=text, category="promotion")]
+
+    class Retriever:
+        def retrieve(self, query, **kwargs):
+            # Vector order puts the named program's rate section fourth.
+            sections = [
+                ("summer", "3. | Chương trình Mùa Hè Rực Rỡ - Vinfascination:\n\no | 2% MSRP với các dòng xe còn lại."),
+                ("gratitude", "6. | Chương trình Tri ân Khách hàng xe xăng VinFast chuyển đổi Xanh:"),
+                ("voucher", "- | Voucher có giá trị sử dụng khi Khách hàng hoặc người thân"),
+                ("vtlx2", "1. | Chính sách “Vì Tương Lai Xanh 2”:\n\n• | Các dòng xe còn lại: Ưu đãi 9% MSRP."),
+            ]
+            result = []
+            for chunk_id, content in sections:
+                chunk = knowledge_chunk(chunk_id, content)
+                chunk.document_id = "PROMOTION_SALES_VINFAST_test"
+                result.append(chunk)
+            return result
+
+    evidence = await RetrievalKnowledgeEvidenceProvider(Retriever()).for_session(scenario, state)
+
+    assert evidence[0].source_id == "vtlx2"
+    assert len(evidence) == 3

@@ -1,10 +1,10 @@
 .copilot-app-container:has(.sales-workspace) { height: 100dvh; min-height: 0; overflow: hidden; }
 .copilot-main-content:has(.sales-workspace) { max-width: none; padding: 10px 16px 16px; min-height: 0; }
-.sales-workspace { --sw-blue: #1d6fea; --sw-text: #17253b; --sw-muted: #72839b; --sw-border: #e4eaf2; display: flex; flex: 1; flex-direction: column; position: relative; min-width: 0; min-height: 0; height: 100%; overflow: hidden; border: 1px solid var(--sw-border); border-radius: 13px; background: #fff; color: var(--sw-text); font-size: 13px; line-height: 1.55; box-shadow: 0 4px 22px #233d6105; }
+.sales-workspace { --sw-blue: #2F6BFF; --sw-text: #0B1220; --sw-muted: #566176; --sw-border: #DCE4F5; font-family: 'Be Vietnam Pro', var(--font-sans); display: flex; flex: 1; flex-direction: column; position: relative; min-width: 0; min-height: 0; height: 100%; overflow: hidden; border: 1px solid var(--sw-border); border-radius: 13px; background: #fff; color: var(--sw-text); font-size: 13px; line-height: 1.55; box-shadow: 0 4px 22px #233d6105; }
 .sales-workspace button, .sales-workspace input, .sales-workspace textarea, .sales-workspace select { font: inherit; }
 .sales-workspace button { transition: background .16s, color .16s, border-color .16s; }
 .sales-workspace button:disabled { cursor: not-allowed; opacity: .55; }
-.sales-workspace :focus-visible { outline: 2px solid #1d6fea; outline-offset: 3px; }
+.sales-workspace :focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(47, 107, 255, .14); }
 .sales-workspace svg { flex-shrink: 0; }
 .sales-workspace h1, .sales-workspace h2, .sales-workspace h3, .sales-workspace h4, .sales-workspace p { margin: 0; }
 .sw-header { display: flex; align-items: center; gap: 28px; flex-shrink: 0; height: 72px; padding: 0 24px; border-bottom: 1px solid var(--sw-border); background: #fff; z-index: 6; }
@@ -23,8 +23,8 @@
 .sw-demo-label { display: inline-flex; align-items: center; gap: 5px; color: #5b728b; background: #f1f6fc; border: 1px solid #e3ecf6; padding: 3px 7px; border-radius: 5px; font-size: 10px; white-space: nowrap; }
 .sw-demo-label > span, .sw-demo-dot { width: 5px; height: 5px; display: inline-block; border-radius: 50%; background: #6f9ac4; flex-shrink: 0; }
 .sw-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; color: var(--sw-muted); border: 1px solid transparent; border-radius: 7px; flex-shrink: 0; }
-.sw-icon-button:hover { color: var(--sw-blue); background: #edf4ff; }
-.sw-icon-button.is-active { color: var(--sw-blue); background: #eaf3ff; border-color: #dce9ff; }
+.sw-icon-button:hover { color: var(--sw-blue); background: #E8EFFF; }
+.sw-icon-button.is-active { color: #1646C8; background: #E8EFFF; border-color: #DCE4F5; }
 .sw-header-divider { height: 28px; width: 1px; background: var(--sw-border); }
 .sw-notifications { position: relative; }
 .sw-notification-count { position: absolute; top: -2px; right: -3px; background: #f26469; min-width: 15px; height: 15px; padding: 0 3px; border: 2px solid #fff; border-radius: 20px; color: #fff; font-size: 8px; line-height: 11px; }
@@ -44,7 +44,7 @@
 .sw-workspace-body { display: grid; grid-template-columns: 160px 290px minmax(330px, 1fr) 390px; flex: 1; min-height: 0; min-width: 0; position: relative; }
 .sw-sidebar { display: flex; flex-direction: column; padding: 24px 12px 16px; border-right: 1px solid var(--sw-border); background: #fbfcff; min-height: 0; overflow-y: auto; }
 .sw-sidebar-caption { color: #97a5b8; font-weight: 600; font-size: 8px; letter-spacing: .65px; padding: 0 8px 14px; white-space: nowrap; }
-.sw-sidebar > button { display: flex; align-items: center; gap: 10px; border-radius: 8px; background: #eaf3ff; color: var(--sw-blue); padding: 11px 12px; font-size: 12px; font-weight: 650; }
+.sw-sidebar > button { display: flex; align-items: center; gap: 10px; border-radius: 8px; background: #E8EFFF; color: #1646C8; padding: 11px 12px; font-size: 12px; font-weight: 650; }
 .sw-sidebar-bottom { display: flex; align-items: center; gap: 8px; margin: auto 6px 0; padding-top: 24px; color: #8a9ab0; font-size: 10px; }
 .sw-sidebar-bottom small { font-size: 9px; color: #a0acbc; }
 .sw-customer-list { display: flex; flex-direction: column; border-right: 1px solid var(--sw-border); min-width: 0; min-height: 0; background: #fff; }
@@ -106,7 +106,7 @@
 .sw-contact-badges > span { border: 1px solid #e7edf5; padding: 1px 6px; border-radius: 4px; font-size: 9px; color: #8191a8; }
 .sw-customer-header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .sw-primary-button, .sw-secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 11px; border-radius: 7px; background: var(--sw-blue); color: #fff; font-size: 11px !important; line-height: 1.6; font-weight: 600 !important; border: 1px solid transparent; white-space: nowrap; }
-.sw-primary-button:hover:not(:disabled) { background: #145dd2; }
+.sw-primary-button:hover:not(:disabled) { background: #1646C8; }
 .sw-secondary-button { background: #fff; border-color: var(--sw-border); color: #5b708c; }
 .sw-secondary-button:hover { background: #f2f6fc; }
 .sw-primary-button:disabled { background: #b8cce7; }
@@ -316,7 +316,7 @@
 .sw-focused-workspace .sw-ai-toolbar { justify-content: flex-start; gap: 8px; padding: 6px 16px; background: #fbfcfe; }
 .sw-conversation-tools { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .sw-toolbar-button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; color: #657b97; border: 1px solid transparent; border-radius: 6px; font-size: 11px !important; white-space: nowrap; }
-.sw-toolbar-button:hover, .sw-toolbar-button.is-active { background: #eef4ff; color: var(--sw-blue); border-color: #e1eaff; }
+.sw-toolbar-button:hover, .sw-toolbar-button.is-active { background: #E8EFFF; color: #1646C8; border-color: #DCE4F5; }
 .sw-conversation-channel { font-size: 10px; color: #8d9db1; white-space: nowrap; margin-left: auto; }
 .sw-tool-count { display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 5px; background: #edf2f8; font-size: 10px; color: #6c809b; }
 .sw-tool-count.has-overdue { background: #fff0df; color: #af6b22; }
