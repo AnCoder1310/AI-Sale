@@ -97,6 +97,8 @@
 .pr-camera-icon { width: 60px; height: 60px; display: grid; place-items: center; background: #DCE7FF; color: var(--pr-blue-deep); border: 1px solid #A9C1FA; border-radius: 50%; flex: none; box-shadow: 0 6px 16px #1646c829; }
 .pr-camera-error { max-width: 280px; font-size: 12px; color: var(--pr-muted); margin-top: 8px !important; }
 .pr-mic-wrap { position: relative; display: grid; place-items: center; width: 88px; height: 88px; grid-column: 2; flex: none; }
+/* Over the Mirror video the dots need their own layer, or z-index:-1 puts them behind the video. */
+.pr-mirror .pr-mic-wrap { z-index: 0; isolation: isolate; }
 .pr-room .pr-mic { display: grid; place-items: center; width: 88px; height: 88px; padding: 0; border: 0; border-radius: 50%; background: var(--pr-blue-deep); color: white; box-shadow: 0 10px 24px #1646c847; touch-action: none; user-select: none; transition: background-color .25s, box-shadow .25s, transform .15s; }
 .pr-room .pr-mic svg { width: 32px; height: 32px; }
 .pr-room .pr-recording .pr-mic { background: var(--pr-green); box-shadow: 0 10px 26px #15803d61; transform: scale(1.06); }
