@@ -48,9 +48,9 @@ def purge_customer_data(repo: SQLSalesCopilotRepository, customer_ids: list[str]
         if task_ids:
             conn.execute(delete(t["activity_details"]).where(t["activity_details"].c.task_id.in_(task_ids)))
         conn.execute(delete(t["milestones"]).where(t["milestones"].c.customer_id.in_(customer_ids)))
-        conn.execute(delete(t["model_chats"]).where(t["model_chats"].c.customer_id.in_(customer_ids)))
-        conn.execute(delete(t["pii"]).where(t["pii"].c.customer_id.in_(customer_ids)))
-        conn.execute(delete(t["runs"]).where(t["runs"].c.customer_id.in_(customer_ids)))
+        conn.execute(delete(t["proposals"]).where(t["proposals"].c.customer_id.in_(customer_ids)))
+        conn.execute(delete(t["chat"]).where(t["chat"].c.customer_id.in_(customer_ids)))
+        conn.execute(delete(t["analyses"]).where(t["analyses"].c.customer_id.in_(customer_ids)))
         conn.execute(delete(t["heads"]).where(t["heads"].c.customer_id.in_(customer_ids)))
 
         if conv_ids:
@@ -59,7 +59,6 @@ def purge_customer_data(repo: SQLSalesCopilotRepository, customer_ids: list[str]
             conn.execute(delete(repo.messages).where(repo.messages.c.conversation_id.in_(conv_ids)))
 
         conn.execute(delete(repo.tasks).where(repo.tasks.c.customer_id.in_(customer_ids)))
-        conn.execute(delete(repo.facts).where(repo.facts.c.customer_id.in_(customer_ids)))
         conn.execute(delete(repo.snapshots).where(repo.snapshots.c.customer_id.in_(customer_ids)))
         conn.execute(delete(repo.lead_scores).where(repo.lead_scores.c.customer_id.in_(customer_ids)))
         conn.execute(delete(repo.conversations).where(repo.conversations.c.customer_id.in_(customer_ids)))
