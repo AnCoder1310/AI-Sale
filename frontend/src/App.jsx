@@ -115,12 +115,6 @@ export function App() {
     }
   };
 
-  const handleConsultCopilot = (query) => {
-    setCopilotQuery(query);
-    setCopilotOpened(true);
-    setCurrentTab('copilot');
-  };
-
   if (authStatus === 'loading') {
     return <div className="auth-loading" role="status">Đang kiểm tra phiên đăng nhập…</div>;
   }
@@ -145,11 +139,12 @@ export function App() {
 
   const advisorProfile = {
     name: currentUser.display_name,
+    username: currentUser.username,
     role: 'Tư vấn viên',
   };
 
   return (
-    <div className={`app-container${currentTab === 'copilot' ? ' copilot-app-container' : ''}${currentTab === 'knowledge' ? ' knowledge-app-container' : ''}`}>
+    <div className={`app-container${currentTab === 'copilot' ? ' copilot-app-container' : ''}${currentTab === 'knowledge' ? ' knowledge-app-container' : ''}${currentTab === 'roleplay' ? ' roleplay-app-container' : ''}`}>
       {/* GLOBAL TOP HEADER */}
       <Header
         currentTab={currentTab}
@@ -193,7 +188,6 @@ export function App() {
 
         {currentTab === 'knowledge' && (
           <KnowledgeView
-            onOpenCopilotQuery={handleConsultCopilot}
             sourceDocumentId={sourceDocumentId}
           />
         )}

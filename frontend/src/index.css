@@ -3500,6 +3500,7 @@ a {
 
 /* Knowledge library follows the blue and white dashboard surfaces. */
 .knowledge-app-container { background: #f8fbfe; }
+.roleplay-app-container { background: #F4F7FE; }
 .knowledge-main-content { max-width: 1560px; padding: 26px clamp(24px, 5vw, 86px) 64px; }
 .knowledge-page { gap: 20px !important; }
 .knowledge-page-header { align-items: center !important; gap: 24px !important; padding: 4px 0 6px; }

@@ -50,7 +50,6 @@ export function ScenarioCatalog({
     <section className="ap-card" aria-labelledby="ap-library-h">
       <div className="ap-card-head">
         <h2 id="ap-library-h">Thư viện tình huống</h2>
-        <span className="ap-hint">Chọn một tình huống để luyện. Khách AI sẽ mở lời bằng câu bên dưới.</span>
       </div>
       {scenarios.length === 0 ? <p className="ap-state">Chưa có tình huống nào.</p> : (
         <ul className="ap-scenarios">
