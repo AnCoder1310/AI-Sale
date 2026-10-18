@@ -1,5 +1,9 @@
 # Pitch Deck & Demo Materials
 
+Nội dung pain point/solution được tách riêng theo Copilot và Roleplay trong [PRODUCT_STORY_REVIEW.md](PRODUCT_STORY_REVIEW.md). Đây là bản lời dẫn để review trước khi dựng slide và quay video.
+
+Bảng chi phí phục vụ phần tính khả thi/DevOps: [Dự toán API](../docs/operating-costs.md); lời dẫn và bảng slide tại Phần 7 của bản review.
+
 ## Files
 
 - `pitch_deck.pptx` — Slide thuyết trình Demo Day

@@ -1,5 +1,13 @@
 # Workflow tra cứu Copilot & Kiến trúc Sales Copilot Workspace
 
+## Phạm vi Sales Copilot
+
+Sales Copilot là không gian làm việc theo khách: hội thoại, hồ sơ/tóm tắt tình hình, nội dung còn mở, hỏi đáp lịch sử, nháp trả lời theo bối cảnh và văn phong sales, công việc/lịch hẹn, dashboard. Graph tra cứu dưới đây là một workflow trong phân hệ, không phải toàn bộ Copilot.
+
+- **§1–5:** graph tra cứu, định tuyến, evidence và kiểm tra câu trả lời.
+- **§6:** benchmark của workflow tra cứu; không phải đánh giá toàn bộ tính năng workspace.
+- **§7:** Customer Intelligence, soạn nháp cá nhân hóa và lịch biểu. Hồ sơ/tóm tắt/hội thoại lưu SQL; vector index phục vụ tri thức sản phẩm/chính sách.
+
 ## 1. Luồng chạy
 
 ```mermaid
