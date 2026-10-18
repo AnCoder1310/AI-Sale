@@ -2,62 +2,35 @@
 
 ## 1. Product Overview
 
-**Project:** VFO2O-20 — AI Agent Huấn luyện & Hỗ trợ Tư vấn viên Bán xe
+**Project:** VFO2O-20 — AI Agent Huấn luyện & hỗ trợ tư vấn viên bán xe (Sales Enablement)
+**Product:** VinFast AI Sales Coach & Copilot
+**Team:** 043Nova
 **Product type:** Internal Sales Enablement Platform
 **Primary users:** Sales Advisor, Training Manager
 
 ### Product objective
 
-Giúp tư vấn viên:
+Giúp Advisor chăm sóc nhiều khách qua nhiều ngày mà vẫn nắm đúng bối cảnh, chuẩn bị câu trả lời có nguồn, theo sát công việc và luyện kỹ năng trước khi gặp khách thật. Giúp Manager review transcript/đánh giá và tập trung huấn luyện vào kỹ năng cần cải thiện.
 
-* tiếp cận kiến thức sản phẩm/chính sách chính xác nhanh hơn;
-* luyện tập các tình huống bán hàng trước khi gặp khách;
-* nhận feedback có thể hành động được.
-
-Giúp manager:
-
-* giảm công sức review thủ công;
-* kiểm tra kết quả do AI tạo;
-* phát hiện skill gap của từng nhân viên.
-
----
+Định vị và bảng đối chiếu giải pháp nằm trong [BRIEF §1–3, §12](BRIEF.md), là nguồn nội dung sản phẩm chi tiết. Hai phần Copilot và Roleplay có pain point/solution riêng dưới đây.
 
 # 2. Problem Statement
 
-Hiện tại có hai khoảng trống chính.
+## 2.1. Copilot — pain points và solution
 
-## 2.1. Knowledge Gap
+**Pain points:** sales trao đổi nhiều khách đồng thời; sau nhiều ngày khó nhớ nhu cầu, ngân sách, xe quan tâm, nội dung đã tư vấn và lời hứa. Thông tin nằm rải trong tin nhắn, tài liệu và công cụ bên ngoài; kiến thức xe/chính sách cần xác minh đúng điều kiện và hiệu lực.
 
-Tư vấn viên có thể không nhớ hoặc chưa cập nhật:
+**Solution:** không gian hội thoại theo khách; hồ sơ và tóm tắt có tin nguồn; nội dung đã trao đổi/còn mở; dữ kiện cho sales kiểm tra, sửa/xác nhận; nháp trả lời theo lịch sử và corpus; công việc và lịch hẹn gắn với khách.
 
-* thông số sản phẩm;
-* giá;
-* ưu đãi;
-* chính sách bán hàng;
-* bảo hành;
-* pin / sạc;
-* nội dung vừa thay đổi.
+**Kết quả hướng tới:** nắm lại bối cảnh thuận tiện, tiếp tục tư vấn phù hợp và theo sát cam kết. Customer Intelligence v2 phụ thuộc cấu hình/khóa PII; không mặc định đã bật trên live. Bàn giao chatbot và đồng bộ Zalo/Facebook chưa tích hợp.
 
-Việc sử dụng thông tin cũ hoặc sai có thể dẫn tới tư vấn không chính xác.
+## 2.2. Roleplay — pain points và solution
 
----
+**Pain points:** nhân viên mới thiếu thực hành, có thể tư vấn sai hoặc thiếu mạch lạc trước khách thật; luyện và nhận xét trực tiếp phụ thuộc thời gian quản lý; khó nhận diện điểm yếu khi thiếu transcript/rubric.
 
-## 2.2. Execution Gap
+**Solution:** AI Customer theo tình huống VinFast, luyện chữ/giọng nói, Mirror tự quan sát; evaluator tạo đánh giá nháp có dẫn chứng; manager xem transcript, duyệt/sửa, góp ý và giao bài tiếp. Mirror không tự chấm biểu cảm hoặc ghi hình.
 
-Ngay cả khi đã đọc tài liệu, tư vấn viên vẫn cần thực hành trước khi gặp khách thật.
-
-Các cuộc hội thoại có thể thay đổi theo:
-
-* loại khách hàng;
-* nhu cầu;
-* mức độ quan tâm;
-* câu hỏi;
-* phản đối;
-* bối cảnh.
-
-Sản phẩm phải hỗ trợ cả **Know** và **Do**, không chỉ xây chatbot hỏi đáp.
-
----
+**Kết quả hướng tới:** thêm cơ hội luyện và review có trọng tâm. Chưa có phép đo trước/sau xác nhận giảm thời gian, chi phí hoặc tăng doanh thu.
 
 # 3. Personas
 
@@ -65,13 +38,17 @@ Sản phẩm phải hỗ trợ cả **Know** và **Do**, không chỉ xây chatb
 
 ### Jobs
 
-* tìm thông tin nhanh;
+* chăm sóc nhiều khách, nắm lại hồ sơ và lịch sử sau nhiều ngày;
+* chuẩn bị câu trả lời và theo dõi công việc/lịch hẹn theo khách;
+* tìm thông tin có nguồn;
 * luyện tư vấn;
 * xem feedback;
 * cải thiện kỹ năng.
 
 ### Pain points
 
+* khó nhớ bối cảnh và cam kết của nhiều khách qua nhiều ngày;
+* phải đọc lại tin nhắn hoặc hỏi lại khách;
 * tài liệu phân tán;
 * chính sách thay đổi;
 * khó nhớ toàn bộ thông tin;
@@ -123,7 +100,19 @@ Training Manager
 
 ---
 
-### F2. Knowledge Copilot
+### F2. Sales Copilot và tra cứu kiến thức
+
+Phạm vi Sales Copilot gồm hội thoại theo khách, hồ sơ nhu cầu, tóm tắt có tin nguồn, trạng thái vấn đề, nháp trả lời và công việc/lịch hẹn. Contract đang có nằm tại `src/models/sales_copilot.py`, `src/models/customer_intelligence.py`; giao diện tại `frontend/src/components/copilot/CustomerSalesCopilotView.jsx`. Đây là mô tả phạm vi hiện có trong code, không phải xác nhận E2E hoặc deployment.
+
+Yêu cầu sản phẩm:
+
+- Dữ kiện phân biệt ghi nhận/suy luận/mâu thuẫn/đã xác nhận; có nguồn khi phân tích rút ra từ hội thoại.
+- Sales được kiểm tra, sửa và xác nhận dữ kiện; phân tích lại phải giữ xác nhận của sales.
+- Bản nháp cần sales kiểm tra; hiển thị khi chưa bao gồm tin nhắn mới.
+- Công việc/lịch hẹn gắn với khách và có trạng thái để theo dõi.
+- Bàn giao tự động chatbot và đồng bộ kênh ngoài là phạm vi cần tích hợp.
+
+#### Tra cứu kiến thức trong Sales Copilot
 
 Advisor có thể hỏi bằng ngôn ngữ tự nhiên về:
 
@@ -530,56 +519,64 @@ trở thành kết quả chính thức sau khi Manager review và approve attemp
 
 # 5. Main User Flows
 
+## 5.0. Customer Sales Workspace
+
+Advisor mở khách → đọc hồ sơ và bản tóm tắt hiện có → kiểm tra câu hỏi còn mở, tin nguồn và cam kết → tiếp tục hội thoại → yêu cầu tra cứu hoặc nháp trả lời theo khách → kiểm tra/chỉnh sửa trước khi sử dụng → quản lý công việc/lịch hẹn → yêu cầu cập nhật phân tích khi có tin mới.
+
+Failure/empty states: chưa có hội thoại hoặc phân tích thì hiển thị trạng thái chưa có dữ liệu; có tin mới thì báo phân tích/nháp chưa cập nhật; dữ kiện suy luận hoặc mâu thuẫn cần kiểm tra; không biến đề xuất của AI thành hành động đã được sales xác nhận.
+
+
 ## 5.1. Knowledge Lookup
+
+Advisor tra cứu ngay trong không gian khách (công cụ **Tra cứu** của Trợ lý Co-pilot) hoặc mở **Kho kiến thức**.
 
 ```text
 Advisor
    ↓
-Open Knowledge Copilot
+Tra cứu trong không gian khách  ──or──  Kho kiến thức (tìm tài liệu, dòng xe, câu hỏi)
    ↓
-Ask question
+Copilot graph: phân tích câu hỏi → lập truy vấn → truy xuất hybrid (vector + BM25)
+              → lọc metadata + ngày hiệu lực → chọn evidence
    ↓
-Retrieve current knowledge
-   ↓
-Enough evidence?
+Đủ evidence?
    │
-   ├── Yes
-   │     ↓
-   │ Answer + Citation
+   ├── Có → Trả lời (streaming) + citation → mở tài liệu gốc / PDF trong Kho kiến thức
    │
-   └── No
-         ↓
-      Cannot Verify
+   └── Thiếu hoặc nguồn mâu thuẫn → cảnh báo “cần xác minh”, không khẳng định
 ```
+
+Câu hỏi ngoài phạm vi kho được từ chối lịch sự và hướng về nội dung hỗ trợ.
 
 ---
 
 ## 5.2. Practice
 
 ```text
-Advisor
+Advisor → Phòng luyện tập
    ↓
-Choose Scenario
+Xem Điểm của bạn / Bài được giao / Thư viện tình huống / Lịch sử
    ↓
-View Context
+Chọn tình huống (hoặc bài Manager giao) → chọn Nhắn tin hoặc Gọi thoại
    ↓
-Start Practice
+Xem Bối cảnh khách + Mục tiêu + 5 kỹ năng được chấm
    ↓
-AI Customer ↔ Advisor
+Advisor mở lời → AI Customer ↔ Advisor, nhiều lượt (Lượt n / tối đa)
+   (Gọi thoại: giữ Space/nút để nói, STT → Tự động gửi hoặc sửa rồi gửi; lời khách đọc bằng TTS;
+    Mirror tự quan sát, không ghi hình)
    ↓
-Multi-turn Conversation
+Kết thúc: Advisor bấm “Kết thúc & chấm điểm” (sau khi khách đồng ý bước tiếp theo) | hết lượt
+          | khách rời đi (lạc đề 2 lượt liên tiếp, băn khoăn không được giải quyết)
+          | ngôn từ không phù hợp
    ↓
-End Practice
+Freeze transcript → AI judge tạo bản nháp (điểm 1–3 hoặc Chưa chấm, trích dẫn, factual check)
+   │
+   ├── Lỗi chấm → “Chấm điểm thất bại” → Thử lại (giữ nguyên transcript)
    ↓
-Freeze Transcript
+Kết quả: “Bản nháp AI (Chờ Quản lý duyệt)” → tự lưu vào Lịch sử
    ↓
-Assessment
-       ↓
-Provisional Session Review
-       ↓
-Save attempt automatically
-       ↓
-Retry OR View scenario history
+Luyện tập lại  OR  Về danh sách kịch bản
+   ↓
+Manager duyệt → “Quản lý đã duyệt” → cập nhật Điểm của bạn
 ```
 
 ---
@@ -587,22 +584,29 @@ Retry OR View scenario history
 ## 5.3. Manager Review
 
 ```text
-Latest unreviewed Attempt per Advisor + Scenario
-       ↓
-AI Assessment
-       ↓
-Pending Review
-       ↓
-Manager opens session
-       ↓
-┌──────────────┴──────────────┐
-│                             │
-Approve                     Edit
-│                             │
-└──────────────┬──────────────┘
-               ↓
-        Save Review Result
+Manager → Tổng quan (Cần xử lý hôm nay, Bản đồ kỹ năng, Hàng đợi duyệt)
+          or Lịch sử luyện tập (badge số bài chờ duyệt)
+   ↓
+Hàng đợi: attempt mới nhất chưa duyệt theo Advisor + kịch bản (attempt cũ vẫn mở được)
+   ↓
+Mở bài: Hội thoại | Điểm và bằng chứng | Kiểm tra thông tin | usage giọng nói
+   ↓
+┌───────────────┬──────────────────────────┬──────────────────┐
+│ Giữ điểm AI   │ Sửa điểm 1–3 + lý do     │ Bỏ qua, bài sau  │
+│               │ (bắt buộc khi đổi điểm)  │                  │
+└───────┬───────┴────────────┬─────────────┴──────────────────┘
+        └──── Nhận xét chung (tuỳ chọn) ────┘
+                     ↓
+  Duyệt bài này | Duyệt và mở bài tiếp theo  (PATCH /manager/reviews/{id})
+                     ↓
+  Lưu điểm AI gốc + điểm Manager + lý do + thời gian → manager_approved
+                     ↓
+  Tiến độ Advisor, bản đồ kỹ năng, điểm đội 8 tuần
+                     ↓
+  Giao bài tiếp (Giao bài: Advisor, kịch bản, hạn) → Advisor thấy trong “Bài được giao”
 ```
+
+Manager cũng tạo tài khoản Advisor (mật khẩu khởi tạo, bắt buộc đổi ở lần đăng nhập đầu).
 
 ---
 
@@ -670,6 +674,8 @@ Scenario history
 Improvement trend
 ```
 
+**Trạng thái: đã triển khai.** Advisor có *Điểm của bạn* và radar 5 kỹ năng (`GET /practice/progress`, chỉ tính bài Manager đã duyệt) cùng lịch sử attempt theo tình huống; Manager có *Điểm đội qua 8 tuần* và ngăn chi tiết từng Advisor.
+
 ---
 
 ## Know–Do Profile
@@ -707,6 +713,8 @@ Practice activity
 
 Performance trends
 ```
+
+**Trạng thái: đã triển khai** trong tab *Tổng quan*: bản đồ kỹ năng Advisor × 5 tiêu chí, điểm đội 8 tuần, độ tin cậy AI chấm so với điểm đã duyệt, hàng đợi duyệt và việc cần làm (`GET /manager/dashboard`, `/manager/overview`, `/manager/advisors`). Manager giao bài theo điểm yếu qua tab *Giao bài* (`POST /manager/assignments`).
 
 ---
 
@@ -818,20 +826,19 @@ As a Training Manager, I want to see common skill gaps so that I can determine f
 ## Advisor Navigation
 
 ```text
-Home
-Practice
-Knowledge
+Trợ lý Co-pilot   (mặc định: Dashboard · Khách hàng · Lịch sự kiện)
+Phòng luyện tập   (Điểm của bạn · Bài được giao · Thư viện tình huống · Lịch sử)
+Kho kiến thức     (dòng xe · tài liệu có ngày hiệu lực · tài liệu gốc/PDF)
 ```
 
-MVP hiển thị lịch sử gần đây và recommendation tiếp theo ngay trên Home/Result.
-Progress Dashboard đầy đủ thuộc P1.
+Phòng luyện tập hiển thị điểm và radar 5 kỹ năng (chỉ tính bài đã duyệt), bài được giao và lịch sử; trang kết quả gợi ý luyện tiếp và nhắc lại kiến thức liên quan.
 
 Main actions:
 
 ```text
-[Start Practice]
+[Vào phòng luyện tập]   [Luyện tập lại kịch bản này]
 
-[Ask Knowledge Copilot]
+[Tra cứu] trong không gian khách · tìm trong Kho kiến thức
 ```
 
 ---
@@ -839,12 +846,14 @@ Main actions:
 ## Manager Navigation
 
 ```text
-Reviews
+Tổng quan          (cần xử lý hôm nay, bản đồ kỹ năng, điểm đội 8 tuần, độ tin cậy AI chấm,
+                    hàng đợi duyệt, việc cần làm)
+Giao bài
+Lịch sử luyện tập  (badge số bài chờ duyệt)
+Tài khoản
 ```
 
-MVP chỉ cần hàng đợi group theo Advisor + Scenario, mặc định ưu tiên attempt mới
-nhất chưa review và cho phép mở lịch sử attempt cũ. Overview và Team Analytics
-thuộc P1.
+Hàng đợi group theo Advisor + Scenario, mặc định ưu tiên attempt mới nhất chưa review và cho phép mở lịch sử attempt cũ.
 
 ---
 
@@ -862,36 +871,33 @@ thuộc P1.
 
 # 9. AI Architecture
 
-```text
-                     React Frontend
-                            │
-                         FastAPI
-                            │
-                        LangGraph
-                ┌───────────┴───────────┐
-                │                       │
-         Knowledge Flow          Practice Flow
-                │                       │
-              RAG                 Load Scenario
-                │                       │
-      Version / Date Filter        AI Customer
-                │                       │
-       Answer + Citation        Multi-turn Loop
-                                        │
-                                   Transcript
-                                        │
-                               Fact / Policy Check
-                                        │
-                                    AI Judge
-                                        │
-                              AI Draft Feedback
-                                        │
-                      Attempt saved automatically
-                                        │
-                   Manager queue prioritizes latest attempt
-                                        │
-                                  Manager HITL
+Sales Copilot gồm các service theo khách và một workflow tra cứu LangGraph; không đưa toàn bộ phân hệ vào một graph RAG.
+
+```mermaid
+flowchart TD
+  UI[React] --> API[FastAPI]
+  API --> SW[Sales Copilot workspace]
+  SW --> INTEL[Customer Intelligence: hồ sơ, tóm tắt, hỏi đáp lịch sử]
+  SW --> DRAFT[Soạn nháp theo bối cảnh và văn phong sales]
+  SW --> AGENDA[Dashboard, công việc, lịch hẹn]
+  SW --> LOOKUP[Workflow tra cứu LangGraph]
+  INTEL --> SQL[(SQL: hội thoại, phân tích có phiên bản)]
+  AGENDA --> SQL
+  DRAFT --> SQL
+  DRAFT --> RET[RetrievalService]
+  LOOKUP --> RET
+  RET --> VEC[(Vector index + corpus)]
+  INTEL --> LLM[LLM qua lớp bảo vệ PII]
+  DRAFT --> LLM
+  LOOKUP --> LLM
+  API --> RP[Practice: AI Customer và transcript]
+  RP --> JUDGE[Judge: rubric và evidence]
+  JUDGE --> HITL[Manager review]
+  HITL --> SQL
 ```
+
+Chi tiết graph và các service tại [Copilot workflow](../copilot-workflow.md), sơ đồ toàn hệ thống tại [architecture_diagram.md](../architecture_diagram.md).
+
 
 LangGraph được sử dụng cho:
 
@@ -909,11 +915,13 @@ Manager HITL
 Session state
 ```
 
-Không cần LLM quyết định user muốn dùng Knowledge hay Practice vì user chọn chức năng trực tiếp từ UI.
+Người dùng chọn Trợ lý Co-pilot, Kho kiến thức hoặc Phòng luyện tập từ UI. Trong workflow tra cứu, graph vẫn định tuyến câu hỏi theo nội dung; phân tích khách, nháp trả lời và lịch biểu là các service của workspace.
 
 ---
 
 # 10. Data Model — Minimal
+
+Đây là mô hình khái niệm, không phải danh sách tên bảng vật lý. Sales Copilot còn có Customer → Conversation → Messages, Profile Facts, Analysis/Recap có phiên bản và tin nguồn, Task/Appointment, Proposal, Milestone và lịch sử trạng thái. Contract tại `src/models/sales_copilot.py`, `src/models/customer_intelligence.py`; persistence tại `src/integrations/sales_copilot_repository.py`, `src/integrations/customer_intelligence_store.py`.
 
 ```text
 users
@@ -960,7 +968,7 @@ Document
 
 # 11. Evaluation
 
-## Knowledge Copilot
+## Workflow tra cứu trong Sales Copilot
 
 Có thể đánh giá ví dụ:
 
@@ -1070,19 +1078,26 @@ Manager changes
 
 ## Cost
 
-MVP ưu tiên:
+Nguyên tắc kiểm soát: giới hạn số lượt theo scenario; evaluator chỉ chạy sau khi kết thúc; tra cứu có ngân sách request/call/recovery; tái sử dụng corpus cho tra cứu và kiểm chứng. Tần suất 10 phiên/tuần là định mức tính ngân sách, không phải quota tuần đã triển khai.
 
-```text
-Không gọi Judge ở mỗi conversation turn
+### Chi phí API theo định mức sử dụng
 
-Chỉ evaluate sau khi session kết thúc
+Nhóm lập ngân sách cho **10 phiên Roleplay voice/nhân viên/tuần**, **40 giây nói/lượt**, quy mô tính **10 lượt/phiên**. Chi phí gồm analyzer, AI Customer, evaluator, một batch factual dự phòng, embedding, STT/TTS và phân bổ phí credits OpenRouter.
 
-Cache embeddings
+| Hạng mục | USD/nhân viên/tháng trung bình |
+|---|---:|
+| Roleplay voice | 1,79 |
+| Sales Copilot theo định mức sử dụng chi tiết | 2,20 |
+| Tổng API | 3,98 |
+| Ngân sách cộng 30% dự phòng | 5,18 |
 
-Giới hạn session length
+Tổng tính từ số chưa làm tròn; các dòng hiển thị làm tròn đến hai chữ số thập phân.
 
-Tái sử dụng cùng knowledge base cho Copilot và fact checking
-```
+Kịch bản sử dụng cao **15 phiên/người/tuần**: Roleplay **2,68 USD/người/tháng**, tổng cùng Copilot **4,88 USD**, ngân sách có 30% dự phòng **6,34 USD**. Workload Copilot giữ nguyên; tần suất luyện là định mức ngân sách, không phải quota phần mềm.
+
+Copilot tính trên 5 ngày/tuần, mỗi ngày 10 tra cứu, 20 phân tích+recap, 20 nháp trả lời, 5 hỏi lịch sử và 5 gợi ý công việc. Đây là ngân sách theo định mức, không phải kết quả khảo sát token hoặc hóa đơn production. Không tính phần cứng/hosting, benchmark/test và thuế; không khấu trừ free tier/cache. Đơn giá tra ngày 18/10/2026; tháng tính 52/12 tuần.
+
+Chi tiết nguồn giá, request/token, voice, độ nhạy 8–15 lượt và quy mô 1/10/50/100 nhân viên tại [Dự toán chi phí API](../operating-costs.md). Cần theo dõi usage theo request/model và giây/ký tự voice để đối soát ngân sách; xem riêng chi phí phục vụ người dùng và benchmark/test.
 
 ---
 
@@ -1121,9 +1136,9 @@ Trả lời chắc chắn khi không có đủ nguồn
 ```text
 Authentication + Role
 
-Knowledge Copilot
+Sales Copilot: customer conversations, profile/recap, history Q&A, reply drafts, tasks/calendar
 
-RAG + Citations
+Knowledge retrieval + RAG citations
 
 Version / effective-date filtering
 
@@ -1155,11 +1170,11 @@ Multi-step Personalized Learning Path
 
 Difficulty Progression
 
-Progress Tracking
+Progress Tracking            ✓ đã triển khai
 
 Know–Do Profile
 
-Team Analytics
+Team Analytics               ✓ đã triển khai (kèm Giao bài)
 
 Policy Change Detection
 
@@ -1202,9 +1217,11 @@ Autonomous sales agent
 
 MVP cần chứng minh được ba luồng chính.
 
-## 1. Knowledge
+## 1. Sales Copilot
 
-Advisor có thể:
+Advisor có thể mở đúng khách, xem hội thoại và hồ sơ/tóm tắt có tin nguồn; kiểm tra hoặc xác nhận dữ kiện; hỏi lịch sử; tạo nháp trả lời theo bối cảnh và chỉnh sửa trước khi sử dụng; theo dõi công việc/lịch hẹn. Phân tích và nháp cần thể hiện tình trạng chưa cập nhật khi có tin mới. Các chức năng Customer Intelligence phụ thuộc cấu hình như mô tả tại F2.
+
+Riêng workflow tra cứu, Advisor có thể:
 
 ```text
 Ask question
