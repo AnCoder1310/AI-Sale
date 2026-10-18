@@ -49,6 +49,23 @@ class Settings(BaseSettings):
             self.langsmith_project = "p043-copilot-prod" if self.app_env == "production" else "p043-copilot-dev"
         return self
 
+    # Roleplay telemetry uses its own account and project.
+    roleplay_langsmith_tracing: bool = False
+    roleplay_langsmith_api_key: SecretStr = SecretStr("")
+    roleplay_langsmith_endpoint: str = "https://api.smith.langchain.com"
+    roleplay_langsmith_project: str = ""
+    roleplay_langsmith_capture_content: bool = False
+
+    @model_validator(mode="after")
+    def validate_roleplay_telemetry(self) -> "Settings":
+        if self.app_env == "production" and self.roleplay_langsmith_capture_content:
+            raise ValueError("Roleplay LangSmith content capture is only permitted in development")
+        if not self.roleplay_langsmith_project:
+            self.roleplay_langsmith_project = (
+                "p043-roleplay-prod" if self.app_env == "production" else "p043-roleplay-dev"
+            )
+        return self
+
     # LLM Providers
     llm_provider: Literal["openai", "openrouter", "gemini", "grok", "deepseek"] = "openrouter"
     openai_api_key: str = Field(

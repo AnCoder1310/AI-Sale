@@ -115,7 +115,6 @@
   .kb-search { width: 100%; }
 }
 @media (max-width: 640px) {
-  .knowledge-main-content:has(.kb-page) { padding: 18px 16px 48px; }
   .kb-tabs { grid-template-columns: repeat(2, 1fr); }
   .kb-page .kb-tab { min-height: 48px; font-size: 14px; }
   .kb-doc, .kb-vehicle, .kb-faq { padding: 16px; }
