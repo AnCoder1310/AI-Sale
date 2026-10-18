@@ -335,10 +335,20 @@ class SQLCopilotSessionsRepository:
             "expires_at": now + self.ttl,
         }
         with db_connection(self.engine.begin, backend="session") as connection:
-            connection.execute(delete(self.sessions).where(
-                self.sessions.c.expires_at <= now,
-                self._scope(self.sessions, owner_id),
-            ))
+            expired_sids = [
+                r[0]
+                for r in connection.execute(
+                    select(self.sessions.c.session_id).where(
+                        self.sessions.c.expires_at <= now,
+                        self._scope(self.sessions, owner_id),
+                    )
+                ).fetchall()
+            ]
+            if expired_sids:
+                connection.execute(delete(self.sessions).where(self.sessions.c.session_id.in_(expired_sids)))
+                connection.execute(delete(self.conversations).where(self.conversations.c.session_id.in_(expired_sids)))
+                connection.execute(delete(self.messages).where(self.messages.c.session_id.in_(expired_sids)))
+                connection.execute(delete(self.memories).where(self.memories.c.session_id.in_(expired_sids)))
             if revision is None:
                 connection.execute(insert(self.sessions).values(session_id=session_id, owner_id=owner_id, **values))
             else:

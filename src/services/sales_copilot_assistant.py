@@ -11,7 +11,6 @@ from src.models.sales_copilot import MessageDraftResponse
 from src.observability import private_customer_context
 from src.services.customer_pii import CustomerPII
 
-
 DRAFT_PROMPT = """Bạn là Trợ lý AI hỗ trợ Tư vấn viên (Sales) ô tô điện VinFast soạn tin nhắn trả lời khách hàng.
 
 NHIỆM VỤ:

@@ -19,7 +19,6 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
-    Float,
     ForeignKey,
     Index,
     Integer,
@@ -92,20 +91,6 @@ class SQLSalesCopilotRepository:
             Column("content", Text, nullable=False),
             Column("seq", Integer, nullable=False),
             Column("sent_at", DateTime(timezone=True), nullable=False),
-        )
-
-        self.facts = Table(
-            "copilot_customer_facts",
-            self.metadata,
-            Column("id", String(64), primary_key=True),
-            Column("customer_id", String(64), nullable=False, index=True),
-            Column("field", String(100), nullable=False),
-            Column("value_json", Text, nullable=False),
-            Column("verification_status", String(30), default="reported", nullable=False),
-            Column("confidence", Float, default=0.9, nullable=False),
-            Column("source_message_ids_json", Text, default="[]", nullable=False),
-            Column("note", Text, nullable=True),
-            Column("updated_at", DateTime(timezone=True), nullable=False),
         )
 
         self.snapshots = Table(
@@ -538,25 +523,9 @@ class SQLSalesCopilotRepository:
     ) -> None:
         self.ensure_schema()
         now = datetime.now(UTC)
+        if facts and not snapshot.facts:
+            snapshot = snapshot.model_copy(update={"facts": list(facts)})
         with self.engine.begin() as conn:
-            # delete existing facts and insert new ones
-            conn.execute(delete(self.facts).where(self.facts.c.customer_id == customer_id))
-            for f in facts:
-                conn.execute(
-                    insert(self.facts).values(
-                        id=uuid4().hex,
-                        customer_id=customer_id,
-                        field=f.field,
-                        value_json=json.dumps(f.value, ensure_ascii=False),
-                        verification_status=f.verification_status,
-                        confidence=f.confidence,
-                        source_message_ids_json=json.dumps(f.source_message_ids),
-                        note=f.note,
-                        updated_at=now,
-                    )
-                )
-
-            # upsert snapshot
             conn.execute(delete(self.snapshots).where(self.snapshots.c.customer_id == customer_id))
             conn.execute(
                 insert(self.snapshots).values(
