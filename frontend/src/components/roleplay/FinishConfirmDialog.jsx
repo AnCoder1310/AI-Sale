@@ -40,8 +40,8 @@ export function FinishConfirmDialog({ isOpen, onClose, onConfirm, finishing }) {
             </svg>
           </div>
           <div>
-            <h2 id="practice-finish-title">Xác nhận hoàn tất phiên luyện tập</h2>
-            <p id="practice-finish-description">Bạn có chắc chắn muốn kết thúc phiên và gửi tới Hệ thống Chấm điểm AI không?</p>
+            <h2 id="practice-finish-title">{finishing ? 'Đang chấm điểm phiên luyện tập' : 'Xác nhận hoàn tất phiên luyện tập'}</h2>
+            <p id="practice-finish-description" role={finishing ? 'status' : undefined}>{finishing ? 'Hệ thống đang đánh giá hội thoại. Quá trình này có thể mất vài phút, vui lòng chờ.' : 'Bạn có chắc chắn muốn kết thúc phiên và gửi tới Hệ thống Chấm điểm AI không?'}</p>
           </div>
         </div>
         <div className="practice-finish-info">
@@ -51,7 +51,7 @@ export function FinishConfirmDialog({ isOpen, onClose, onConfirm, finishing }) {
         <div className="practice-finish-actions">
           <button ref={cancelRef} type="button" className="practice-finish-cancel" onClick={onClose} disabled={finishing}>Tiếp tục luyện tập</button>
           <button type="button" className="practice-finish-confirm" onClick={onConfirm} disabled={finishing}>
-            {finishing ? <><span className="practice-finish-spinner" aria-hidden="true" />Đang xử lý...</> : 'Hoàn tất & Chấm điểm'}
+            {finishing ? <><span className="practice-finish-spinner" aria-hidden="true" />Đang chấm điểm…</> : 'Hoàn tất & Chấm điểm'}
           </button>
         </div>
       </section>

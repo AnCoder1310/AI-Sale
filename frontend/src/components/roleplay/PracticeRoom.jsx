@@ -475,6 +475,7 @@ export function PracticeRoom({
   const handleFinishSession = async () => {
     if (loading || finishing || pendingReply || transcribing || recorder.recordingState !== 'idle') return;
     setFinishing(true);
+    setShowFinishConfirm(true);
     setNotice(null);
     try {
       const resultView = await practiceApi.finishSession(session.session_id);
