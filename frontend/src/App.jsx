@@ -19,6 +19,7 @@ export function App() {
   const [scenarioStatus, setScenarioStatus] = useState('loading');
   const [scenarioReloadToken, setScenarioReloadToken] = useState(0);
   const [sourceDocumentId, setSourceDocumentId] = useState(null);
+  const [sourceReference, setSourceReference] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [copilotQuery, setCopilotQuery] = useState('');
@@ -115,12 +116,6 @@ export function App() {
     }
   };
 
-  const handleConsultCopilot = (query) => {
-    setCopilotQuery(query);
-    setCopilotOpened(true);
-    setCurrentTab('copilot');
-  };
-
   if (authStatus === 'loading') {
     return <div className="auth-loading" role="status">Đang kiểm tra phiên đăng nhập…</div>;
   }
@@ -145,11 +140,12 @@ export function App() {
 
   const advisorProfile = {
     name: currentUser.display_name,
+    username: currentUser.username,
     role: 'Tư vấn viên',
   };
 
   return (
-    <div className={`app-container${currentTab === 'copilot' ? ' copilot-app-container' : ''}${currentTab === 'knowledge' ? ' knowledge-app-container' : ''}`}>
+    <div className={`app-container${currentTab === 'copilot' ? ' copilot-app-container' : ''}${currentTab === 'knowledge' ? ' knowledge-app-container' : ''}${currentTab === 'roleplay' ? ' roleplay-app-container' : ''}`}>
       {/* GLOBAL TOP HEADER */}
       <Header
         currentTab={currentTab}
@@ -172,8 +168,9 @@ export function App() {
           <CopilotView
             currentUser={currentUser}
             initialQuery={copilotQuery}
-            onOpenDocument={(documentId) => {
+            onOpenDocument={(documentId, reference = null) => {
               setSourceDocumentId(documentId);
+              setSourceReference(reference);
               setCurrentTab('knowledge');
             }}
           />
@@ -193,8 +190,8 @@ export function App() {
 
         {currentTab === 'knowledge' && (
           <KnowledgeView
-            onOpenCopilotQuery={handleConsultCopilot}
             sourceDocumentId={sourceDocumentId}
+            sourceReference={sourceReference}
           />
         )}
 

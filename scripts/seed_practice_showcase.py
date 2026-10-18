@@ -79,7 +79,11 @@ PREFIX = "showcase1_" + hashlib.sha256(b"practice-showcase-v1").hexdigest()[:8] 
 MANAGER_ID = "manager-demo"
 DEMO_ADVISOR_ID = "advisor-demo"
 DEFAULT_DEMO_NAME = "Tư vấn viên Demo"
-DEMO_ADVISOR_NAME = "Trần Minh Khoa"
+DEMO_ADVISOR_NAME = "Phạm Đình Duy"
+# Earlier seed names for advisor-demo that a re-run may replace.
+PREVIOUS_DEMO_NAMES = ("Trần Minh Khoa",)
+DEFAULT_MANAGER_NAME = "Quản lý Demo"
+DEMO_MANAGER_NAME = "Nguyễn Thu Trang"
 RUBRIC_VERSION = "sales-rubric-v4"
 CRITERIA = [c.value for c in CriterionType]
 ND, PK, OH, PA, CL = CRITERIA
@@ -99,7 +103,13 @@ ADVISORS = [
         {ND: (2.0, 2.0), PK: (1.8, 1.8), OH: (1.8, 1.8), PA: (1.6, 1.6), CL: (1.6, 1.6)},
         3.4,
     ),
-    ("tam", "Hoàng Đức Tâm", 8, {ND: (2.3, 2.5), PK: (1.7, 1.9), OH: (2.4, 2.6), PA: (1.9, 2.1), CL: (2.1, 2.3)}, 2.5),
+    (
+        "tam",
+        "Nguyễn Hữu Chương",
+        8,
+        {ND: (2.3, 2.5), PK: (1.7, 1.9), OH: (2.4, 2.6), PA: (1.9, 2.1), CL: (2.1, 2.3)},
+        2.5,
+    ),
     (
         "linh",
         "Bùi Phương Linh",
@@ -765,7 +775,7 @@ async def ensure_users(engine, auth_repo, apply: bool) -> dict[str, int | str]:
 
     wanted = [
         (DEMO_ADVISOR_ID, "advisor.demo", DEFAULT_DEMO_NAME, UserRole.ADVISOR, "DEMO_ADVISOR_PASSWORD"),
-        (MANAGER_ID, "manager.demo", "Quản lý Demo", UserRole.MANAGER, "DEMO_MANAGER_PASSWORD"),
+        (MANAGER_ID, "manager.demo", DEFAULT_MANAGER_NAME, UserRole.MANAGER, "DEMO_MANAGER_PASSWORD"),
     ]
     for user_id, username, display_name, role, variable in wanted:
         name = current(user_id)
@@ -780,14 +790,20 @@ async def ensure_users(engine, auth_repo, apply: bool) -> dict[str, int | str]:
             summary["created"] += 1
         else:
             summary["existing"] += 1
-        if user_id == DEMO_ADVISOR_ID and name in (None, DEFAULT_DEMO_NAME):
+        # Only replace names the seed itself gave; a name someone set by hand is kept.
+        renames = {
+            DEMO_ADVISOR_ID: (DEMO_ADVISOR_NAME, (None, DEFAULT_DEMO_NAME, *PREVIOUS_DEMO_NAMES)),
+            MANAGER_ID: (DEMO_MANAGER_NAME, (None, DEFAULT_MANAGER_NAME)),
+        }
+        new_name, replaceable = renames[user_id]
+        if name in replaceable:
             summary["renamed"] += 1
             if apply:
                 with engine.begin() as connection:
                     connection.execute(
                         update(auth_repo._users)
                         .where(auth_repo._users.c.user_id == user_id)
-                        .values(display_name=DEMO_ADVISOR_NAME)
+                        .values(display_name=new_name)
                     )
     return summary
 
@@ -807,7 +823,16 @@ async def seed(database_url: str, *, apply: bool = False, reset: bool = False, n
         if apply:
             service = AuthService(auth_repo)
             for slug, name, *_ in ADVISORS:
-                if slug == "demo" or await service.active_advisor(advisor_ids[slug]) is not None:
+                if slug == "demo":
+                    continue
+                if await service.active_advisor(advisor_ids[slug]) is not None:
+                    # Sample advisors belong to the seed, so keep their names in step with ADVISORS.
+                    with engine.begin() as connection:
+                        connection.execute(
+                            update(auth_repo._users)
+                            .where(auth_repo._users.c.user_id == advisor_ids[slug])
+                            .values(display_name=name)
+                        )
                     continue
                 await service.seed_user(
                     user_id=advisor_ids[slug],

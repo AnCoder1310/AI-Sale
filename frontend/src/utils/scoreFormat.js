@@ -39,7 +39,7 @@ export function daysSince(value, now = new Date()) {
   return Math.max(0, Math.round((startOf(now) - startOf(then)) / 86400000));
 }
 
-/** Initials for an avatar, e.g. "Trần Minh Khoa" -> "TK". */
+/** Initials for an avatar, e.g. "Phạm Đình Duy" -> "PD". */
 export function initialsOf(name) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';

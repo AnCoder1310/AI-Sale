@@ -1,4 +1,5 @@
-import { BookIcon, BellIcon, LogoutIcon } from '../common/Icons';
+import { BookIcon, BellIcon } from '../common/Icons';
+import { AccountMenu } from './AccountMenu';
 import { CopilotLogo } from '../common/CopilotLogo';
 
 export function Header({
@@ -11,7 +12,7 @@ export function Header({
   onLogout,
 }) {
   const tabs = [
-    { id: 'copilot', label: 'Trợ lý Copilot', icon: <CopilotLogo style={{ width: 18, height: 18 }} /> },
+    { id: 'copilot', label: 'Trợ lý Co-pilot', icon: <CopilotLogo style={{ width: 18, height: 18 }} /> },
     { id: 'roleplay', label: 'Phòng luyện tập', icon: <span className="roleplay-file-icon" aria-hidden="true" /> },
     { id: 'knowledge', label: 'Kho kiến thức', icon: <BookIcon style={{ width: 18, height: 18 }} /> },
   ];
@@ -61,19 +62,12 @@ export function Header({
             </button>
           )}
 
-          <div className="user-profile-badge">
-
-              <span className="header-user-avatar" aria-hidden="true">{advisorProfile.name.trim().charAt(0)}</span>
-              <div className="user-details">
-                <span className="user-name">{advisorProfile.name}</span>
-                <span className="user-role">{advisorProfile.role}</span>
-              </div>
-
-          </div>
-          <button className="header-logout-btn" type="button" onClick={onLogout}>
-            <LogoutIcon style={{ width: 17, height: 17 }} />
-            Đăng xuất
-          </button>
+          <AccountMenu
+            name={advisorProfile.name}
+            username={advisorProfile.username}
+            roleLabel={advisorProfile.role}
+            onLogout={onLogout}
+          />
         </div>
       </div>
 

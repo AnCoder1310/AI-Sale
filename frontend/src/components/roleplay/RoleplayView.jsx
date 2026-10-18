@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ModeChooserDialog } from './ModeChooserDialog';
 import { ScenarioCatalog } from './ScenarioCatalog';
 import { PracticeRoom } from './PracticeRoom';
 import { EvaluationScorecard } from './EvaluationScorecard';
@@ -29,6 +30,8 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
   const [historyError, setHistoryError] = useState('');
   const [historyScenarioId, setHistoryScenarioId] = useState(null);
   const [startError, setStartError] = useState('');
+  const [pendingStart, setPendingStart] = useState(null);
+  const [initialMode, setInitialMode] = useState('text');
   const [starting, setStarting] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
   const progress = useLoad(() => practiceApi.getProgress(), `progress-${refreshToken}`, 'Không tải được tiến độ.');
@@ -72,9 +75,23 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
     return latest;
   }, [history]);
 
-  const handleStartScenario = async (scenarioId, assignmentId = null) => {
+  // Entry points open the mode chooser first; the session starts once a mode is picked.
+  const requestStartScenario = (scenarioId, assignmentId = null) => {
+    if (starting || !scenarios.some((item) => item.scenario_id === scenarioId)) return;
+    setPendingStart({ scenarioId, assignmentId });
+  };
+
+  const startWithMode = (choice) => {
+    if (!pendingStart) return;
+    const { scenarioId, assignmentId } = pendingStart;
+    setPendingStart(null);
+    handleStartScenario(scenarioId, assignmentId, choice);
+  };
+
+  const handleStartScenario = async (scenarioId, assignmentId = null, mode = 'text') => {
     const scen = scenarios.find((s) => s.scenario_id === scenarioId);
     if (!scen || starting) return;
+    setInitialMode(mode);
     setActiveScenario(scen);
     setStartError('');
     setStarting(true);
@@ -148,6 +165,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
 
   return (
     <div>
+      {pendingStart && <ModeChooserDialog onClose={() => setPendingStart(null)} onChoose={startWithMode} />}
       <NoticeDialog notice={notice} onClose={() => setNotice(null)} onAction={async (id) => {
         setNotice(null);
         if (id === 'retry_finish') await retryFailedEvaluation();
@@ -155,7 +173,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
       }} />
       {scenarioStatus === 'loading' && <p>Đang tải tình huống từ backend...</p>}
       {scenarioStatus === 'error' && <ErrorState message="Không tải được tình huống từ backend." onRetry={onRetryScenarios} />}
-      {viewMode === 'catalog' && startError && <ErrorState message={startError} onRetry={() => handleStartScenario(activeScenario?.scenario_id)} />}
+      {viewMode === 'catalog' && startError && <ErrorState message={startError} onRetry={() => handleStartScenario(activeScenario?.scenario_id, null, initialMode)} />}
       {viewMode === 'catalog' && (
         <div className="ap-page">
           <div className="ap-title">
@@ -164,25 +182,27 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
               <p>{approvedCount} bài đã được quản lý duyệt. Điểm bên dưới chỉ tính các bài đó.</p>
             )}
           </div>
-          <AdvisorProgress progress={progress} />
-          <ScenarioCatalog
-            scenarios={scenarios}
-            onStartScenario={handleStartScenario}
-            onOpenHistory={setHistoryScenarioId}
-            latestByScenario={latestByScenario}
-            progressScenarios={progress.data?.scenarios || null}
-            assignments={assignmentsLoad.data || []}
-            starting={starting}
-          />
-          <div className="ap-lower">
+          <div className="ap-top">
+            <AdvisorProgress progress={progress} />
             <AdvisorAssignmentsView
               scenarios={scenarios}
               assignments={assignmentsLoad.data || []}
               status={assignmentsLoad.status}
               error={assignmentsLoad.error}
               onReload={assignmentsLoad.reload}
-              onStart={(assignment) => handleStartScenario(assignment.scenario_id, assignment.assignment_id)}
+              onStart={(assignment) => requestStartScenario(assignment.scenario_id, assignment.assignment_id)}
             />
+          </div>
+          <ScenarioCatalog
+            scenarios={scenarios}
+            onStartScenario={requestStartScenario}
+            onOpenHistory={setHistoryScenarioId}
+            latestByScenario={latestByScenario}
+            progressScenarios={progress.data?.scenarios || null}
+            assignments={assignmentsLoad.data || []}
+            starting={starting}
+          />
+          <div className="ap-lower ap-lower--single">
             <PracticeHistory
               history={history}
               status={historyStatus}
@@ -195,10 +215,10 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
         </div>
       )}
       {viewMode === 'room' && (
-        <PracticeRoom scenario={activeScenario} session={activeSession} onFinish={handleFinishSession} onSavedAttempt={openAttempt} onExit={handleBackToCatalog} />
+        <PracticeRoom initialMode={initialMode} scenario={activeScenario} session={activeSession} onFinish={handleFinishSession} onSavedAttempt={openAttempt} onExit={handleBackToCatalog} />
       )}
       {viewMode === 'evaluation' && (
-        <EvaluationScorecard result={evaluationResult} scenario={activeScenario} onRetry={() => handleStartScenario(activeScenario?.scenario_id)} onBackToCatalog={handleBackToCatalog} onOpenAttempt={openAttempt} />
+        <EvaluationScorecard result={evaluationResult} scenario={activeScenario} onRetry={() => requestStartScenario(activeScenario?.scenario_id)} onBackToCatalog={handleBackToCatalog} onOpenAttempt={openAttempt} />
       )}
       {viewMode === 'attempt' && (
         <div className="ap-page">
@@ -232,7 +252,7 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
                   result={{ ...attemptDetail.ai_evaluation, result: attemptDetail.manager_review?.approved_result || attemptDetail.ai_evaluation.result }}
                   scenario={activeScenario}
                   generalComment={attemptDetail.manager_review?.general_comment || null}
-                  onRetry={() => handleStartScenario(attemptDetail.attempt.scenario_id)}
+                  onRetry={() => requestStartScenario(attemptDetail.attempt.scenario_id)}
                   onBackToCatalog={handleBackToCatalog}
                   showTranscriptLinks
                 />

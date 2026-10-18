@@ -125,6 +125,9 @@ function SkillHeatmap({ rows, onOpenAdvisor }) {
   );
 }
 
+// Open items first, done items sink to the bottom; the sort is stable so order within each group is kept.
+const openFirst = (list) => [...(list || [])].sort((a, b) => Number(a.done) - Number(b.done));
+
 function Todos() {
   const todos = useLoad(() => managerApi.getTodos(), 'todos', 'Không thể tải việc cần làm.');
   const [draft, setDraft] = useState('');
@@ -140,7 +143,7 @@ function Todos() {
     setActionError('');
     try {
       const created = await managerApi.createTodo(text);
-      todos.setData((current) => [created, ...(current || [])].sort((a, b) => Number(a.done) - Number(b.done)));
+      todos.setData((current) => openFirst([created, ...(current || [])]));
       setDraft('');
     } catch (cause) {
       setActionError(cause.message || 'Không thể thêm việc.');
@@ -152,12 +155,12 @@ function Todos() {
   const toggle = async (item) => {
     const next = !item.done;
     setActionError('');
-    todos.setData((current) => (current || []).map((entry) => (entry.todo_id === item.todo_id ? { ...entry, done: next } : entry)));
+    todos.setData((current) => openFirst((current || []).map((entry) => (entry.todo_id === item.todo_id ? { ...entry, done: next } : entry))));
     try {
       const saved = await managerApi.setTodoDone(item.todo_id, next);
       todos.setData((current) => (current || []).map((entry) => (entry.todo_id === item.todo_id ? { ...entry, ...saved } : entry)));
     } catch (cause) {
-      todos.setData((current) => (current || []).map((entry) => (entry.todo_id === item.todo_id ? { ...entry, done: item.done } : entry)));
+      todos.setData((current) => openFirst((current || []).map((entry) => (entry.todo_id === item.todo_id ? { ...entry, done: item.done } : entry))));
       setActionError(cause.message || 'Không thể cập nhật việc.');
     }
   };
