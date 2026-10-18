@@ -12,6 +12,13 @@ export const authApi = {
     return request('/auth/me');
   },
 
+  changePassword(currentPassword, newPassword) {
+    return request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+  },
+
   logout() {
     return request('/auth/logout', { method: 'POST' });
   },

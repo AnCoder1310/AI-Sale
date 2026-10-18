@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Báo cáo kỹ thuật chi tiết phần Role-play của VFO2O-20." />
+    <title>VFO2O-20 | Role-play Engine — Supervisor Showcase</title>
+    <style>
+      :root {
+        --ink: #171717;
+        --navy: #102847;
+        --navy-2: #173a64;
+        --muted: #536274;
+        --canvas: #f5f7fa;
+        --paper: #ffffff;
+        --line: #dce3ea;
+        --line-strong: #b7c5d6;
+        --blue: #1565d8;
+        --blue-soft: #eaf2ff;
+        --green: #126a4b;
+        --green-soft: #e8f6ee;
+        --amber: #9a5900;
+        --amber-soft: #fff5df;
+        --red: #b42318;
+        --red-soft: #fff0ee;
+        --radius: 16px;
+        --shadow: 0 10px 26px rgba(23, 40, 71, .07);
+      }
+      * { box-sizing: border-box; }
+      html { background: var(--canvas); }
+      body { margin: 0; color: var(--ink); background: var(--canvas); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5; }
+      .shell { width: min(1220px, calc(100% - 40px)); margin: 0 auto; }
+      .top { background: var(--navy); color: #e8effa; }
+      .top-inner { min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+      .project { display: flex; align-items: center; gap: 10px; font-size: .86rem; font-weight: 760; letter-spacing: .035em; }
+      .mark { width: 16px; height: 16px; border: 3px solid #a8c5ff; border-radius: 50%; box-shadow: 8px 0 0 -3px #f3a157; }
+      .top-meta { color: #b5c8e3; font-size: .78rem; }
+      .print { min-height: 42px; padding: 8px 13px; border: 1px solid #52729c; border-radius: 8px; color: white; background: transparent; font: inherit; font-size: .8rem; font-weight: 720; cursor: pointer; }
+      .print:hover { background: rgba(255,255,255,.12); }
+      .print:focus-visible, summary:focus-visible { outline: 3px solid #f2bb4e; outline-offset: 3px; }
+
+      header { padding: 48px 0 38px; color: white; background: linear-gradient(122deg, var(--navy) 0%, var(--navy-2) 58%, #23548c 100%); }
+      .hero { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 42px; align-items: end; }
+      .eyebrow { margin: 0 0 12px; color: #b9d3ff; font-size: .76rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+      h1 { max-width: 860px; margin: 0; font-size: clamp(2.25rem, 5.1vw, 4rem); line-height: 1.02; letter-spacing: -.048em; }
+      .lede { max-width: 760px; margin: 18px 0 0; color: #d9e5f5; font-size: 1.05rem; }
+      .hero-card { padding: 21px; border: 1px solid rgba(210,228,255,.45); border-radius: var(--radius); background: rgba(7,25,50,.28); }
+      .hero-card small { display: block; color: #b9d3ff; font-size: .75rem; font-weight: 760; letter-spacing: .09em; text-transform: uppercase; }
+      .hero-card strong { display: block; margin-top: 7px; font-size: 1.16rem; line-height: 1.27; }
+      .hero-card p { margin: 9px 0 0; color: #d3e1f4; font-size: .85rem; }
+
+      main { padding: 34px 0 44px; }
+      section { margin-top: 31px; }
+      .section-kicker { margin: 0 0 5px; color: var(--blue); font-size: .76rem; font-weight: 820; letter-spacing: .1em; text-transform: uppercase; }
+      h2 { margin: 0; color: var(--navy); font-size: 1.43rem; line-height: 1.2; letter-spacing: -.025em; }
+      h3 { margin: 0; color: var(--navy); font-size: 1rem; line-height: 1.3; }
+      .intro { max-width: 900px; margin: 8px 0 18px; color: var(--muted); font-size: .94rem; }
+      .card { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); box-shadow: var(--shadow); }
+      .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+      .metric { min-height: 137px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+      .metric .num { display: block; color: var(--navy); font-size: 2rem; font-weight: 850; line-height: 1; letter-spacing: -.045em; }
+      .metric .label { display: block; margin-top: 9px; color: var(--muted); font-size: .84rem; line-height: 1.35; }
+      .metric.warn .num { color: var(--amber); }
+
+      .two { display: grid; grid-template-columns: 1.2fr .8fr; gap: 22px; }
+      .flow { display: grid; grid-template-columns: repeat(5, 1fr); align-items: stretch; gap: 8px; margin-top: 19px; }
+      .flow-node { position: relative; min-height: 130px; padding: 15px 12px; border: 1px solid #cbd9eb; border-radius: 12px; background: #f8fbff; }
+      .flow-node::after { position: absolute; z-index: 1; top: 52px; right: -13px; width: 16px; height: 2px; background: #9bb2d0; content: ""; }
+      .flow-node::before { position: absolute; z-index: 1; top: 48px; right: -13px; width: 7px; height: 7px; border-top: 2px solid #9bb2d0; border-right: 2px solid #9bb2d0; transform: rotate(45deg); content: ""; }
+      .flow-node:last-child::after, .flow-node:last-child::before { display: none; }
+      .flow-node b { display: block; color: var(--navy); font-size: .86rem; line-height: 1.25; }
+      .flow-node span { display: block; margin-top: 7px; color: var(--muted); font-size: .74rem; line-height: 1.32; }
+      .flow-node.safe { border-color: #b6dfca; background: var(--green-soft); }
+      .flow-node.ai { border-color: #bdd4fb; background: var(--blue-soft); }
+      .flow-node.warning { border-color: #eed399; background: var(--amber-soft); }
+      .tag { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; color: #44546c; font-size: .74rem; font-weight: 700; }
+      .tag::before { width: 8px; height: 8px; border-radius: 50%; background: currentColor; content: ""; }
+      .tag.safe { color: var(--green); } .tag.ai { color: var(--blue); } .tag.warning { color: var(--amber); }
+      .bullets { margin: 14px 0 0; padding-left: 19px; color: #44536a; font-size: .88rem; }
+      .bullets li + li { margin-top: 7px; }
+
+      .state-list { display: grid; gap: 10px; margin-top: 16px; }
+      .state-row { display: grid; grid-template-columns: 32px 1fr; gap: 10px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
+      .state-row:first-child { padding-top: 0; border-top: 0; }
+      .index { display: grid; place-items: center; width: 27px; height: 27px; border-radius: 50%; color: var(--blue); background: var(--blue-soft); font-size: .75rem; font-weight: 850; }
+      .state-row strong { color: var(--navy); font-size: .88rem; }
+      .state-row p { margin: 3px 0 0; color: var(--muted); font-size: .83rem; line-height: 1.35; }
+
+      .boundary { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+      .boundary-side { padding: 19px; border-radius: 13px; }
+      .boundary-side h3 { margin-bottom: 9px; }
+      .boundary-side p { margin: 0; font-size: .87rem; }
+      .server { border: 1px solid #bfdbcc; color: #244d3e; background: var(--green-soft); }
+      .advisor { border: 1px solid #c9d7e9; color: #324a68; background: #f4f8fd; }
+      .boundary-side ul { margin: 11px 0 0; padding-left: 18px; font-size: .82rem; }
+      .boundary-side li + li { margin-top: 5px; }
+      .rule { margin-top: 13px; padding: 14px 16px; border-left: 4px solid var(--amber); border-radius: 0 10px 10px 0; color: #6d480e; background: var(--amber-soft); font-size: .88rem; }
+
+      .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 13px; background: var(--paper); }
+      table { width: 100%; border-collapse: collapse; min-width: 750px; font-size: .84rem; }
+      th { padding: 12px 14px; color: var(--navy); background: #f1f5fa; text-align: left; font-size: .75rem; letter-spacing: .04em; text-transform: uppercase; }
+      td { padding: 12px 14px; color: #415067; border-top: 1px solid var(--line); vertical-align: top; }
+      td code, .code { padding: 2px 5px; border-radius: 5px; color: #14386b; background: #eaf2fd; font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: .79rem; overflow-wrap: anywhere; }
+      .status { display: inline-block; padding: 3px 7px; border-radius: 999px; font-size: .72rem; font-weight: 760; white-space: nowrap; }
+      .status.built { color: var(--green); background: var(--green-soft); }
+      .status.contract { color: var(--blue); background: var(--blue-soft); }
+      .status.missing { color: var(--amber); background: var(--amber-soft); }
+
+      .evaluation { display: grid; grid-template-columns: .78fr 1.22fr; gap: 22px; }
+      .rubric { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-top: 15px; }
+      .criterion { min-height: 104px; padding: 12px 10px; border: 1px solid #cbd9eb; border-radius: 11px; background: #f8fbff; }
+      .criterion span { display: block; color: var(--blue); font-size: .72rem; font-weight: 820; }
+      .criterion strong { display: block; margin-top: 7px; color: var(--navy); font-size: .78rem; line-height: 1.25; }
+      .validation { display: grid; gap: 9px; margin-top: 15px; }
+      .validation div { padding: 11px 13px; border-left: 3px solid var(--green); border-radius: 0 9px 9px 0; color: #405267; background: #f5fbf8; font-size: .84rem; }
+      .validation strong { color: #17533f; }
+
+      .test-grid { display: grid; grid-template-columns: 1fr 1fr .9fr; gap: 14px; }
+      .test-card { min-height: 167px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+      .test-card p { margin: 10px 0 0; color: var(--muted); font-size: .85rem; }
+      .test-card .test-result { display: block; margin-top: 12px; font-size: .8rem; font-weight: 760; }
+      .pass { color: var(--green); } .not-run { color: var(--amber); } .blocked { color: var(--red); }
+
+      details { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+      summary { min-height: 48px; padding: 13px 16px; color: var(--navy); font-size: .91rem; font-weight: 760; cursor: pointer; }
+      .details-content { padding: 0 16px 16px; color: var(--muted); font-size: .87rem; }
+      .details-content ul { margin: 8px 0 0; padding-left: 19px; }
+      .details-content li + li { margin-top: 5px; }
+      .next { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+      .next-item { padding: 17px; border: 1px solid var(--line); border-top: 4px solid var(--blue); border-radius: 12px; background: var(--paper); }
+      .next-item:nth-child(2) { border-top-color: var(--amber); } .next-item:nth-child(3) { border-top-color: var(--green); }
+      .next-item p { margin: 8px 0 0; color: var(--muted); font-size: .85rem; }
+      .demo-grid { display: grid; grid-template-columns: minmax(0, 1.24fr) .76fr; gap: 22px; }
+      .demo-note { margin: 0 0 14px; padding: 11px 13px; border-left: 4px solid var(--amber); border-radius: 0 9px 9px 0; color: #714a0a; background: var(--amber-soft); font-size: .84rem; }
+      .transcript { display: grid; gap: 11px; }
+      .message { max-width: 86%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 12px 12px 12px 3px; background: #f7f9fc; }
+      .message.advisor { justify-self: end; border-color: #bfd5fc; border-radius: 12px 12px 3px 12px; background: var(--blue-soft); }
+      .message .speaker { display: block; color: var(--navy); font-size: .72rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+      .message p { margin: 4px 0 0; color: #35455e; font-size: .87rem; line-height: 1.55; }
+      .demo-state { display: grid; gap: 11px; }
+      .demo-state div { padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: #f9fbfd; }
+      .demo-state span { display: block; color: var(--muted); font-size: .73rem; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
+      .demo-state strong { display: block; margin-top: 4px; color: var(--navy); font-size: .88rem; line-height: 1.35; }
+      .demo-state p { margin: 4px 0 0; color: var(--muted); font-size: .8rem; }
+      footer { padding: 8px 0 34px; color: var(--muted); font-size: .75rem; }
+      footer p { margin: 5px 0; }
+
+      @media (max-width: 980px) { .hero, .two, .evaluation, .demo-grid { grid-template-columns: 1fr; } .metric-grid { grid-template-columns: repeat(2, 1fr); } .flow { grid-template-columns: repeat(3, 1fr); } .flow-node::after, .flow-node::before { display: none; } .test-grid { grid-template-columns: 1fr 1fr; } }
+      @media (max-width: 640px) { .shell { width: min(100% - 28px, 1220px); } .top-meta { display: none; } .hero { gap: 24px; } header { padding: 34px 0 30px; } .metric-grid, .boundary, .test-grid, .next { grid-template-columns: 1fr; } .flow { grid-template-columns: 1fr 1fr; } .rubric { grid-template-columns: 1fr 1fr; } .message { max-width: 95%; } }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+      @media print { @page { size: A4 landscape; margin: 10mm; } body { font-size: 10px; background: white; } .shell { width: 100%; } .top-inner { min-height: 30px; } .print { display: none; } header { padding: 18px 0; } h1 { font-size: 31px; } main { padding: 16px 0; } section { margin-top: 18px; } .card { padding: 14px; box-shadow: none; } .metric { min-height: 0; padding: 12px; } .flow-node { min-height: 92px; padding: 10px; } .test-card { min-height: 0; padding: 12px; } footer { padding-bottom: 0; } }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <div class="shell top-inner">
+        <div class="project"><span class="mark" aria-hidden="true"></span>VFO2O-20 · AI Sales Enablement</div>
+        <div class="top-meta">Supervisor technical showcase · Role-play engine · 30.09.2026</div>
+        <button class="print" type="button" onclick="window.print()" aria-label="In hoặc lưu báo cáo thành PDF">In / lưu PDF</button>
+      </div>
+    </div>
+
+    <header>
+      <div class="shell hero">
+        <div>
+          <p class="eyebrow">Duy’s owned vertical slice · role-play and evaluation</p>
+          <h1>Role-play engine: AI được phép tạo hội thoại, không được tự quyết định trạng thái.</h1>
+          <p class="lede">Đây là phần lõi huấn luyện của sản phẩm: mô phỏng khách hàng nhiều lượt, chỉ tiết lộ thông tin khi tư vấn viên khai thác hợp lý, đóng phiên an toàn, rồi sinh bản đánh giá có evidence để quản lý duyệt sau này.</p>
+        </div>
+        <aside class="hero-card" aria-label="Phạm vi chịu trách nhiệm">
+          <small>Phạm vi sở hữu</small>
+          <strong>Role-play graph, state rules, finish/result lifecycle và evidence-validated evaluation.</strong>
+          <p>Không tuyên bố đã hoàn thiện RAG, auth, database bền vững hay manager review UI — các phần này là integration dependency.</p>
+        </aside>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section aria-labelledby="outcome-title">
+        <p class="section-kicker">01 · Product outcome</p>
+        <h2 id="outcome-title">Người dùng nhận được gì từ role-play?</h2>
+        <p class="intro">Tư vấn viên chọn tình huống, thực hành với một AI Customer có persona nhất quán, nhận feedback bản nháp có dẫn chứng từ chính transcript; chỉ bài làm do tư vấn viên chọn mới nên đi vào luồng duyệt của quản lý.</p>
+        <div class="metric-grid">
+          <article class="metric"><span class="num">3 lớp</span><span class="label">scenario contract → state graph → API/service</span></article>
+          <article class="metric"><span class="num">5 rubric</span><span class="label">discovery, product knowledge, objection, policy, closing</span></article>
+          <article class="metric"><span class="num">1–3 câu</span><span class="label">mục tiêu độ dài tự nhiên cho phản hồi AI Customer</span></article>
+          <article class="metric warn"><span class="num">AI draft</span><span class="label">kết quả chưa là đánh giá chính thức trước HITL manager review</span></article>
+        </div>
+      </section>
+
+      <section class="two" aria-label="Kiến trúc và state machine">
+        <article class="card">
+          <p class="section-kicker">02 · Runtime logic</p>
+          <h2>Luồng một phiên luyện tập</h2>
+          <p class="intro">Graph checkpoint state trước khi tạo phản hồi AI. Khi provider lỗi, lượt tư vấn viên đã lưu có thể phục hồi; hệ thống không âm thầm tạo câu trả lời hay điểm giả.</p>
+          <div class="flow" aria-label="Luồng role-play">
+            <div class="flow-node safe"><b>1. Start</b><span>Load scenario, tạo session ID và state ban đầu; AI customer mở đầu.</span><em class="tag safe">code-owned</em></div>
+            <div class="flow-node ai"><b>2. Analyze</b><span>LLM trả về TurnAnalysis có cấu trúc: intent, fact ID, objection ID, topic.</span><em class="tag ai">LLM signal only</em></div>
+            <div class="flow-node safe"><b>3. Reduce</b><span>Code validate ID theo scenario rồi cập nhật stage, facts, objections, trust/interest.</span><em class="tag safe">deterministic</em></div>
+            <div class="flow-node ai"><b>4. Customer</b><span>Prompt chỉ nhận data được phép; tạo 1–3 câu khách hàng tự nhiên.</span><em class="tag ai">guarded model</em></div>
+            <div class="flow-node warning"><b>5. Finish / Result</b><span>Freeze transcript; evaluate hoặc lưu failed để advisor retry.</span><em class="tag warning">recovery path</em></div>
+          </div>
+        </article>
+
+        <aside class="card">
+          <p class="section-kicker">State machine</p>
+          <h2>Điều gì thực sự được lưu?</h2>
+          <div class="state-list">
+            <div class="state-row"><span class="index">01</span><div><strong>Identity & scenario</strong><p><code>session_id</code>, scenario, difficulty cố định, sales channel, training objective.</p></div></div>
+            <div class="state-row"><span class="index">02</span><div><strong>Conversation control</strong><p>stage: opening → discovery → presentation → objection handling → closing → finished; turn count và messages.</p></div></div>
+            <div class="state-row"><span class="index">03</span><div><strong>Discovery & objections</strong><p>revealed facts, advisor discoveries, active/unresolved/resolved objections, current topic.</p></div></div>
+            <div class="state-row"><span class="index">04</span><div><strong>Terminal & evaluation</strong><p>termination status/reason và evaluation status: not started, pending, failed, complete.</p></div></div>
+          </div>
+        </aside>
+      </section>
+
+      <section aria-labelledby="privacy-title">
+        <p class="section-kicker">03 · Safety and fairness by design</p>
+        <h2 id="privacy-title">Tách thông tin để luyện tập công bằng và không rò rỉ đáp án</h2>
+        <p class="intro">Khách AI cần biết persona và các fact đã được phép nói. Advisor chỉ thấy bối cảnh hợp lý trước cuộc trò chuyện cùng transcript. Hai context này không dùng chung một payload.</p>
+        <article class="card">
+          <div class="boundary">
+            <div class="boundary-side server">
+              <h3>Server-only customer context</h3>
+              <p>Được tạo bởi <code>customer_prompt_context()</code> và CustomerAgent allowlist.</p>
+              <ul><li>persona, customer goals, trust/interest, current intent</li><li>facts đã reveal, active objections, chat history</li><li>không include hidden facts chưa được reveal</li></ul>
+            </div>
+            <div class="boundary-side advisor">
+              <h3>Advisor-visible practice context</h3>
+              <p>Được trả bởi <code>advisor_visible_context()</code> để UI phục hồi session.</p>
+              <ul><li>scenario identity, stage, turn count, difficulty</li><li>visible context, trạng thái kết thúc và messages</li><li>không có persona controls, goals, rubric, evaluator data hay objection state</li></ul>
+            </div>
+          </div>
+          <p class="rule"><strong>Disclosure is semantic, not a magic phrase.</strong> Scenario có <code>trigger_intent</code>; keyword chỉ là ví dụ/fallback test. TurnAnalyzer chỉ cho reveal fact khi intent và fact ID đều tồn tại trong scenario. Một câu hỏi rộng có thể nhận gợi ý nhỏ, không được dump toàn bộ hidden facts.</p>
+        </article>
+      </section>
+
+      <section aria-labelledby="api-title">
+        <p class="section-kicker">04 · Public service contract</p>
+        <h2 id="api-title">API đã xây cho Practice Room</h2>
+        <p class="intro">Router được dependency-inject bằng PracticeService để test độc lập. Các handler trả lỗi rõ ràng: 404 session/scenario, 409 lifecycle conflict, 502 provider response failure, 503 evaluation unavailable.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Route</th><th>Hành vi</th><th>Điểm bảo vệ</th><th>Trạng thái</th></tr></thead>
+            <tbody>
+              <tr><td><code>GET /practice/scenarios</code></td><td>Liệt kê scenario summary công khai cho advisor chọn.</td><td>Không trả hidden facts.</td><td><span class="status built">Built</span></td></tr>
+              <tr><td><code>POST /practice/sessions</code></td><td>Tạo UUID session, start graph và customer opening.</td><td>Validate scenario ID; scenario không tồn tại trả 404.</td><td><span class="status built">Built</span></td></tr>
+              <tr><td><code>POST /practice/{id}/message</code></td><td>Lưu advisor turn → analyze → reducer → customer response.</td><td>Per-session lock; invalid state 409; provider error 502 với hướng retry.</td><td><span class="status built">Built</span></td></tr>
+              <tr><td><code>POST /practice/{id}/finish</code></td><td>Đóng phiên, chạy evaluation nếu dependencies được cấu hình.</td><td>Transcript freeze; error 503 vẫn giữ attempt để retry.</td><td><span class="status contract">Built, needs runtime</span></td></tr>
+              <tr><td><code>GET /practice/{id}</code><br><code>GET /practice/{id}/result</code></td><td>Phục hồi advisor-visible session hoặc status/result của bản đánh giá nháp.</td><td>Không expose private state; ownership check là integration requirement.</td><td><span class="status contract">Built, needs auth</span></td></tr>
+              <tr><td><code>POST /practice/{id}/submit-review</code></td><td>Advisor chọn một attempt để gửi manager review.</td><td>Idempotent selected-attempt submit; manager ghi lý do khi sửa.</td><td><span class="status missing">Not built</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="evaluation" aria-labelledby="evaluation-title">
+        <article class="card">
+          <p class="section-kicker">05 · Evaluation design</p>
+          <h2 id="evaluation-title">Đánh giá tách “bán hàng tốt” và “nói đúng fact”</h2>
+          <p class="intro">LLM-as-Judge tạo structured draft. Code kiểm evidence, nguồn và score aggregation; LLM không được tự ghi overall score.</p>
+          <div class="rubric" aria-label="Năm rubric đánh giá">
+            <div class="criterion"><span>01</span><strong>Need discovery</strong></div>
+            <div class="criterion"><span>02</span><strong>Product knowledge</strong></div>
+            <div class="criterion"><span>03</span><strong>Objection handling</strong></div>
+            <div class="criterion"><span>04</span><strong>Policy accuracy</strong></div>
+            <div class="criterion"><span>05</span><strong>Closing next step</strong></div>
+          </div>
+          <ul class="bullets"><li>Mỗi criterion dùng thang 1–5 hoặc <code>NOT_OBSERVED</code>/<code>INSUFFICIENT_EVIDENCE</code>.</li><li>Result khởi đầu với <code>review_status = AI_DRAFT</code>, không phải official score.</li></ul>
+        </article>
+        <article class="card">
+          <p class="section-kicker">Evidence validation</p>
+          <h2>Judge output chỉ được nhận nếu có thể đối chiếu</h2>
+          <div class="validation">
+            <div><strong>Transcript evidence:</strong> <code>message_id</code> phải tồn tại và quote phải là chuỗi chính xác trong message tương ứng.</div>
+            <div><strong>Factual finding:</strong> claim phải nằm trong advisor message; source reference bắt buộc khi trạng thái supported/contradicted.</div>
+            <div><strong>Knowledge source:</strong> <code>source_id</code>, version và quote đều phải khớp evidence do shared knowledge layer cung cấp.</div>
+            <div><strong>Overall score:</strong> code tính trung bình các criterion được assessed; nếu không có criterion assessed thì overall = null.</div>
+            <div><strong>Failure mode:</strong> malformed / unverifiable judge output bị reject; evaluation status chuyển <code>FAILED</code> và advisor có thể retry Finish.</div>
+          </div>
+        </article>
+      </section>
+
+      <section aria-labelledby="tests-title">
+        <p class="section-kicker">06 · Evidence, not assumption</p>
+        <h2 id="tests-title">Trạng thái kiểm chứng hiện tại</h2>
+        <p class="intro">Đây là tách bạch giữa phần đã kiểm tra và các tuyên bố chưa có bằng chứng. Kết quả scoped test được ghi trong <code>eval/results/report.md</code> ngày 29.09.2026.</p>
+        <div class="test-grid">
+          <article class="test-card"><h3>Role-play + Practice API</h3><p>Scenario contract, hidden-fact isolation, turn analysis, reducer, customer output, graph, evaluator, service và API boundary.</p><span class="test-result pass">PASS · 72 tests in 2.21s</span></article>
+          <article class="test-card"><h3>Static checks</h3><p><code>ruff check src backend tests</code> đã pass. <code>ruff format --check</code> còn báo 6 file cần format.</p><span class="test-result not-run">LINT PASS · FORMAT NOT YET CLEAN</span></article>
+          <article class="test-card"><h3>Không được suy diễn</h3><p>Full suite từng bị dừng tiến triển sau test generic template đầu tiên; chưa có coverage, deployed E2E, provider, database hoặc frontend verification.</p><span class="test-result blocked">NOT VERIFIED</span></article>
+        </div>
+      </section>
+
+      <section aria-labelledby="dependency-title">
+        <p class="section-kicker">07 · Integration boundary</p>
+        <h2 id="dependency-title">Những contract cần từ shared runtime trước khi gọi là MVP hoàn chỉnh</h2>
+        <p class="intro">Đây không phải các tính năng “có thể giả bằng mock khi demo”. Chúng là ranh giới cần được nối thật để đảm bảo result, data và HITL đáng tin cậy.</p>
+        <details open>
+          <summary>Interfaces cần chốt</summary>
+          <div class="details-content"><ul><li><code>LLMClient.generate_structured(...)</code> cho customer, analyzer và evaluator model adapters.</li><li><code>CheckpointRepository.load/save(...)</code> và <code>PracticeSessionRepository.create/get/update(...)</code> cho persistence và recovery bền vững.</li><li><code>KnowledgeService.search(...)</code> và evidence provider để chấm factual claim từ nguồn thật.</li><li><code>EvaluationRepository.save(...)</code> và <code>ManagerReviewRepository.submit_once(...)</code> cho AI draft, selected attempt và HITL audit trail.</li></ul></div>
+        </details>
+        <details style="margin-top: 11px">
+          <summary>Quyết định vận hành còn phải thống nhất</summary>
+          <div class="details-content"><ul><li>Transaction boundary giữa save turn, customer reply và checkpoint; retry behavior khi provider timeout.</li><li>request/session IDs, structured API error format, auth identity/ownership check và idempotency key.</li><li>Benchmark: 50 ca Copilot; 3 scenarios × 6 test paths cho simulator; calibration judge trước khi công bố chất lượng score.</li></ul></div>
+        </details>
+      </section>
+
+      <section aria-labelledby="next-title">
+        <p class="section-kicker">08 · Next demonstrable milestone</p>
+        <h2 id="next-title">Một vertical slice nên được hoàn thiện theo thứ tự này</h2>
+        <div class="next">
+          <article class="next-item"><h3>1. Nối runtime thật</h3><p>Thay in-memory/checkpoint test double bằng shared persistence, LLM adapter và knowledge evidence provider. Không im lặng fallback khi dependency fail.</p></article>
+          <article class="next-item"><h3>2. Nối UI và HITL</h3><p>Advisor: choose → chat → recover → finish → draft → submit chosen attempt. Manager: inspect transcript/evidence → approve or edit with reason.</p></article>
+          <article class="next-item"><h3>3. Chạy evidence release</h3><p>Format 6 files, tìm nguyên nhân full-suite hang, chạy E2E trên deployed app và ghi benchmark/evaluation artefacts trước demo cuối.</p></article>
+        </div>
+      </section>
+
+      <section aria-labelledby="demo-title">
+        <p class="section-kicker">09 · Scenario-based illustration</p>
+        <h2 id="demo-title">Mock conversation từ scenario đã có trong corpus</h2>
+        <p class="intro">Corpus hiện có 3 scenario. Minh hoạ này dùng <code>SCENARIO_01_VF5_TAXI</code> — “Bác tài chạy dịch vụ cân nhắc đổi từ xe xăng sang VF 5 Plus”, độ khó Medium, kênh Fanpage, tối đa 8 lượt advisor.</p>
+        <div class="demo-grid">
+          <article class="card">
+            <p class="demo-note"><strong>Mock, không phải transcript đã chạy model.</strong> Nội dung chỉ minh hoạ disclosure và state transition theo scenario contract. Các số liệu giá, chính sách pin hoặc thời gian sạc được cố ý không bịa ra vì đoạn demo này không gọi knowledge tool.</p>
+            <div class="transcript" aria-label="Mock conversation giữa tư vấn viên và khách hàng Anh Nam">
+              <div class="message"><span class="speaker">Khách hàng · opening / visible context</span><p>“VF 5 Plus lăn bánh bao nhiêu em? Anh đang chạy Vios dịch vụ tính đổi sang xe điện mà sợ không ăn thua.”</p></div>
+              <div class="message advisor"><span class="speaker">Tư vấn viên · discovery</span><p>“Em hiểu anh đang cần tính hiệu quả vận hành thật, chứ không chỉ xem giá xe. Trung bình một ngày anh chạy khoảng bao nhiêu km để em ước tính theo đúng cường độ sử dụng của anh?”</p></div>
+              <div class="message"><span class="speaker">Khách hàng · semantic disclosure</span><p>“Mỗi ngày anh chạy túc tắc cũng tầm 180 đến 200 cây số em ạ, tháng cũng ngót nghét 5.000 cây.”</p></div>
+              <div class="message advisor"><span class="speaker">Tư vấn viên · discovery</span><p>“Cảm ơn anh. Để phương án tài chính sát hơn, anh dự tính trả trước khoảng bao nhiêu và có cần vay phần còn lại không ạ?”</p></div>
+              <div class="message"><span class="speaker">Khách hàng · semantic disclosure</span><p>“Anh dồn hết vốn liếng trong tay chỉ có tầm 150 triệu thôi, còn lại phải vay ngân hàng thì mới kham nổi.”</p></div>
+              <div class="message advisor"><span class="speaker">Tư vấn viên · grounded next step</span><p>“Với quãng đường và mức trả trước này, em sẽ đối chiếu chi phí theo 5.000 km/tháng và phương án vay bằng chính sách còn hiệu lực, gửi anh từng nguồn để mình kiểm tra cùng nhau. Em không muốn hứa mức tiết kiệm khi chưa đủ đầu vào. Chiều nay em gọi anh 15 phút để chốt các giả định và lịch chạy thực tế của anh được không?”</p></div>
+            </div>
+          </article>
+          <aside class="card demo-state">
+            <div><span>Scenario source</span><strong>SCENARIO_01_VF5_TAXI · v2.0</strong><p>Persona: Anh Nam, 35 tuổi, thực dụng; đang chạy Toyota Vios 2017.</p></div>
+            <div><span>Expected state after mock</span><strong>Stage: discovery → closing candidate</strong><p><code>revealed_facts</code>: daily_distance, budget. Chưa có active objection vì chưa đưa factual presentation.</p></div>
+            <div><span>What the evaluator can credit</span><strong>Need discovery + closing next step</strong><p>Không tự cho điểm Product Knowledge/Policy Accuracy vì transcript chưa đưa factual claim có source evidence.</p></div>
+            <div><span>What happens next in a real run</span><strong>Knowledge lookup trước presentation</strong><p>Chỉ sau đó AI Customer mới có thể nêu objection về chi phí pin/sạc theo đúng lifecycle scenario.</p></div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="shell">
+      <p><strong>Implementation references:</strong> <code>backend/roleplay/contracts.py</code>, <code>state.py</code>, <code>state_reducer.py</code>, <code>turn_analyzer.py</code>, <code>customer_agent.py</code>, <code>graph.py</code>, <code>evaluator.py</code>, <code>backend/services/practice_service.py</code>, <code>backend/api/practice_chat.py</code>.</p>
+      <p>Trang này là báo cáo trạng thái kỹ thuật, không thay cho việc xác minh CI, GitHub mergeability hay deployment ở thời điểm phát hành.</p>
+    </footer>
+  </body>
+</html>

@@ -1,6 +1,12 @@
 .git
 .gitignore
 .env
+.env.*
+.ai-log/
+report/
+frontend/
+data/chroma/
+data/*.db
 .venv
 __pycache__
 *.pyc
@@ -11,6 +17,7 @@ presentation/
 eval/
 *.md
 !requirements.txt
+!requirements.lock
 .dockerignore
 Dockerfile
 docker-compose.yml

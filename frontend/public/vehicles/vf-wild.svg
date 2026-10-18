@@ -1,0 +1,65 @@
+<svg width="800" height="480" viewBox="0 0 800 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg-wild" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1F1F1F"/>
+      <stop offset="100%" stop-color="#0A0A0A"/>
+    </linearGradient>
+    <linearGradient id="body-wild" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#383838"/>
+      <stop offset="50%" stop-color="#212121"/>
+      <stop offset="100%" stop-color="#141414"/>
+    </linearGradient>
+    <filter id="glow-wild" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <rect width="800" height="480" fill="url(#bg-wild)"/>
+  <ellipse cx="400" cy="410" rx="350" ry="24" fill="#000000" opacity="0.9"/>
+
+  <!-- VF Wild Muscular Pickup Silhouette -->
+  <!-- Aerodynamic Roof & Sail Panel -->
+  <path d="M 240 140 L 460 140 L 530 200 L 530 250 L 190 250 L 195 200 Z" fill="#141414" stroke="#404040" stroke-width="2"/>
+  <!-- Open Cargo Bed Area (Rear) -->
+  <path d="M 525 210 L 670 215 L 665 290 L 525 285 Z" fill="#0D0D0D" stroke="#333333" stroke-width="2"/>
+
+  <!-- High-Tech Windshield & Side Windows -->
+  <path d="M 250 148 L 450 148 L 490 220 L 210 220 Z" fill="#0A0A0A" stroke="#262626" stroke-width="2"/>
+  <path d="M 330 152 L 440 152 L 475 212 L 330 212 Z" fill="#212121" opacity="0.5"/>
+
+  <!-- Muscular Body Shell with Flared Fenders -->
+  <path d="M 130 250 L 670 250 L 685 340 L 640 375 L 160 375 L 115 340 Z" fill="url(#body-wild)" stroke="#525252" stroke-width="2"/>
+
+  <!-- Rugged Front Bumper with Heavy Duty Skid Plate -->
+  <rect x="200" y="300" width="400" height="65" rx="16" fill="#0F0F0F" stroke="#383838" stroke-width="2"/>
+
+  <!-- Full-Width Sculpted V-Wing LED Lightbar -->
+  <path d="M 215 320 Q 355 338 390 350" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" filter="url(#glow-wild)"/>
+  <path d="M 585 320 Q 445 338 410 350" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" filter="url(#glow-wild)"/>
+
+  <!-- VinFast Winged Emblem -->
+  <g transform="translate(388, 338) scale(0.24)">
+    <path d="M 12 15 C 22 26, 32 46, 32 55 C 27 41, 18 25, 12 15 Z" fill="#FFFFFF"/>
+    <path d="M 52 15 C 42 26, 32 46, 32 55 C 37 41, 46 25, 52 15 Z" fill="#FFFFFF"/>
+    <path d="M 21 19 C 27 27, 30 38, 32 46 C 30 37, 26 27, 21 19 Z" fill="#E5E5E5"/>
+    <path d="M 43 19 C 37 27, 34 38, 32 46 C 34 37, 38 27, 43 19 Z" fill="#E5E5E5"/>
+  </g>
+
+  <!-- Massive All-Terrain Wheels & High Clearance -->
+  <circle cx="190" cy="385" r="54" fill="#0A0A0A" stroke="#262626" stroke-width="4"/>
+  <circle cx="190" cy="385" r="38" fill="#171717" stroke="#525252" stroke-width="3"/>
+  <circle cx="190" cy="385" r="16" fill="#737373"/>
+
+  <circle cx="610" cy="385" r="54" fill="#0A0A0A" stroke="#262626" stroke-width="4"/>
+  <circle cx="610" cy="385" r="38" fill="#171717" stroke="#525252" stroke-width="3"/>
+  <circle cx="610" cy="385" r="16" fill="#737373"/>
+
+  <path d="M 290 375 L 510 375 L 490 400 L 310 400 Z" fill="#212121" stroke="#525252" stroke-width="2"/>
+
+  <!-- Overlay Text -->
+  <text x="40" y="55" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="900" fill="#FFFFFF" letter-spacing="1">VINFAST VF WILD</text>
+  <text x="40" y="85" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="700" fill="#737373" letter-spacing="2">BÁN TẢI ĐIỆN CES MỸ • THỂ THAO ĐỘT PHÁ</text>
+  <rect x="40" y="102" width="165" height="26" rx="6" fill="#262626"/>
+  <text x="50" y="119" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="800" fill="#E5E5E5">DỰ KIẾN TỪ 800 TRIỆU</text>
+</svg>

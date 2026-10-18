@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from threading import Lock
+from uuid import uuid4
 
 from sqlalchemy import (
+    Boolean,
     Column,
+    Date,
     DateTime,
     ForeignKey,
     MetaData,
@@ -29,13 +32,22 @@ from src.agents.roleplay.state import EvaluationStatus
 from src.integrations.practice_persistence import normalize_database_url
 from src.models.evaluation import CriterionStatus, CriterionType, ReviewStatus, SessionEvaluationResult
 from src.services.practice_records import (
+    AdvisorPerformance,
+    ApprovedScore,
+    AssignmentConflictError,
+    AssignmentRecord,
+    AssignmentStatus,
     AttemptNotFoundError,
     AttemptSummary,
+    CreateAssignmentInput,
     ManagerReviewDecision,
     ManagerReviewRecord,
+    ManagerTodo,
     ReviewConflictError,
+    ScoredAttempt,
     SkillSummary,
     TeamOverview,
+    TodoNotFoundError,
     approved_evaluation,
 )
 
@@ -64,6 +76,39 @@ class SQLPracticeRecordsRepository:
             Column("change_reason", Text, nullable=False),
             Column("approved_result_json", Text, nullable=False),
         )
+        self._assignments = Table(
+            "practice_assignments",
+            metadata,
+            Column("assignment_id", String(120), primary_key=True),
+            Column("manager_id", String(120), nullable=False),
+            Column("advisor_id", String(120), nullable=False, index=True),
+            Column("scenario_id", String(120), nullable=False),
+            Column("title", String(200), nullable=False),
+            Column("due_date", Date),
+            Column("created_at", DateTime(timezone=True), nullable=False),
+        )
+        self._assignment_sessions = Table(
+            "practice_assignment_sessions",
+            metadata,
+            Column("session_id", String(120), ForeignKey("practice_attempts.session_id"), primary_key=True),
+            Column(
+                "assignment_id",
+                String(120),
+                ForeignKey("practice_assignments.assignment_id"),
+                nullable=False,
+                index=True,
+            ),
+        )
+        self._todos = Table(
+            "manager_todos",
+            metadata,
+            Column("todo_id", String(120), primary_key=True),
+            Column("manager_id", String(120), nullable=False, index=True),
+            Column("text", String(300), nullable=False),
+            Column("done", Boolean, nullable=False, default=False),
+            Column("created_at", DateTime(timezone=True), nullable=False),
+            Column("done_at", DateTime(timezone=True)),
+        )
         self._metadata = metadata
         self._schema_ready = False
         self._schema_lock = Lock()
@@ -76,11 +121,15 @@ class SQLPracticeRecordsRepository:
                 self._metadata.create_all(self._engine)
                 self._schema_ready = True
 
-    async def register(self, session_id: str, scenario_id: str, advisor_id: str) -> None:
+    async def register(
+        self, session_id: str, scenario_id: str, advisor_id: str, assignment_id: str | None = None
+    ) -> None:
         if not all(value.strip() for value in (session_id, scenario_id, advisor_id)):
             raise ValueError("attempt identity fields must not be blank")
         self._ensure_schema()
         with self._engine.begin() as connection:
+            if assignment_id:
+                self._validate_assignment_in_connection(connection, assignment_id, advisor_id, scenario_id)
             connection.execute(
                 insert(self._attempts).values(
                     session_id=session_id,
@@ -90,6 +139,137 @@ class SQLPracticeRecordsRepository:
                     evaluation_status=EvaluationStatus.NOT_STARTED.value,
                 )
             )
+            if assignment_id:
+                connection.execute(
+                    insert(self._assignment_sessions).values(session_id=session_id, assignment_id=assignment_id)
+                )
+
+    def _validate_assignment_in_connection(
+        self, connection, assignment_id: str, advisor_id: str, scenario_id: str
+    ) -> None:
+        assignment = connection.execute(
+            select(self._assignments.c.advisor_id, self._assignments.c.scenario_id).where(
+                self._assignments.c.assignment_id == assignment_id
+            )
+        ).first()
+        if assignment is None or assignment.advisor_id != advisor_id or assignment.scenario_id != scenario_id:
+            raise AssignmentConflictError("Assignment does not match this advisor and scenario.")
+        completed = connection.execute(
+            select(self._attempts.c.session_id)
+            .select_from(
+                self._assignment_sessions.join(
+                    self._attempts, self._assignment_sessions.c.session_id == self._attempts.c.session_id
+                )
+            )
+            .where(self._assignment_sessions.c.assignment_id == assignment_id)
+            .where(self._attempts.c.evaluation_status == EvaluationStatus.COMPLETE.value)
+            .limit(1)
+        ).first()
+        if completed:
+            raise AssignmentConflictError("Assignment is already completed.")
+
+    async def validate_assignment(self, assignment_id: str, advisor_id: str, scenario_id: str) -> None:
+        self._ensure_schema()
+        with self._engine.connect() as connection:
+            self._validate_assignment_in_connection(connection, assignment_id, advisor_id, scenario_id)
+
+    async def create_assignment(self, manager_id: str, payload: CreateAssignmentInput) -> AssignmentRecord:
+        self._ensure_schema()
+        assignment_id = str(uuid4())
+        created_at = datetime.now(UTC)
+        with self._engine.begin() as connection:
+            connection.execute(
+                insert(self._assignments).values(
+                    assignment_id=assignment_id,
+                    manager_id=manager_id,
+                    advisor_id=payload.advisor_id,
+                    scenario_id=payload.scenario_id,
+                    title=payload.title,
+                    due_date=payload.due_date,
+                    created_at=created_at,
+                )
+            )
+        return AssignmentRecord(
+            **payload.model_dump(),
+            assignment_id=assignment_id,
+            manager_id=manager_id,
+            created_at=created_at,
+            status=AssignmentStatus.ASSIGNED,
+        )
+
+    async def assignments(self, advisor_id: str | None = None) -> list[AssignmentRecord]:
+        self._ensure_schema()
+        query = select(self._assignments).order_by(
+            self._assignments.c.created_at.desc(), self._assignments.c.assignment_id.desc()
+        )
+        if advisor_id is not None:
+            query = query.where(self._assignments.c.advisor_id == advisor_id)
+        with self._engine.connect() as connection:
+            assignment_rows = list(connection.execute(query).mappings())
+            if not assignment_rows:
+                return []
+            session_rows = list(
+                connection.execute(
+                    select(
+                        self._assignment_sessions.c.assignment_id,
+                        self._attempts.c.session_id,
+                        self._attempts.c.evaluation_status,
+                        self._attempts.c.started_at,
+                    )
+                    .select_from(self._assignment_sessions.join(self._attempts))
+                    .where(
+                        self._assignment_sessions.c.assignment_id.in_([row.assignment_id for row in assignment_rows])
+                    )
+                    .order_by(self._attempts.c.started_at.desc())
+                ).mappings()
+            )
+        by_assignment: dict[str, list] = {}
+        for row in session_rows:
+            by_assignment.setdefault(row.assignment_id, []).append(row)
+        results = []
+        for row in assignment_rows:
+            sessions = by_assignment.get(row.assignment_id, [])
+            completed = next(
+                (item for item in sessions if item.evaluation_status == EvaluationStatus.COMPLETE.value), None
+            )
+            status = (
+                AssignmentStatus.COMPLETED
+                if completed
+                else AssignmentStatus.IN_PROGRESS
+                if sessions
+                else AssignmentStatus.ASSIGNED
+            )
+            results.append(
+                AssignmentRecord(
+                    assignment_id=row.assignment_id,
+                    manager_id=row.manager_id,
+                    advisor_id=row.advisor_id,
+                    scenario_id=row.scenario_id,
+                    title=row.title,
+                    due_date=row.due_date,
+                    created_at=row.created_at,
+                    status=status,
+                    session_id=(completed or sessions[0]).session_id if sessions else None,
+                )
+            )
+        return results
+
+    async def mark_evaluation_pending(self, session_id: str) -> None:
+        """Expose the saved transcript in history before the evaluator runs."""
+        self._ensure_schema()
+        with self._engine.begin() as connection:
+            changed = connection.execute(
+                update(self._attempts)
+                .where(self._attempts.c.session_id == session_id)
+                .where(self._attempts.c.ai_draft_json.is_(None))
+                .values(completed_at=datetime.now(UTC), evaluation_status=EvaluationStatus.PENDING.value)
+            )
+            if changed.rowcount == 0:
+                exists = connection.execute(
+                    select(self._attempts.c.session_id).where(self._attempts.c.session_id == session_id)
+                ).scalar_one_or_none()
+                if exists is None:
+                    raise AttemptNotFoundError(session_id)
 
     async def mark_evaluation_failed(self, session_id: str) -> None:
         """Keep a finished attempt visible when the evaluator needs retry."""
@@ -193,6 +373,7 @@ class SQLPracticeRecordsRepository:
             manager_id=row.manager_id,
             reviewed_at=row.reviewed_at,
             change_reason=row.change_reason,
+            general_comment=row.change_reason.strip() or None,
             ai_draft=SessionEvaluationResult.model_validate_json(row.ai_draft_json),
             approved_result=SessionEvaluationResult.model_validate_json(row.approved_result_json),
         )
@@ -260,6 +441,133 @@ class SQLPracticeRecordsRepository:
             ],
         )
 
+    async def scored_attempts(self, advisor_id: str | None = None) -> list[ScoredAttempt]:
+        """Completed attempts with parsed AI and approved results; aggregation happens in the service."""
+        self._ensure_schema()
+        query = self._summary_query().where(self._attempts.c.completed_at.is_not(None))
+        if advisor_id is not None:
+            query = query.where(self._attempts.c.advisor_id == advisor_id)
+        with self._engine.connect() as connection:
+            rows = list(connection.execute(query).mappings())
+        return [
+            ScoredAttempt(
+                session_id=row.session_id,
+                advisor_id=row.advisor_id,
+                scenario_id=row.scenario_id,
+                completed_at=row.completed_at,
+                evaluation_status=row.evaluation_status,
+                ai_draft=SessionEvaluationResult.model_validate_json(row.ai_draft_json) if row.ai_draft_json else None,
+                approved=(
+                    SessionEvaluationResult.model_validate_json(row.approved_result_json)
+                    if row.approved_result_json
+                    else None
+                ),
+            )
+            for row in rows
+        ]
+
+    @staticmethod
+    def _to_todo(row) -> ManagerTodo:
+        return ManagerTodo(
+            todo_id=row.todo_id, text=row.text, done=bool(row.done), created_at=row.created_at, done_at=row.done_at
+        )
+
+    async def list_todos(self, manager_id: str) -> list[ManagerTodo]:
+        self._ensure_schema()
+        query = select(self._todos).where(self._todos.c.manager_id == manager_id)
+        with self._engine.connect() as connection:
+            todos = [self._to_todo(row) for row in connection.execute(query).mappings()]
+        todos.sort(key=lambda item: item.created_at, reverse=True)
+        todos.sort(key=lambda item: item.done)
+        return todos
+
+    async def create_todo(self, manager_id: str, text: str) -> ManagerTodo:
+        self._ensure_schema()
+        todo = ManagerTodo(todo_id=str(uuid4()), text=text, done=False, created_at=datetime.now(UTC))
+        with self._engine.begin() as connection:
+            connection.execute(
+                insert(self._todos).values(
+                    todo_id=todo.todo_id,
+                    manager_id=manager_id,
+                    text=todo.text,
+                    done=False,
+                    created_at=todo.created_at,
+                )
+            )
+        return todo
+
+    async def set_todo_done(self, manager_id: str, todo_id: str, done: bool) -> ManagerTodo:
+        self._ensure_schema()
+        with self._engine.begin() as connection:
+            changed = connection.execute(
+                update(self._todos)
+                .where(self._todos.c.todo_id == todo_id, self._todos.c.manager_id == manager_id)
+                .values(done=done, done_at=datetime.now(UTC) if done else None)
+            )
+            if changed.rowcount == 0:
+                raise TodoNotFoundError(todo_id)
+            row = connection.execute(select(self._todos).where(self._todos.c.todo_id == todo_id)).mappings().one()
+        return self._to_todo(row)
+
+    async def advisor_performance(self) -> dict[str, AdvisorPerformance]:
+        """Aggregate only persisted manager-approved scores, grouped by advisor."""
+        self._ensure_schema()
+        query = select(
+            self._attempts.c.advisor_id,
+            self._attempts.c.session_id,
+            self._attempts.c.scenario_id,
+            self._attempts.c.completed_at,
+            self._reviews.c.reviewed_at,
+            self._reviews.c.approved_result_json,
+        ).select_from(self._attempts.outerjoin(self._reviews))
+        with self._engine.connect() as connection:
+            rows = list(connection.execute(query).mappings())
+
+        grouped: dict[str, list] = {}
+        for row in rows:
+            grouped.setdefault(row.advisor_id, []).append(row)
+        result: dict[str, AdvisorPerformance] = {}
+        for advisor_id, attempts in grouped.items():
+            completed_count = sum(row.completed_at is not None for row in attempts)
+            approved_rows = [row for row in attempts if row.approved_result_json]
+            scores: list[float] = []
+            skills: dict[CriterionType, list[int]] = {criterion: [] for criterion in CriterionType}
+            recent: list[ApprovedScore] = []
+            for row in approved_rows:
+                evaluation = SessionEvaluationResult.model_validate_json(row.approved_result_json)
+                if evaluation.overall_score is not None:
+                    scores.append(evaluation.overall_score)
+                    recent.append(
+                        ApprovedScore(
+                            session_id=row.session_id,
+                            scenario_id=row.scenario_id,
+                            score=evaluation.overall_score,
+                            reviewed_at=row.reviewed_at,
+                        )
+                    )
+                for item in evaluation.evaluations:
+                    if item.status is CriterionStatus.ASSESSED and item.score is not None:
+                        skills[item.criterion].append(item.score)
+            recent.sort(key=lambda item: item.reviewed_at, reverse=True)
+            result[advisor_id] = AdvisorPerformance(
+                advisor_id=advisor_id,
+                display_name=advisor_id,
+                completed_sessions=completed_count,
+                approved_sessions=len(approved_rows),
+                scored_sessions=len(scores),
+                average_score=sum(scores) / len(scores) if scores else None,
+                rank=None,
+                skill_summaries=[
+                    SkillSummary(
+                        criterion=criterion, average_score=sum(values) / len(values), assessed_count=len(values)
+                    )
+                    for criterion, values in skills.items()
+                    if values
+                ],
+                recent_scores=recent[:5],
+            )
+        return result
+
     async def approve(self, session_id: str, manager_id: str, decision: ManagerReviewDecision) -> ManagerReviewRecord:
         if not manager_id.strip():
             raise ValueError("manager_id must not be blank")
@@ -283,7 +591,7 @@ class SQLPracticeRecordsRepository:
                         session_id=session_id,
                         manager_id=manager_id,
                         reviewed_at=reviewed_at,
-                        change_reason=decision.change_reason.strip(),
+                        change_reason=decision.stored_comment(),
                         approved_result_json=approved.model_dump_json(),
                     )
                 )
@@ -293,7 +601,8 @@ class SQLPracticeRecordsRepository:
             session_id=session_id,
             manager_id=manager_id,
             reviewed_at=reviewed_at,
-            change_reason=decision.change_reason.strip(),
+            change_reason=decision.stored_comment(),
+            general_comment=decision.stored_comment() or None,
             ai_draft=draft,
             approved_result=approved,
         )

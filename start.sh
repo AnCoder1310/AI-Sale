@@ -18,6 +18,7 @@ else
     if [ -d ".venv" ]; then
         source .venv/bin/activate
     fi
+    python3 scripts/seed_demo_users.py
     python3 -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000 &
     BACKEND_PID=$!
     echo "[✓] Backend PID: $BACKEND_PID"

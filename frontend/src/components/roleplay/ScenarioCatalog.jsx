@@ -1,238 +1,90 @@
-import { useState } from 'react';
-import {
-  ArrowRight,
-  SparkleIcon,
-} from '../common/Icons';
-import { Badge } from '../common/Badge';
-import { SKILL_LABELS } from '../../data/scenarioData';
+import { fmtDayMonth, fmtScore } from '../../utils/scoreFormat';
+import './advisorProgress.css';
+
+// App.jsx may already have relabelled difficulty to Cơ bản, Tiêu chuẩn or Nâng cao.
+const DIFFICULTY = {
+  Easy: 'Dễ', Medium: 'Trung bình', Hard: 'Khó', 'Cơ bản': 'Dễ', 'Tiêu chuẩn': 'Trung bình', 'Nâng cao': 'Khó',
+};
+
+/** Scenario -> official transparent VinFast exterior photo. */
+function carFor(scenario) {
+  if (scenario.scenario_id === 'SCENARIO_03_VF6_APARTMENT') return { src: '/vehicles/official/vf-6-green.webp', alt: 'VinFast VF 6 màu xanh', width: 200, height: 106 };
+  const match = /VF[\s_-]*(Wild|[356789])(?![a-z0-9])/i.exec(`${scenario.model_badge || ''} ${scenario.model || ''} ${scenario.scenario_id} ${scenario.title}`);
+  if (!match) return null;
+  const model = match[1].toLowerCase();
+  return { src: `/vehicles/official/vf-${model}.webp`, alt: `VinFast VF ${model === 'wild' ? 'Wild' : model}`, width: 200, height: 106 };
+}
+
+/** The customer's quoted opening line inside visible_context, else the whole context. */
+function openingLine(context) {
+  const text = String(context || '').trim();
+  const quoted = /['‘“"](.+)['’”"]/s.exec(text);
+  return quoted ? { text: quoted[1].trim(), quoted: true } : { text, quoted: false };
+}
+
+function lastResult(entry, latest) {
+  if (entry) {
+    if (entry.last_status === 'approved') {
+      const day = fmtDayMonth(entry.last_completed_at);
+      return `Lần gần nhất ${fmtScore(entry.last_score)} / 3${day ? `, ngày ${day}` : ''}`;
+    }
+    if (entry.last_status === 'pending_review') {
+      return `Đang chờ quản lý duyệt${entry.last_score != null ? `, AI chấm ${fmtScore(entry.last_score)} / 3` : ''}`;
+    }
+    if (entry.last_status === 'failed') return 'Lần gần nhất chấm điểm thất bại';
+    return 'Chưa luyện tình huống này';
+  }
+  if (latest) return `Lần gần nhất ${fmtScore(latest.approved_score ?? latest.ai_score)} / 3`;
+  return 'Chưa luyện tình huống này';
+}
 
 export function ScenarioCatalog({
-  scenarios,
-  onStartScenario,
-  onOpenHistory,
-  latestByScenario = {},
-  starting = false,
+  scenarios, onStartScenario, onOpenHistory, latestByScenario = {}, progressScenarios = null, assignments = [], starting = false,
 }) {
-  const [filterModel, setFilterModel] = useState('all');
-  const [filterDifficulty, setFilterDifficulty] = useState('all');
-  const [maxTurns, setMaxTurns] = useState(10);
-
-  const modelOptions = [
-    { id: 'all', label: 'Tất cả mẫu xe' },
-    { id: 'VF 3', label: 'VF 3' },
-    { id: 'VF 5', label: 'VF 5' },
-    { id: 'VF 6', label: 'VF 6' },
-    { id: 'VF 7', label: 'VF 7' },
-    { id: 'VF 8', label: 'VF 8' },
-    { id: 'VF 9', label: 'VF 9' },
-  ];
-
-  const difficultyOptions = [
-    { id: 'all', label: 'Tất cả' },
-    { id: 'Cơ bản', label: 'Cơ bản' },
-    { id: 'Tiêu chuẩn', label: 'Tiêu chuẩn' },
-    { id: 'Nâng cao', label: 'Nâng cao' },
-  ];
-
-  const filtered = scenarios.filter((s) => {
-    if (filterModel !== 'all' && s.model !== filterModel) return false;
-    if (filterDifficulty !== 'all' && s.difficulty !== filterDifficulty) return false;
-    return true;
-  });
+  const assignedFor = (scenarioId) => assignments
+    .filter((item) => item.scenario_id === scenarioId && item.status !== 'completed')
+    .sort((a, b) => String(a.due_date || '9999').localeCompare(String(b.due_date || '9999')))[0];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* PAGE HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-        <div style={{ maxWidth: 780 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5', padding: '4px 10px', borderRadius: 9999, marginBottom: 10 }}>
-            <SparkleIcon style={{ width: 13, height: 13, color: '#111111' }} />
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#111111' }}>
-              Phòng Luyện tập AI Customer Simulator
-            </span>
-          </div>
-
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#111111', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
-            Chọn Tình Huống Bán Xe & Bắt Đầu Luyện Tập
-          </h1>
-
-          <p style={{ fontSize: '0.88rem', color: '#737373', marginTop: 8, lineHeight: 1.5 }}>
-            Thử thách bản thân với các kiểu khách hàng thực tế: Kỹ sư công nghệ logic, Doanh nhân bận rộn, Khách hàng truyền thống lo ngại pin. Hệ thống sẽ tự động chấm điểm dựa trên 5 tiêu chí Rubric chuẩn.
-          </p>
-        </div>
-
+    <section className="ap-card" aria-labelledby="ap-library-h">
+      <div className="ap-card-head">
+        <h2 id="ap-library-h">Thư viện tình huống</h2>
       </div>
-
-      <label className="card-white" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px' }}>
-        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Số lượt tư vấn tối đa: {maxTurns}</span>
-        <input type="range" min="8" max="15" step="1" value={maxTurns}
-          onChange={(event) => setMaxTurns(Number(event.target.value))}
-          aria-label="Số lượt tư vấn tối đa" style={{ flex: 1 }} />
-        <span style={{ fontSize: '0.78rem', color: '#737373' }}>8–15 lượt</span>
-      </label>
-
-      {/* FILTER BAR */}
-      <div
-        className="card-white"
-        style={{
-          padding: '14px 20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
-        {/* Model filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#444444' }}>Dòng xe:</span>
-          {modelOptions.map((opt) => (
-            <button
-              key={opt.id}
-              className={`chip ${filterModel === opt.id ? 'active' : ''}`}
-              onClick={() => setFilterModel(opt.id)}
-              style={{ padding: '5px 12px', fontSize: '0.8rem' }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Difficulty filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#444444' }}>Độ khó:</span>
-          {difficultyOptions.map((opt) => (
-            <button
-              key={opt.id}
-              className={`chip ${filterDifficulty === opt.id ? 'active' : ''}`}
-              onClick={() => setFilterDifficulty(opt.id)}
-              style={{ padding: '5px 12px', fontSize: '0.8rem' }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* SCENARIOS 2-COLUMN GRID */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: 20 }}>
-        {filtered.map((s) => (
-          <div
-            key={s.scenario_id}
-            className="card-white card-white-hover"
-            style={{
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              gap: 16,
-            }}
-          >
-            <div>
-              {latestByScenario[s.scenario_id] && (
-                <p style={{ fontSize: '0.82rem', marginBottom: 10 }}>
-                  Kết quả gần nhất: {latestByScenario[s.scenario_id].approved_score ?? latestByScenario[s.scenario_id].ai_score ?? '—'} / 3
-                  {' • '}{latestByScenario[s.scenario_id].review_status === 'manager_approved'
-                    ? 'Đã duyệt'
-                    : latestByScenario[s.scenario_id].evaluation_status === 'failed'
-                      ? 'Chấm điểm thất bại'
-                      : 'Chờ duyệt'}
-                </p>
-              )}
-              {/* Badges */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                <Badge variant="highlight">{s.model_badge || s.model}</Badge>
-                <Badge variant="default">Độ khó: {s.difficulty}</Badge>
-                <span style={{ fontSize: '0.78rem', color: '#737373', display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 2 }}>
-                  Tối đa {maxTurns} lượt
-                </span>
-              </div>
-
-              {/* Title */}
-              <h2 style={{ fontSize: '1.08rem', fontWeight: 700, color: '#111111', lineHeight: 1.35, marginBottom: 14 }}>
-                {s.title}
-              </h2>
-
-              {/* Persona Box */}
-              <div
-                style={{
-                  backgroundColor: '#F7F7F5',
-                  border: '1px solid #ECECE8',
-                  borderRadius: 12,
-                  padding: '14px 16px',
-                  display: 'flex',
-                  gap: 14,
-                  alignItems: 'flex-start',
-                  marginBottom: 14,
-                }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111111' }}>
-                    Khách hàng qua {s.sales_channel || 'kênh tư vấn'}
+      {scenarios.length === 0 ? <p className="ap-state">Chưa có tình huống nào.</p> : (
+        <ul className="ap-scenarios">
+          {scenarios.map((scenario) => {
+            const car = carFor(scenario);
+            const opening = openingLine(scenario.visible_context);
+            const assigned = assignedFor(scenario.scenario_id);
+            const due = assigned?.due_date ? fmtDayMonth(`${assigned.due_date}T00:00:00`) : '';
+            // Scenarios whose acceptable outcomes include an upsell get the "Luyện Upsale!" sticker.
+            const upsell = (scenario.outcome_labels || []).some((label) => /upsell/i.test(label));
+            return (
+              <li className="ap-scenario" key={scenario.scenario_id}>
+                {upsell && <span className="ap-upsell">Luyện Upsale!</span>}
+                <div className="ap-scenario-media">
+                  {car && <img src={car.src} alt={car.alt} width={car.width} height={car.height} loading="lazy" />}
+                  <button type="button" className="ap-btn ap-btn--primary" onClick={() => onStartScenario(scenario.scenario_id)} disabled={starting}>
+                    Vào phòng luyện tập
+                  </button>
+                </div>
+                <div className="ap-scenario-body">
+                  <div className="ap-scenario-top">
+                    <h3>{scenario.title}</h3>
+                    <span className="ap-level">{DIFFICULTY[scenario.difficulty] || scenario.difficulty}</span>
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#444444', lineHeight: 1.4 }}>
-                    {s.visible_context}
+                  <p className="ap-opening">{opening.quoted ? `“${opening.text}”` : opening.text}</p>
+                  {assigned && <p className="ap-assigned">Quản lý giao{due ? `, hạn ${due}` : ''}</p>}
+                  <div className="ap-scenario-foot">
+                    <span className="ap-last">{lastResult(progressScenarios?.[scenario.scenario_id], latestByScenario[scenario.scenario_id])}</span>
+                    <button type="button" className="ap-text-btn" onClick={() => onOpenHistory(scenario.scenario_id)}>Lịch sử</button>
                   </div>
                 </div>
-              </div>
-
-              {/* Objective */}
-              <p style={{ fontSize: '0.82rem', color: '#444444', lineHeight: 1.45, marginBottom: 14 }}>
-                <strong>Mục tiêu:</strong> {s.training_objective}
-              </p>
-
-              {/* Target skill tags */}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                {(s.target_skills || []).map((skill, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      padding: '3px 8px',
-                      borderRadius: 4,
-                      backgroundColor: '#ECECE9',
-                      color: '#333333',
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {SKILL_LABELS[skill] || skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Bottom Footer Row */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                paddingTop: 14,
-                borderTop: '1px solid #F0F0EE',
-                flexWrap: 'wrap',
-                gap: 10,
-              }}
-            >
-              <span style={{ fontSize: '0.82rem', color: '#737373' }}>
-                Khai thác nhu cầu trong hội thoại
-              </span>
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn-ghost" onClick={() => onOpenHistory(s.scenario_id)}>Lịch sử</button>
-                <button
-                  className="btn-primary"
-                  onClick={() => onStartScenario(s.scenario_id, maxTurns)}
-                  disabled={starting}
-                  style={{ padding: '8px 18px', fontSize: '0.85rem' }}
-                >
-                  <span>Vào phòng luyện tập</span>
-                  <ArrowRight style={{ width: 14, height: 14 }} />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }

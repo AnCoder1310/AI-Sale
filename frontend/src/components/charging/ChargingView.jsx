@@ -4,10 +4,14 @@ import {
   SearchIcon,
   CheckCircleIcon,
   ClockIcon,
+  LocationIcon,
+  LightbulbIcon,
   SparkleIcon,
+  AlertCircleIcon,
+  FileTextIcon,
 } from '../common/Icons';
 import { Badge } from '../common/Badge';
-import { CHARGING_STATIONS, NETWORK_STATS } from '../../data/stationData';
+import { CHARGING_STATIONS, NETWORK_STATS, REQUIRED_STATION_PDFS } from '../../data/stationData';
 
 export function ChargingView({ onConsultCopilot }) {
   const [filterProvince, setFilterProvince] = useState('all');
@@ -149,81 +153,132 @@ export function ChargingView({ onConsultCopilot }) {
 
       {/* STATIONS LIST & ADVISOR TIPS (2-COL) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 24, alignItems: 'start' }}>
-        {/* LEFT: STATIONS LIST */}
+        {/* LEFT: STATIONS LIST OR EMPTY STATE WITH PDF REQUIREMENT */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {filteredStations.map((st) => (
-            <div
-              key={st.id}
-              className="card-white card-white-hover"
-              style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+          {CHARGING_STATIONS.length === 0 ? (
+            <div className="card-white" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#F4F4F5', color: '#18181B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <AlertCircleIcon style={{ width: 20, height: 20 }} />
+                </div>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <Badge variant="highlight">{st.province}</Badge>
-                    <span style={{ fontSize: '0.75rem', color: '#166534', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <CheckCircleIcon style={{ width: 12, height: 12 }} /> {st.status}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: '#737373' }}>
-                      <ClockIcon style={{ width: 11, height: 11, display: 'inline', marginRight: 3 }} />
-                      {st.operating_hours}
-                    </span>
-                  </div>
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111111' }}>
-                    {st.name}
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#111827' }}>
+                    Dữ liệu trạm sạc thực tế đang để trống
                   </h3>
+                  <p style={{ fontSize: '0.82rem', color: '#6B7280', marginTop: 2 }}>
+                    Hệ thống không dùng dữ liệu giả lập. Sẵn sàng tiếp nhận tệp dữ liệu PDF biểu phí & chính sách trạm sạc V-GREEN.
+                  </p>
                 </div>
+              </div>
 
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.78rem', color: '#737373' }}>Cổng sạc trống:</span>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#111111' }}>
-                    {st.ports_available} / {st.ports_total}
+              {REQUIRED_STATION_PDFS.map((pdf) => (
+                <div key={pdf.id} style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '16px 20px', backgroundColor: '#F9FAFB' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <FileTextIcon style={{ width: 14, height: 14, color: '#52525B' }} />
+                      <strong style={{ fontSize: '0.9rem', color: '#111827' }}>{pdf.title}</strong>
+                    </div>
+                    <Badge variant="highlight"><ClockIcon style={{ width: 11, height: 11, display: "inline", verticalAlign: "-1px", marginRight: 3 }} />{pdf.status}</Badge>
+                  </div>
+
+                  <div style={{ marginTop: 8, fontSize: '0.8rem', color: '#4B5563' }}>
+                    <div>Tên file cần chuẩn bị: <code>{pdf.filename}</code></div>
+                    <div>Mã định danh văn bản: <code>{pdf.document_id}</code></div>
+                  </div>
+
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #E5E7EB' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#374151' }}>Nội dung cần có:</span>
+                    <ul style={{ listStyle: 'none', paddingLeft: 0, margin: '6px 0 0 0', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {pdf.required_contents.map((item, idx) => (
+                        <li key={idx} style={{ fontSize: '0.78rem', color: '#6B7280', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ color: '#71717A' }}>•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-              </div>
-
-              <p style={{ fontSize: '0.85rem', color: '#555555' }}>
-                📍 {st.address}
-              </p>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#737373', marginRight: 4 }}>
-                  Trụ sạc hỗ trợ:
-                </span>
-                {st.power_types.map((p, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      padding: '3px 8px',
-                      borderRadius: 4,
-                      backgroundColor: '#ECECE9',
-                      color: '#222222',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                    }}
-                  >
-                    ⚡ {p}
-                  </span>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 10, borderTop: '1px solid #F0F0EE', fontSize: '0.75rem', color: '#737373' }}>
-                <span style={{ fontWeight: 600 }}>Tiện ích lân cận:</span>
-                {st.amenities.map((a, idx) => (
-                  <span key={idx} style={{ backgroundColor: '#F8F8F6', padding: '2px 6px', borderRadius: 4 }}>
-                    {a}
-                  </span>
-                ))}
-              </div>
+              ))}
             </div>
-          ))}
+          ) : filteredStations.length === 0 ? (
+            <div className="card-white" style={{ padding: '32px 24px', textAlign: 'center', color: '#6B7280' }}>
+              <p>Không tìm thấy trạm sạc nào phù hợp với bộ lọc hiện tại.</p>
+            </div>
+          ) : (
+            filteredStations.map((st) => (
+              <div
+                key={st.id}
+                className="card-white card-white-hover"
+                style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <Badge variant="highlight">{st.province}</Badge>
+                      <span style={{ fontSize: '0.75rem', color: '#18181B', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <CheckCircleIcon style={{ width: 12, height: 12 }} /> {st.status}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#737373' }}>
+                        <ClockIcon style={{ width: 11, height: 11, display: 'inline', marginRight: 3 }} />
+                        {st.operating_hours}
+                      </span>
+                    </div>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111111' }}>
+                      {st.name}
+                    </h3>
+                  </div>
+
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#737373' }}>Cổng sạc trống:</span>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#111111' }}>
+                      {st.ports_available} / {st.ports_total}
+                    </div>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: '0.85rem', color: '#555555' }}>
+                  <LocationIcon style={{ width: 12, height: 12, display: "inline", verticalAlign: "-1px", marginRight: 3 }} />{st.address}
+                </p>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#737373', marginRight: 4 }}>
+                    Trụ sạc hỗ trợ:
+                  </span>
+                  {st.power_types.map((p, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: 4,
+                        backgroundColor: '#ECECE9',
+                        color: '#222222',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      <BoltIcon style={{ width: 11, height: 11, display: "inline", verticalAlign: "-1px", marginRight: 3 }} />{p}
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 10, borderTop: '1px solid #F0F0EE', fontSize: '0.75rem', color: '#737373' }}>
+                  <span style={{ fontWeight: 600 }}>Tiện ích lân cận:</span>
+                  {st.amenities.map((a, idx) => (
+                    <span key={idx} style={{ backgroundColor: '#F8F8F6', padding: '2px 6px', borderRadius: 4 }}>
+                      {a}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* RIGHT: ADVISOR CHARGING CHEAT-SHEET */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="card-white" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <h3 style={{ fontSize: '0.92rem', fontWeight: 800, color: '#111111', borderBottom: '1px solid #F0F0EE', paddingBottom: 10 }}>
-              💡 BÍ QUYẾT TƯ VẤN SẠC PIN CHO KHÁCH
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><LightbulbIcon style={{ width: 14, height: 14 }} /> BÍ QUYẾT TƯ VẤN SẠC PIN</span>
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

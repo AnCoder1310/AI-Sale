@@ -1,35 +1,39 @@
 import { useState, useEffect } from 'react';
 import { Header } from './components/layout/Header';
 import { NotificationDrawer } from './components/layout/NotificationDrawer';
-import { HomeView } from './components/home/HomeView';
 import { CopilotView } from './components/copilot/CopilotView';
 import { RoleplayView } from './components/roleplay/RoleplayView';
 import { KnowledgeView } from './components/knowledge/KnowledgeView';
-import { ChargingView } from './components/charging/ChargingView';
-import { ErrorState } from './components/common/ErrorState';
 import { LoginView } from './components/auth/LoginView';
+import { ChangePasswordView } from './components/auth/ChangePasswordView';
 import { ManagerReviewView } from './components/manager/ManagerReviewView';
 
-import { ADVISOR_PROFILE } from './data/competencyData';
 import { authApi } from './api/authApi';
 import { practiceApi } from './api/practiceApi';
 
 export function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authStatus, setAuthStatus] = useState('loading');
-  const [currentTab, setCurrentTab] = useState('home');
+  const [currentTab, setCurrentTab] = useState('copilot');
   const [scenarios, setScenarios] = useState([]);
   const [scenarioStatus, setScenarioStatus] = useState('loading');
   const [scenarioReloadToken, setScenarioReloadToken] = useState(0);
   const [sourceDocumentId, setSourceDocumentId] = useState(null);
+  const [sourceReference, setSourceReference] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [copilotQuery, setCopilotQuery] = useState('');
+  const [copilotOpened, setCopilotOpened] = useState(false);
 
   useEffect(() => {
     async function restoreSession() {
       try {
-        setCurrentUser(await authApi.me());
+        const user = await authApi.me();
+        setCurrentUser(user);
+        if (user.role === 'advisor') {
+          setCurrentTab('copilot');
+          setCopilotOpened(true);
+        }
         setAuthStatus('authenticated');
       } catch {
         setCurrentUser(null);
@@ -68,7 +72,12 @@ export function App() {
     const user = await authApi.login(username, password);
     setCurrentUser(user);
     setAuthStatus('authenticated');
-    setCurrentTab(user.role === 'advisor' ? 'home' : 'manager');
+    if (user.role === 'advisor') {
+      setCurrentTab('copilot');
+      setCopilotOpened(true);
+    } else {
+      setCurrentTab('manager');
+    }
   };
 
   const handleLogout = async () => {
@@ -77,10 +86,18 @@ export function App() {
     } finally {
       setCurrentUser(null);
       setAuthStatus('anonymous');
-      setCurrentTab('home');
+      setCurrentTab('copilot');
       setScenarios([]);
       setScenarioStatus('loading');
+      setCopilotOpened(false);
+      setCopilotQuery('');
     }
+  };
+
+  const handleChangePassword = async (currentPassword, newPassword) => {
+    await authApi.changePassword(currentPassword, newPassword);
+    setCurrentUser(null);
+    setAuthStatus('anonymous');
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -95,16 +112,8 @@ export function App() {
     );
     if (item.link) {
       setCurrentTab(item.link);
+      if (item.link === 'copilot') setCopilotOpened(true);
     }
-  };
-
-  const handleStartScenarioFromHome = () => {
-    setCurrentTab('roleplay');
-  };
-
-  const handleConsultCopilot = (query) => {
-    setCopilotQuery(query);
-    setCurrentTab('copilot');
   };
 
   if (authStatus === 'loading') {
@@ -115,54 +124,66 @@ export function App() {
     return <LoginView onLogin={handleLogin} />;
   }
 
+  if (currentUser?.must_change_password) {
+    return <ChangePasswordView username={currentUser.username}
+      onChangePassword={handleChangePassword} onLogout={handleLogout} />;
+  }
+
   if (currentUser?.role === 'manager') {
-    return <ManagerReviewView currentUser={currentUser} onLogout={handleLogout} />;
+    return (
+      <ManagerReviewView
+        currentUser={currentUser}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   const advisorProfile = {
-    ...ADVISOR_PROFILE,
     name: currentUser.display_name,
+    username: currentUser.username,
     role: 'Tư vấn viên',
   };
 
   return (
-    <div className="app-container">
+    <div className={`app-container${currentTab === 'copilot' ? ' copilot-app-container' : ''}${currentTab === 'knowledge' ? ' knowledge-app-container' : ''}${currentTab === 'roleplay' ? ' roleplay-app-container' : ''}`}>
       {/* GLOBAL TOP HEADER */}
       <Header
         currentTab={currentTab}
         onTabChange={(tab) => {
           setCurrentTab(tab);
+          if (tab === 'copilot') setCopilotOpened(true);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         unreadCount={unreadCount}
+        hasNotifications={notifications.length > 0}
         onOpenNotifications={() => setIsNotifOpen(true)}
         advisorProfile={advisorProfile}
         onLogout={handleLogout}
       />
 
       {/* MAIN CONTENT AREA */}
-      <main className="main-content">
-        {currentTab === 'home' && (
-          <HomeView
-            advisorProfile={advisorProfile}
-            scenarios={scenarios}
-            onNavigate={(tab) => setCurrentTab(tab)}
-            onStartScenario={handleStartScenarioFromHome}
-          />
-        )}
-
-        {currentTab === 'copilot' && (
+      <main className={`main-content${currentTab === 'copilot' ? ' copilot-main-content' : ''}${currentTab === 'knowledge' ? ' knowledge-main-content' : ''}`}>
+        {(currentTab === 'copilot' || copilotOpened) && (
+          <div style={{ display: currentTab === 'copilot' ? 'flex' : 'none', flex: 1, minHeight: 0, height: '100%', flexDirection: 'column' }}>
           <CopilotView
+            currentUser={currentUser}
             initialQuery={copilotQuery}
-            onOpenDocument={(documentId) => {
+            onOpenDocument={(documentId, reference = null) => {
               setSourceDocumentId(documentId);
+              setSourceReference(reference);
               setCurrentTab('knowledge');
             }}
           />
+          </div>
         )}
 
         {currentTab === 'roleplay' && (
           <RoleplayView
+            onOpenKnowledge={() => {
+              setSourceDocumentId(null);
+              setSourceReference(null);
+              setCurrentTab('knowledge');
+            }}
             scenarios={scenarios}
             scenarioStatus={scenarioStatus}
             onRetryScenarios={() => {
@@ -174,24 +195,11 @@ export function App() {
 
         {currentTab === 'knowledge' && (
           <KnowledgeView
-            onOpenCopilotQuery={handleConsultCopilot}
             sourceDocumentId={sourceDocumentId}
+            sourceReference={sourceReference}
           />
         )}
 
-        {currentTab === 'charging' && (
-          <ChargingView
-            onConsultCopilot={handleConsultCopilot}
-          />
-        )}
-
-        {currentTab === 'progress' && (
-          <ErrorState
-            title="Theo dõi tiến bộ sẽ được bổ sung"
-            message="MVP hiện lưu và đánh giá từng phiên luyện tập; dashboard tổng hợp năng lực chưa kết nối dữ liệu thật."
-            onRetry={() => setCurrentTab('roleplay')}
-          />
-        )}
       </main>
 
       {/* NOTIFICATIONS FLYOUT */}

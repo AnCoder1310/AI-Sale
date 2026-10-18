@@ -1,35 +1,27 @@
-# ---- Stage 1: Build ----
 FROM python:3.11-slim AS builder
 
 WORKDIR /app
+COPY requirements.lock ./
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir -r requirements.lock
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
-
-# ---- Stage 2: Production ----
 FROM python:3.11-slim
 
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PORT=8000
 WORKDIR /app
-
-# Keep builder-installed packages reachable by the non-root runtime user.
-COPY --from=builder /root/.local /opt/python-packages
-ENV PATH=/opt/python-packages/bin:$PATH
-ENV PYTHONPATH=/opt/python-packages/lib/python3.11/site-packages
-
-# Security: run as non-root user
-RUN useradd -m appuser
-
-# Copy application code
-COPY . .
-
-# Create data directory with correct ownership
-RUN mkdir -p /app/data && chown -R appuser:appuser /app
+COPY --from=builder /opt/venv /opt/venv
+RUN useradd --create-home appuser \
+    && mkdir -p /app/data/db /app/data/chroma /app/data/index_manifests \
+    && chown -R appuser:appuser /app
+COPY --chown=appuser:appuser src/ ./src/
+COPY --chown=appuser:appuser data/knowledge/ ./data/knowledge/
+COPY --chown=appuser:appuser data/scenarios/ ./data/scenarios/
+COPY --chown=appuser:appuser scripts/seed_demo_users.py scripts/check_copilot_index.py scripts/init_database.py ./scripts/
 
 USER appuser
-
 EXPOSE 8000
-
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
-
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.getenv('PORT', '8000') + '/health', timeout=5)" || exit 1
+CMD ["sh", "-c", "exec uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
