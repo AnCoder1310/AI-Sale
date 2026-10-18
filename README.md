@@ -2,7 +2,7 @@
 
 > Tóm tắt 1 câu: tư vấn viên mới tốn thời gian kèm cặp và dễ tư vấn sai → AI khách hàng để luyện tập, AI chấm điểm có dẫn chứng được quản lý duyệt, Copilot tra cứu có nguồn → cho tư vấn viên bán hàng VinFast và quản lý của họ.
 
-**Live URL:** https://aisale.itup.io.vn/ (URL do nhóm cung cấp; cấu hình triển khai xem [hướng dẫn triển khai](docs/deployment.md)).
+**Live URL:** https://c4-app-043.itup.io.vn/ (URL do nhóm cung cấp; cấu hình triển khai xem [hướng dẫn triển khai](docs/deployment.md)).
 
 TODO (team): ảnh chụp màn hình Practice Room / Copilot / Manager.
 
