@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, SendIcon, MicIcon, SpeakerIcon } from '../common/Icons';
-import { Video, VideoOff, ShieldCheck, Clock, X, Captions, CaptionsOff } from 'lucide-react';
+import { Video, VideoOff, ShieldCheck, Clock, X, Captions, CaptionsOff, MessageCircle, Phone } from 'lucide-react';
 import { getVehicleImage } from '../../data/vehicleData';
 import { FinishConfirmDialog } from './FinishConfirmDialog';
 import { practiceApi } from '../../api/practiceApi';
@@ -527,7 +527,7 @@ export function PracticeRoom({
 
   const context = <CustomerContext session={session} scenario={scenario} />;
   const modeControl = <div className="pr-segment pr-mode" role="group" aria-label="Cách luyện">
-    {['text', 'voice'].map((value) => <button key={value} aria-pressed={mode === value} onClick={() => { if (mode !== value) { setCallSeconds(0); toggleVoiceMode(); } }} disabled={recorder.recordingState !== 'idle' || transcribing || terminationStatus !== 'active'}>{value === 'text' ? 'Nhắn tin' : 'Gọi thoại'}</button>)}
+    {['text', 'voice'].map((value) => <button key={value} aria-pressed={mode === value} onClick={() => { if (mode !== value) { setCallSeconds(0); toggleVoiceMode(); } }} disabled={recorder.recordingState !== 'idle' || transcribing || terminationStatus !== 'active'}>{value === 'text' ? <><MessageCircle aria-hidden="true" />Nhắn tin</> : <><Phone aria-hidden="true" />Gọi thoại</>}</button>)}
   </div>;
   const layoutControl = <div className="pr-segment pr-layout" role="group" aria-label="Bố cục Mirror">
     <button aria-pressed={mirrorLayout === 'split'} onClick={() => chooseLayout('split')}>Chia đôi</button>

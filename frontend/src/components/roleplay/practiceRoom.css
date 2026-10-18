@@ -26,7 +26,8 @@
 .pr-meta progress::-webkit-progress-value { background: var(--pr-blue); }
 .pr-meta progress::-moz-progress-bar { background: var(--pr-blue); }
 .pr-segment { display: inline-flex; padding: 3px; border-radius: 12px; background: #EEF2FA; flex: none; }
-.pr-room .pr-segment button { border: 0; background: transparent; color: var(--pr-muted); white-space: nowrap; }
+.pr-room .pr-segment button { border: 0; background: transparent; color: var(--pr-muted); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.pr-room .pr-mode button svg { width: 16px; height: 16px; }
 .pr-room .pr-segment button[aria-pressed="true"] { background: white; color: var(--pr-ink); font-weight: 600; box-shadow: 0 1px 2px #0b122014; }
 .pr-room .pr-finish, .pr-room .pr-send { color: white; background: var(--pr-blue-deep); border-color: transparent; font-weight: 600; }
 .pr-finish { flex: none; }
