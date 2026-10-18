@@ -17,7 +17,11 @@ from .practice_policy import valid_policy_chunk
 logger = logging.getLogger(__name__)
 
 # Charging tariffs and charging offers live in charging policies, not the car price list or sales promotions.
-_CHARGING_CLAIM = re.compile(r"kWh|(?:trạm|trụ|phiên|giá|phí|ưu đãi)\s+sạc", re.I)
+# A bare "kWh" is battery capacity ("pin 37,23 kWh"), a spec claim; only a per-kWh price is a tariff.
+_CHARGING_CLAIM = re.compile(
+    r"(?:VNĐ|đồng|đ)\s*(?:/|(?:cho\s+)?(?:mỗi|một|1)\s+)\s*kWh|(?:trạm|trụ|phiên|giá|phí|tiền|ưu đãi)\s+sạc|sạc\s+miễn\s+phí",
+    re.I,
+)
 
 
 class KnowledgeRetriever(Protocol):
@@ -40,14 +44,18 @@ class RetrievalKnowledgeEvidenceProvider:
         retrieval_service: KnowledgeRetriever,
         *,
         top_k_per_claim: int = 3,
+        general_top_k: int = 3,
         max_claims: int = 16,
     ) -> None:
         if top_k_per_claim < 1:
             raise ValueError("top_k_per_claim must be positive")
+        if general_top_k < 0:
+            raise ValueError("general_top_k must not be negative")
         if max_claims < 1:
             raise ValueError("max_claims must be positive")
         self._retrieval_service = retrieval_service
         self._top_k_per_claim = top_k_per_claim
+        self._general_top_k = general_top_k
         self._max_claims = max_claims
 
     async def for_session(
@@ -95,7 +103,10 @@ class RetrievalKnowledgeEvidenceProvider:
                 top_k = 24  # The MSRP table is one small chunk in a long official PDF.
             elif product_model and (
                 claim.category == "product"
-                or (claim.category == "battery_charging" and re.search(r"\bkm\b|quãng đường|đi được", claim.text, re.I))
+                or (
+                    claim.category == "battery_charging"
+                    and re.search(r"(?<![^\W\d])km\b|kWh|quãng đường|đi được", claim.text, re.I)
+                )
             ):
                 document_type = DocumentType.PRODUCT_SPECS.value
 
@@ -140,7 +151,8 @@ class RetrievalKnowledgeEvidenceProvider:
             # Preferred-source misses must not erase otherwise useful evidence.
             # FAQ IDs are not a document_type, so warranty preference is applied
             # to the model-scoped candidates above; fallback retains all sources.
-            if (warranty or charging or promotion) and not candidates:
+            fell_back = (warranty or charging or promotion) and not candidates
+            if fell_back:
                 candidates = self._retrieval_service.retrieve(
                     claim.text,
                     top_k=self._top_k_per_claim,
@@ -160,6 +172,19 @@ class RetrievalKnowledgeEvidenceProvider:
             chunks = candidates[: self._top_k_per_claim]
             # Keep MSRP evidence independently of the promotion candidate budget.
             chunks.extend(price_evidence[: self._top_k_per_claim])
+            # The routed source is a preference, not a filter: a claim routed to the
+            # wrong source still reaches the judge with its best unrouted matches.
+            # A preferred-source miss has already fallen back to the same general search.
+            routed = document_type is not None or warranty or charging or promotion
+            if self._general_top_k and routed and not fell_back:
+                general = self._retrieval_service.retrieve(
+                    claim.text,
+                    top_k=self._general_top_k,
+                    product_model=product_model,
+                    document_type=None,
+                    target_date=state.target_date,
+                )
+                chunks.extend(chunk for chunk in general if valid_policy_chunk(chunk, state.target_date))
             for chunk in chunks:
                 chunks_by_id.setdefault(chunk.chunk_id, chunk)
 
