@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Lightbulb } from 'lucide-react';
 import { ModeChooserDialog } from './ModeChooserDialog';
 import { ScenarioCatalog } from './ScenarioCatalog';
 import { PracticeRoom } from './PracticeRoom';
@@ -15,7 +16,7 @@ import { NoticeDialog } from '../common/NoticeDialog';
 import { authApi } from '../../api/authApi';
 import { ErrorState } from '../common/ErrorState';
 
-export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
+export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios, onOpenKnowledge }) {
   const [notice, setNotice] = useState(null);
   const [viewMode, setViewMode] = useState('catalog');
   const [activeScenario, setActiveScenario] = useState(null);
@@ -177,10 +178,16 @@ export function RoleplayView({ scenarios, scenarioStatus, onRetryScenarios }) {
       {viewMode === 'catalog' && (
         <div className="ap-page">
           <div className="ap-title">
+            <div>
             <h1>Phòng luyện tập</h1>
             {approvedCount != null && (
               <p>{approvedCount} bài đã được quản lý duyệt. Điểm bên dưới chỉ tính các bài đó.</p>
             )}
+            </div>
+            <p className="ap-knowledge-tip">
+              <Lightbulb size={16} aria-hidden="true" />
+              <span>Để tư vấn tốt hơn, hãy ôn lại <button type="button" onClick={onOpenKnowledge}>Kho kiến thức</button>.</span>
+            </p>
           </div>
           <div className="ap-top">
             <AdvisorProgress progress={progress} />

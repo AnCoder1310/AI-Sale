@@ -99,11 +99,12 @@ function SkillRadar({ criteria }) {
   const previous = skills.map((skill, index) => radarPoint(index, skill.score != null && skill.delta != null ? skill.score - skill.delta : null));
   const hasPrevious = previous.every(Boolean);
   const summary = skills.map((skill) => `${skill.label}: ${skill.score == null ? 'chưa có điểm' : `${fmtScore(skill.score)} trên 3`}${skill.delta == null ? '' : `, thay đổi ${fmtDelta(skill.delta)} so với 4 tuần trước`}`).join('; ');
-  const positions = [{ x: 180, y: 15 }, { x: 310, y: 95 }, { x: 255, y: 225 }, { x: 105, y: 225 }, { x: 50, y: 95 }];
+  const labels = ['Nhu cầu', 'Sản phẩm', 'Phản đối', 'Chính sách', 'Chốt bước'];
+  const positions = [{ x: 180, y: 30 }, { x: 310, y: 110 }, { x: 255, y: 230 }, { x: 105, y: 230 }, { x: 50, y: 110 }];
   if (!current.some(Boolean)) return <p className="ap-state">Chưa đủ dữ liệu từng kỹ năng.</p>;
   return <>
     <div className="ap-radar-frame">
-      <svg viewBox="0 0 360 280" className="ap-radar" role="img" aria-label={summary}>
+      <svg viewBox="0 0 360 260" className="ap-radar" role="img" aria-label={summary}>
         {[1, 2, 3].map((level) => <polygon key={level} points={pointList(skills.map((_, index) => radarPoint(index, level)))} className={level === 2 ? 'ap-radar-grid ap-radar-standard' : 'ap-radar-grid'} />)}
         {skills.map((skill, index) => { const end = radarPoint(index, 3); return <line key={skill.key} x1="180" y1="145" x2={end.x} y2={end.y} className="ap-radar-axis" />; })}
         <text x="185" y="141" className="ap-radar-tick">0</text>
@@ -114,12 +115,11 @@ function SkillRadar({ criteria }) {
           {current.map((point, index) => point && <circle key={skills[index].key} cx={point.x} cy={point.y} r="5" />)}
         </g>
         {skills.map((skill, index) => {
-          const words = skill.label.split(' ');
-          const split = Math.ceil(words.length / 2);
           const { x, y } = positions[index];
           return <text key={skill.key} x={x} y={y} textAnchor="middle" className="ap-radar-label">
-            <tspan x={x}>{words.slice(0, split).join(' ')}</tspan><tspan x={x} dy="17">{words.slice(split).join(' ')}</tspan>
-            <tspan x={x} dy="20" className="ap-radar-score">{fmtScore(skill.score)}</tspan>{skill.delta != null && <tspan dx="6" className="ap-radar-delta">{fmtDelta(skill.delta)}</tspan>}
+            <title>{skill.label}</title>
+            <tspan x={x}>{labels[index]}</tspan>
+            <tspan x={x} dy="18" className="ap-radar-score">{fmtScore(skill.score)}</tspan>{skill.delta != null && <tspan dx="6" className="ap-radar-delta">{fmtDelta(skill.delta)}</tspan>}
           </text>;
         })}
       </svg>

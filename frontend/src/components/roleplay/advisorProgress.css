@@ -12,6 +12,11 @@
 
 .ap-title h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
 .ap-title p { margin: 6px 0 0; color: var(--app-muted); font-size: 14px; }
+.ap-title { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.ap-title .ap-knowledge-tip { display: flex; align-items: baseline; gap: 7px; margin: 0; font-size: 14px; line-height: 1.6; }
+.ap-knowledge-tip svg { flex-shrink: 0; align-self: center; }
+.ap-knowledge-tip button { padding: 0; border: 0; background: none; color: var(--app-blue-deep); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.ap-knowledge-tip button:hover { color: var(--app-blue); }
 
 .ap-card {
   min-width: 0;
@@ -49,7 +54,7 @@
 
 .ap-skills { flex: 1 1 360px; min-width: 0; }
 .ap-skills h2 { margin-bottom: 10px; }
-.ap-radar-frame { width: 100%; max-width: 450px; margin: 0 auto; }
+.ap-radar-frame { width: 100%; max-width: 340px; margin: 0 auto; }
 .ap-radar { display: block; width: 100%; height: auto; overflow: visible; }
 .ap-radar-grid, .ap-radar-axis { fill: none; stroke: var(--app-border); stroke-width: 1; }
 .ap-radar-standard { stroke: var(--app-muted); stroke-dasharray: 4 4; }
