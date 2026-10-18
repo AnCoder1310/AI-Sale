@@ -40,7 +40,7 @@ Vì vậy JC6 bị loại khỏi mọi chỉ số bên dưới. Kết quả ch�
 "Chưa chấm" (không có điểm) là nhãn hợp lệ cho cả chuyên gia lẫn judge trong sản phẩm
 (`src/models/evaluation.py`, `src/agents/roleplay/prompts/evaluator.py`). Chỉ dùng khi:
 
-1. **Không có cơ hội**: hội thoại không cho nhân viên dịp thể hiện kỹ năng đó. Ví dụ:
+1. **Không có cơ hội**: trong diễn biến hội thoại, chưa phát sinh tình huống cần vận dụng kỹ năng đó. Ví dụ:
    khách không phản đối gì (objection_handling), chưa ai nói về giá hay chính sách
    (policy_accuracy), hội thoại dừng trước lúc chốt (closing_next_step).
 2. **Không đủ bằng chứng**: transcript quá ngắn để kết luận.
