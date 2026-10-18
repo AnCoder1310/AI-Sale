@@ -149,13 +149,14 @@
 .pr-mirror .pr-toast { top: 78px; bottom: auto; }
 .pr-focus .pr-body { display: block; position: relative; }
 .pr-focus .pr-stage { height: 100%; }
-.pr-focus .pr-bar { position: absolute; inset: 0 0 auto; background: linear-gradient(#0b1220e6, #0b122000); color: white; border: 0; padding-bottom: 40px; }
+/* Full-screen Mirror: no gradient washes over the video, so the face stays clear; text gets a shadow instead. */
+.pr-focus .pr-bar { position: absolute; inset: 0 0 auto; background: transparent; color: white; border: 0; text-shadow: 0 1px 3px #0b1220cc, 0 0 12px #0b122099; }
 .pr-focus .pr-bar .pr-back, .pr-focus .pr-mirror-off { background: #ffffff1f; color: white; border-color: #ffffff40; }
 .pr-focus .pr-bar .pr-mode, .pr-focus .pr-vehicle, .pr-focus .pr-meta progress { display: none; }
 .pr-focus .pr-meta { color: #D2DCEF; }
-.pr-focus .pr-video-bottom { inset: auto 0 0; padding: 100px 32px 32px; display: flex; flex-direction: column; align-items: stretch; gap: 14px; background: linear-gradient(#0b122000, #0b1220f0 50%); }
+.pr-focus .pr-video-bottom { inset: auto 0 0; padding: 0 32px 32px; display: flex; flex-direction: column; align-items: stretch; gap: 14px; background: transparent; text-shadow: 0 1px 3px #0b1220cc, 0 0 12px #0b122099; }
 .pr-focus .pr-customer-card { align-self: flex-start; background: transparent; padding: 0; }
-.pr-focus-caption { max-width: 900px; padding-left: 60px; }
+.pr-focus-caption { align-self: flex-start; max-width: 900px; margin-left: 60px; padding: 10px 16px; border-radius: 14px; background: #0b12208c; }
 .pr-focus-caption p { font-size: 24px; font-weight: 500; line-height: 1.5; max-height: 25dvh; overflow-y: auto; }
 .pr-focus-caption small { display: block; font-size: 14px; color: #C9D3E6; padding-top: 8px; max-height: 10dvh; overflow-y: auto; }
 .pr-focus .pr-call-controls { position: relative; }
@@ -230,11 +231,12 @@
   .pr-transcript-panel .pr-transcript { max-height: 30dvh; }
   .pr-focus .pr-body { overflow: hidden; display: block; }
   .pr-focus .pr-stage { padding: 0; height: 100%; }
-  .pr-focus .pr-bar { grid-template-columns: 44px minmax(0, 1fr) 44px auto; padding: 8px 8px 32px 4px; }
+  .pr-focus .pr-bar { grid-template-columns: 44px minmax(0, 1fr) 44px auto; padding: 8px 8px 8px 4px; }
   .pr-focus .pr-finish { grid-column: 4; grid-row: 1; font-size: 13px; }
   .pr-focus .pr-mirror-off { grid-row: 1; grid-column: 3; padding: 0; display: grid; place-items: center; }
   .pr-focus .pr-layout, .pr-focus .pr-private, .pr-focus .pr-phone-context, .pr-focus .pr-meta > span:last-child { display: none; }
-  .pr-focus .pr-video-bottom { padding: 70px 16px max(24px, env(safe-area-inset-bottom)); gap: 14px; }
+  .pr-focus .pr-video-bottom { padding: 0 16px max(24px, env(safe-area-inset-bottom)); gap: 14px; }
+  .pr-focus-caption { margin-left: 0; }
   .pr-focus-caption { padding: 0; }
   .pr-focus-caption p { font-size: 18px; line-height: 1.45; max-height: 24dvh; }
   .pr-focus-caption small { font-size: 12px; }
