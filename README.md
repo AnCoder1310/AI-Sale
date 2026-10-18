@@ -96,6 +96,7 @@ cp .env.example .env
 | Bootstrap production | `BOOTSTRAP_MANAGER_USERNAME`, `BOOTSTRAP_MANAGER_DISPLAY_NAME`, `BOOTSTRAP_MANAGER_PASSWORD` |
 | Voice tùy chọn | `GROQ_API_KEY`, `GOOGLE_TTS_SERVICE_ACCOUNT_JSON` |
 | Trace tùy chọn | `LANGSMITH_TRACING`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT`, `LANGSMITH_CAPTURE_CONTENT` |
+| Trace Roleplay/Practice (tài khoản riêng) | `ROLEPLAY_LANGSMITH_TRACING`, `ROLEPLAY_LANGSMITH_API_KEY`, `ROLEPLAY_LANGSMITH_ENDPOINT`, `ROLEPLAY_LANGSMITH_PROJECT`, `ROLEPLAY_LANGSMITH_CAPTURE_CONTENT` |
 | Docker / hosted frontend | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `FRONTEND_PORT`, `RENDER_BACKEND_URL` |
 
 Theo [cấu hình Python](src/config.py), generator mặc định là `openai/gpt-6-luna`, embedding là `openai/text-embedding-3-small` qua OpenRouter. Judge mặc định dùng provider OpenRouter và model `deepseek/deepseek-v3.2`, temperature 0; runtime không cho judge trùng cả provider lẫn model với generator. Chạy trực tiếp mặc định SQLite ở `data/app.db` và Chroma ở `data/chroma`. Đổi embedding model cần reindex phù hợp. Xem [.env.example](.env.example) và [hướng dẫn database](docs/database-backends.md).
