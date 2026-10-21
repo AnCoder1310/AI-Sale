@@ -172,8 +172,9 @@ def main():
     settings = get_settings()
     if settings.app_env == "production":
         raise RuntimeError("Demo seeding is restricted to development/test.")
-    engine = create_engine(normalize_database_url(settings.database_url), pool_pre_ping=True,
-                           connect_args={"connect_timeout": 10})
+    norm_url = normalize_database_url(settings.database_url)
+    connect_args = {"connect_timeout": 10} if not norm_url.startswith("sqlite") else {}
+    engine = create_engine(norm_url, pool_pre_ping=True, connect_args=connect_args)
     try:
         result = seed(engine, args.owner, apply=args.apply)
         if args.apply:

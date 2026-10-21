@@ -3,7 +3,8 @@ FROM python:3.11-slim AS builder
 WORKDIR /app
 COPY requirements.lock ./
 RUN python -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir -r requirements.lock
+    && /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/venv/bin/pip install --no-cache-dir --default-timeout=100 --retries=10 -r requirements.lock
 
 FROM python:3.11-slim
 
@@ -18,7 +19,9 @@ RUN useradd --create-home appuser \
 COPY --chown=appuser:appuser src/ ./src/
 COPY --chown=appuser:appuser data/knowledge/ ./data/knowledge/
 COPY --chown=appuser:appuser data/scenarios/ ./data/scenarios/
-COPY --chown=appuser:appuser scripts/seed_demo_users.py scripts/check_copilot_index.py scripts/init_database.py ./scripts/
+COPY --chown=appuser:appuser data/index_manifests/ ./data/index_manifests/
+COPY --chown=appuser:appuser scripts/ ./scripts/
+COPY --chown=appuser:appuser recreate_and_seed_database.sql ./
 
 USER appuser
 EXPOSE 8000
